@@ -27,3 +27,6 @@
 [submodule "vendor/libsol"]
 	path = vendor/libsol
 	url = https://github.com/OneKeyHQ/libsol.git
+[submodule "vendor/libopencm3"]
+	path = vendor/libopencm3
+	url = https://github.com/JubiterWallet/libopencm3-gd32.git
