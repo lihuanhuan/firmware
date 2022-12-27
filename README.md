@@ -38,6 +38,7 @@
 ```
   cd legacy
   export EMULATOR=1 DEBUG_LINK=1 DEBUG_LOG=1
+  export GD32F470=1  //for GD32F470 mcu complie
   poetry run make vendor
   poetry run ./script/setup
   poetry run ./script/cibuild
