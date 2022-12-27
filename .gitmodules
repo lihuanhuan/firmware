@@ -14,9 +14,6 @@
 [submodule "crypto/tests/wycheproof"]
 	path = crypto/tests/wycheproof
 	url = https://github.com/google/wycheproof
-[submodule "legacy/libopencm3"]
-	path = vendor/libopencm3
-	url = https://github.com/libopencm3/libopencm3.git
 [submodule "legacy/vendor/nanopb"]
 	path = vendor/nanopb
 	url = https://github.com/nanopb/nanopb.git
