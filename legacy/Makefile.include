@@ -140,8 +140,13 @@ LDFLAGS  += --static \
 LDLIBS   += -ltrezor
 LIBDEPS  += $(TOP_DIR)/libtrezor.a
 
+ifeq ($(GD32F470),0)
 LDLIBS   += -lopencm3_stm32f2
 LIBDEPS  += $(TOOLCHAIN_DIR)/lib/libopencm3_stm32f2.a
+else
+LDLIBS   += -lopencm3_gd32f4xx
+LIBDEPS  += $(TOOLCHAIN_DIR)/lib/libopencm3_gd32f4xx.a
+endif
 endif
 
 ifeq ($(BITCOIN_ONLY), 1)
