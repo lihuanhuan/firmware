@@ -38,7 +38,10 @@ void sys_shutdown(void) {
   ble_power_off();
   stm32_power_off();
   delay_ms(100);
+#if GD32F470
+#else
   scb_reset_system();
+#endif
 }
 
 void sys_poweron(void) {

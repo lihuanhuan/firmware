@@ -21,31 +21,54 @@
 #include <libopencm3/usb/hid.h>
 #include <libopencm3/usb/usbd.h>
 
-#include "common.h"
-#include "config.h"
-#include "debug.h"
-#include "messages.h"
-#include "oled.h"
+// #include "common.h"
+// #include "config.h"
+// #include "debug.h"
+// #include "messages.h"
+// #include "oled.h"
 #include "random_delays.h"
-#include "timer.h"
-#include "trans_fifo.h"
-#include "trezor.h"
+// #include "timer.h"
+// #include "trans_fifo.h"
+// #include "trezor.h"
 #if U2F_ENABLED
-#include "u2f.h"
+// #include "u2f.h"
 #endif
-#include "ble.h"
-#include "layout2.h"
-#include "memory.h"
-#include "si2c.h"
-#include "supervise.h"
-#include "sys.h"
+// #include "ble.h"
+// #include "layout2.h"
+// #include "memory.h"
+// #include "si2c.h"
+// #include "supervise.h"
+// #include "sys.h"
 #include "usb.h"
 #include "util.h"
-
+#include "string.h"
+#include "stdbool.h"
 #include "usb21_standard.h"
 #include "webusb.h"
 #include "winusb.h"
 
+// 临时添加
+static char config_uuid_str[2 * 12 + 1] = {0};
+// add way how to mark confidential data
+#ifndef CONFIDENTIAL
+#define CONFIDENTIAL
+#endif
+static void config_uuid_init(void) {
+  strcpy(config_uuid_str, "this is my bixin device");
+}
+// static void debugLog(int level, const char *bucket, const char *text) {
+//   (void)level;
+//   (void)bucket;
+//   (void)text;
+// }
+
+#undef NULL
+#define NULL 0
+#define DEBUG_LINK 0
+#undef U2F_ENABLED
+#define U2F_ENABLED 0
+#undef USB_PACKET_SIZE
+#define USB_PACKET_SIZE 64
 #define USB_INTERFACE_INDEX_MAIN 0
 #if DEBUG_LINK
 #define USB_INTERFACE_INDEX_DEBUG 1
@@ -90,7 +113,7 @@ enum {
 };
 #undef X
 
-static uint8_t packet_buf[64] __attribute__((aligned(4)));
+// static uint8_t packet_buf[64] __attribute__((aligned(4)));
 uint8_t s_ucPackAppRevBuf[64];
 uint16_t s_usOffset;
 #define X(name, value) value,
@@ -302,7 +325,7 @@ static enum usbd_request_return_codes hid_control_request(
   (void)complete;
   (void)dev;
 
-  wait_random();
+  // wait_random();
 
   if ((req->bmRequestType != 0x81) ||
       (req->bRequest != USB_REQ_GET_DESCRIPTOR) || (req->wValue != 0x2200))
@@ -327,27 +350,27 @@ static void u2f_rx_callback(usbd_device *dev, uint8_t ep) {
 
 #endif
 
-static void main_rx_callback(usbd_device *dev, uint8_t ep) {
-  (void)ep;
-  static CONFIDENTIAL uint8_t buf[64] __attribute__((aligned(4)));
-  if (dev != NULL) {
-    if (usbd_ep_read_packet(dev, ENDPOINT_ADDRESS_MAIN_OUT, buf, sizeof(buf)) !=
-        USB_PACKET_SIZE)
-      return;
-    host_channel = CHANNEL_USB;
-  } else {
-    memcpy(buf, packet_buf, USB_PACKET_SIZE);
-    host_channel = CHANNEL_SLAVE;
-  }
-  timer_sleep_start_reset();
-  unregister_timer("poweroff");
-  debugLog(0, "", "main_rx_callback");
-  if (!tiny) {
-    msg_read(buf, sizeof(buf));
-  } else {
-    msg_read_tiny(buf, sizeof(buf));
-  }
-}
+// static void main_rx_callback(usbd_device *dev, uint8_t ep) {
+//   (void)ep;
+//   static CONFIDENTIAL uint8_t buf[64] __attribute__((aligned(4)));
+//   if (dev != NULL) {
+//     if (usbd_ep_read_packet(dev, ENDPOINT_ADDRESS_MAIN_OUT, buf, sizeof(buf))
+//     !=
+//         USB_PACKET_SIZE)
+//       return;
+//     host_channel = CHANNEL_USB;
+//   } else {
+//     memcpy(buf, packet_buf, USB_PACKET_SIZE);
+//     host_channel = CHANNEL_SLAVE;
+//   }
+//   timer_sleep_start_reset();
+//   debugLog(0, "", "main_rx_callback");
+//   if (!tiny) {
+//     msg_read(buf, sizeof(buf));
+//   } else {
+//     msg_read_tiny(buf, sizeof(buf));
+//   }
+// }
 
 #if DEBUG_LINK
 
@@ -373,12 +396,16 @@ static void set_config(usbd_device *dev, uint16_t wValue) {
   usbd_ep_setup(dev, ENDPOINT_ADDRESS_MAIN_IN, USB_ENDPOINT_ATTR_INTERRUPT,
                 USB_PACKET_SIZE, 0);
   usbd_ep_setup(dev, ENDPOINT_ADDRESS_MAIN_OUT, USB_ENDPOINT_ATTR_INTERRUPT,
-                USB_PACKET_SIZE, main_rx_callback);
+                USB_PACKET_SIZE, NULL);
+  // usbd_ep_setup(dev, ENDPOINT_ADDRESS_MAIN_OUT, USB_ENDPOINT_ATTR_INTERRUPT,
+  //               USB_PACKET_SIZE, main_rx_callback);
 #if U2F_ENABLED
   usbd_ep_setup(dev, ENDPOINT_ADDRESS_U2F_IN, USB_ENDPOINT_ATTR_INTERRUPT,
                 USB_PACKET_SIZE, 0);
   usbd_ep_setup(dev, ENDPOINT_ADDRESS_U2F_OUT, USB_ENDPOINT_ATTR_INTERRUPT,
-                USB_PACKET_SIZE, u2f_rx_callback);
+                USB_PACKET_SIZE, NULL);
+  // usbd_ep_setup(dev, ENDPOINT_ADDRESS_U2F_OUT, USB_ENDPOINT_ATTR_INTERRUPT,
+  //               USB_PACKET_SIZE, u2f_rx_callback);
 #endif
 #if DEBUG_LINK
   usbd_ep_setup(dev, ENDPOINT_ADDRESS_DEBUG_IN, USB_ENDPOINT_ATTR_INTERRUPT,
@@ -408,6 +435,8 @@ static const struct usb_bos_descriptor bos_descriptor = {
     .capabilities = capabilities};
 
 void usbInit(void) {
+  // 临时添加
+  config_uuid_init();
   usbd_dev = usbd_init(&otgfs_usb_driver, &dev_descr, &config, usb_strings,
                        sizeof(usb_strings) / sizeof(*usb_strings),
                        usbd_control_buffer, sizeof(usbd_control_buffer));
@@ -420,78 +449,75 @@ void usbInit(void) {
   winusb_setup(usbd_dev, USB_INTERFACE_INDEX_MAIN);
 }
 
-static void i2c_slave_poll(void) {
-  uint32_t total_len, len;
-  while ((total_len = fifo_lockdata_len(&i2c_fifo_in)) > 0) {
-    memset(packet_buf, 0x00, sizeof(packet_buf));
-    len = total_len > 64 ? 64 : total_len;
-    fifo_read_lock(&i2c_fifo_in, packet_buf, len);
-    main_rx_callback(NULL, 0);
-  }
-}
+// static void i2c_slave_poll(void) {
+//   uint32_t total_len, len;
+//   while ((total_len = fifo_lockdata_len(&i2c_fifo_in)) > 0) {
+//     memset(packet_buf, 0x00, sizeof(packet_buf));
+//     len = total_len > 64 ? 64 : total_len;
+//     fifo_read_lock(&i2c_fifo_in, packet_buf, len);
+//     main_rx_callback(NULL, 0);
+//   }
+// }
 
 void usbPoll(void) {
-  static const uint8_t *data;
+  //   static const uint8_t *data;
 
-  bool reset = false;
+  //   bool reset = false;
 
-  static bool usb_status_bak = false;
+  //   static bool usb_status_bak = false;
 
-  ble_update_poll();
+  // ble_update_poll();
 
-  if (usb_connect_status && !usb_status_bak) {
-    usb_status_bak = true;
-    if (config_hasPin() && session_isUnlocked()) {
-      reset = true;
-    }
-  } else if (!usb_connect_status && usb_status_bak) {
-    usb_status_bak = false;
-    if (config_hasPin() && session_isUnlocked()) {
-      reset = true;
-    }
-  }
-  if (reset) {
-#if GD32F470
-#else
-    svc_system_privileged();
-    vector_table_t *ivt = (vector_table_t *)FLASH_PTR(FLASH_APP_START);
-    __asm__ volatile("msr msp, %0" ::"r"(ivt->initial_sp_value));
-    __asm__ volatile("b reset_handler");
-#endif
-  }
+  // if (usb_connect_status && !usb_status_bak) {
+  //   usb_status_bak = true;
+  //   if (config_hasPin() && session_isUnlocked()) {
+  //     reset = true;
+  //   }
+  // } else if (!usb_connect_status && usb_status_bak) {
+  //   usb_status_bak = false;
+  //   if (config_hasPin() && session_isUnlocked()) {
+  //     reset = true;
+  //   }
+  // }
+  // if (reset) {
+  //   svc_system_privileged();
+  //   vector_table_t *ivt = (vector_table_t *)FLASH_PTR(FLASH_APP_START);
+  //   __asm__ volatile("msr msp, %0" ::"r"(ivt->initial_sp_value));
+  //   __asm__ volatile("b reset_handler");
+  // }
 
-  i2c_slave_poll();
+  // i2c_slave_poll();
   if (usbd_dev == NULL) {
     return;
   }
   // poll read buffer
   usbd_poll(usbd_dev);
   // write pending data
-  if (CHANNEL_USB == host_channel) {
-    data = msg_out_data();
-    if (data) {
-      timer_out_set(timer_out_resp, timer1s / 2);
-      while (usbd_ep_write_packet(usbd_dev, ENDPOINT_ADDRESS_MAIN_IN, data,
-                                  USB_PACKET_SIZE) != USB_PACKET_SIZE) {
-        if (timer_out_get(timer_out_resp) == 0) {
-          clear_msg_out();
+  // if (CHANNEL_USB == host_channel) {
+  //   data = msg_out_data();
+  //   if (data) {
+  //     timer_out_set(timer_out_resp, timer1s / 2);
+  //     while (usbd_ep_write_packet(usbd_dev, ENDPOINT_ADDRESS_MAIN_IN, data,
+  //                                 USB_PACKET_SIZE) != USB_PACKET_SIZE) {
+  //       if (timer_out_get(timer_out_resp) == 0) {
+  //         clear_msg_out();
 
-          RCC_AHB2RSTR |= RCC_AHB2RSTR_OTGFSRST;
-          RCC_AHB2RSTR &= ~RCC_AHB2RSTR_OTGFSRST;
-          usbInit();
-          break;
-        }
-      }
-    }
-  }
+  //         RCC_AHB2RSTR |= RCC_AHB2RSTR_OTGFSRST;
+  //         RCC_AHB2RSTR &= ~RCC_AHB2RSTR_OTGFSRST;
+  //         usbInit();
+  //         break;
+  //       }
+  //     }
+  //   }
+  // }
 
 #if U2F_ENABLED
-  data = u2f_out_data();
-  if (data) {
-    while (usbd_ep_write_packet(usbd_dev, ENDPOINT_ADDRESS_U2F_IN, data,
-                                USB_PACKET_SIZE) != USB_PACKET_SIZE) {
-    }
-  }
+  // data = u2f_out_data();
+  // if (data) {
+  //   while (usbd_ep_write_packet(usbd_dev, ENDPOINT_ADDRESS_U2F_IN, data,
+  //                               USB_PACKET_SIZE) != USB_PACKET_SIZE) {
+  //   }
+  // }
 #endif
 
 #if DEBUG_LINK
@@ -526,6 +552,14 @@ void usbSleep(uint32_t millis) {
     if (usbd_dev != NULL) {
       usbd_poll(usbd_dev);
     }
-    i2c_slave_poll();
+    // i2c_slave_poll();
+  }
+}
+
+// firmware hid + winusb
+void firmware_usbLoop(void) {
+  usbInit();
+  for (;;) {
+    usbPoll();
   }
 }

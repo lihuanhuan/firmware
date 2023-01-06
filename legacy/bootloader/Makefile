@@ -1,11 +1,13 @@
 BOOT_BUILD_VERSION=$(shell ../../tools/version.sh version.h)
 BOOT_BUILD_DATE=$(shell date "+%m%d")
 BUILD_COMMIT=$(shell git rev-parse HEAD | cut -c1-7)
-NAME  = bootloader.$(BOOT_BUILD_VERSION)-Stable-$(BOOT_BUILD_DATE)-$(BUILD_COMMIT)
+# NAME  = bootloader.$(BOOT_BUILD_VERSION)-Stable-$(BOOT_BUILD_DATE)-$(BUILD_COMMIT)
+NAME  = bootloader
 
 OBJS += bootloader.o
+OBJS += usb_test.o
 OBJS += signatures.o
-OBJS += usb.o
+# OBJS += usb.o
 OBJS += swd.o
 OBJS += updateble.o
 OBJS += layout_boot.o

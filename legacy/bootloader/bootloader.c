@@ -98,7 +98,18 @@ static void __attribute__((noreturn)) load_app(int signed_firmware) {
 
 static void bootloader_loop(void) { usbLoop(); }
 
+extern void setup_test(void);
+extern void led_test(void);
+extern void firmware_usbLoop(void);
+
 int main(void) {
+  // setup_test();
+  led_test();
+  firmware_usbLoop();
+  return 0;
+}
+
+int main_ref(void) {
   static bool force_boot = false;
   if (memcmp((uint8_t *)(ST_RAM_END - 4), "boot", 4) == 0) {
     force_boot = true;

@@ -193,6 +193,13 @@ void setupApp(void) {
   vMI2CDRV_Init();
 }
 
+void setup_test(void) {
+  // enable OTG_FS
+  gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO10);
+  gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO11 | GPIO12);
+  gpio_set_af(GPIOA, GPIO_AF10, GPIO10 | GPIO11 | GPIO12);
+}
+
 #define MPU_RASR_SIZE_32B (0x04UL << MPU_RASR_SIZE_LSB)
 #define MPU_RASR_SIZE_1KB (0x09UL << MPU_RASR_SIZE_LSB)
 #define MPU_RASR_SIZE_4KB (0x0BUL << MPU_RASR_SIZE_LSB)

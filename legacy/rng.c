@@ -17,13 +17,34 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if GD32F470
+#include "gd32f4xx.h"
+#else
 #include <libopencm3/cm3/common.h>
 #include <libopencm3/stm32/f2/rng.h>
 #include <libopencm3/stm32/memorymap.h>
+#endif
 
 #include "rng.h"
 
 #if !EMULATOR
+#if GD32F470
+uint32_t random32(void) {
+  static uint32_t last = 0, new = 0;
+  // need adjust setup.c
+  rcu_periph_clock_enable(RCU_TRNG);
+  rcu_periph_reset_enable(RCU_TRNGRST);
+  rcu_periph_reset_disable(RCU_TRNGRST);
+
+  TRNG_CTL |= TRNG_CTL_TRNGEN;
+
+  while (new == last) {
+    new = TRNG_DATA;
+  }
+  last = new;
+  return new;
+}
+#else
 uint32_t random32(void) {
   static uint32_t last = 0, new = 0;
   while (new == last) {
@@ -34,4 +55,5 @@ uint32_t random32(void) {
   last = new;
   return new;
 }
+#endif
 #endif

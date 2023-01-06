@@ -98,7 +98,8 @@ uint32_t timer_out_get(TimerOut type) { return timer_out_array[type]; }
  */
 void timer_init(void) {
   system_millis = 0;
-
+#if GD32F470
+#else
   /*
    * MCU clock (120 MHz) as source
    *
@@ -121,6 +122,7 @@ void timer_init(void) {
   systick_interrupt_enable();
 
   systick_counter_enable();
+#endif
 }
 
 void sys_tick_handler(void) {
