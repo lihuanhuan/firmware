@@ -101,11 +101,13 @@ static void bootloader_loop(void) { usbLoop(); }
 extern void setup_test(void);
 extern void led_test(void);
 extern void firmware_usbLoop(void);
-
+extern void SystemInit (void);
 int main(void) {
   // setup_test();
-  //led_test();
+
   // firmware_usbLoop();
+  SystemInit();
+  led_test();
   bootloader_loop();
   return 0;
 }

@@ -132,13 +132,13 @@ ifdef APPVER
 	CFLAGS   += -DAPPVER=$(APPVER)
 	LDSCRIPT  = $(TOP_DIR)/memory_app_$(APPVER).ld
 	else
-	LDSCRIPT  = $(TOP_DIR)/gd32_hard/memory_app_gd32f470.ld
+	LDSCRIPT  = $(TOP_DIR)/gd32_hard/memory_app_$(APPVER)_gd32.ld
 	endif
 else
 	ifneq ($(GD32F470),1)
 	LDSCRIPT  = $(TOP_DIR)/memory.ld
 	else
-	LDSCRIPT  = $(TOP_DIR)/gd32_hard/memory_gd32f470.ld
+	LDSCRIPT  = $(TOP_DIR)/gd32_hard/memory_gd32.ld
 	endif
 endif
 

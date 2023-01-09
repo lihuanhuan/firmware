@@ -35,7 +35,7 @@ SECTIONS
     KEEP (*(.fini))
 
     . = ALIGN(4);
-    /* the symbol ¡®_etext¡¯ will be defined at the end of code section */
+    /* the symbol ï¿½ï¿½_etextï¿½ï¿½ will be defined at the end of code section */
     _etext = .;
   } >FLASH
 
@@ -88,26 +88,26 @@ SECTIONS
   .data :
   {
     . = ALIGN(4);
-    /* the symbol ¡®_sdata¡¯ will be defined at the data section end start */
+    /* the symbol ï¿½ï¿½_sdataï¿½ï¿½ will be defined at the data section end start */
     _sdata = .;
     *(.data)
     *(.data*)
     . = ALIGN(4);
-    /* the symbol ¡®_edata¡¯ will be defined at the data section end */
+    /* the symbol ï¿½ï¿½_edataï¿½ï¿½ will be defined at the data section end */
     _edata = .;
   } >RAM AT> FLASH
 
   . = ALIGN(4);
   .bss :
   {
-    /* the symbol ¡®_sbss¡¯ will be defined at the bss section start */
+    /* the symbol ï¿½ï¿½_sbssï¿½ï¿½ will be defined at the bss section start */
     _sbss = .;
     __bss_start__ = _sbss;
     *(.bss)
     *(.bss*)
     *(COMMON)
     . = ALIGN(4);
-    /* the symbol ¡®_ebss¡¯ will be defined at the bss section end */
+    /* the symbol ï¿½ï¿½_ebssï¿½ï¿½ will be defined at the bss section end */
     _ebss = .;
     __bss_end__ = _ebss;
   } >RAM

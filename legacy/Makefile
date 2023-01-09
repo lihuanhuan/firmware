@@ -2,7 +2,7 @@ ifneq ($(EMULATOR),1)
 ifneq ($(GD32F470),1)
 OBJS += startup.o
 else
-OBJS += gd32_hard/startup_gd32f470.o
+OBJS += startup.o
 OBJS += gd32_hard/system_gd32f470.o
 OBJS += gd32_hard/gd32f470_irq.o
 OBJS += gd32_hard/gd32f470_systick.o
