@@ -7,6 +7,7 @@
 #define RCC_OLED_DATA   RCC_GPIOI     
 #define RCC_OLED_DC     RCC_GPIOH
 
+
 #define OLED_DC_PORT GPIOH
 #define OLED_DC_PIN GPIO13   // PH13 | Data/Command
 #define OLED_CS_PORT GPIOI
@@ -15,6 +16,8 @@
 #define OLED_RST_PIN GPIO15  // PH15 | Reset display
 #define OLED_SCK_PIN GPIO1
 #define OLED_MOSI_PIN GPIO3
+//usb define
+#define otgfs_usb_driver_onekey gd32f470_usb_driver
 
 #else
 
@@ -42,6 +45,9 @@
 #define OLED_SCK_PIN GPIO5
 #define OLED_MOSI_PIN GPIO7
 #endif
+//usb define
+#define otgfs_usb_driver_onekey otgfs_usb_driver
+
 
 #endif//GD32F470
 #endif//COMPATIBLE_H

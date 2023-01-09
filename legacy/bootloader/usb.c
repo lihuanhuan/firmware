@@ -52,6 +52,7 @@
 #include "winusb.h"
 
 #include "usb_desc.h"
+#include "compatible.h"
 
 enum {
   STATE_READY,
@@ -962,7 +963,7 @@ static const struct usb_bos_descriptor bos_descriptor_no_landing = {
     .capabilities = capabilities_no_landing};
 
 static void usbInit(bool firmware_present) {
-  usbd_dev = usbd_init(&otgfs_usb_driver, &dev_descr, &config, usb_strings,
+  usbd_dev = usbd_init(&otgfs_usb_driver_onekey, &dev_descr, &config, usb_strings,
                        sizeof(usb_strings) / sizeof(const char *),
                        usbd_control_buffer, sizeof(usbd_control_buffer));
   usbd_register_set_config_callback(usbd_dev, set_config);

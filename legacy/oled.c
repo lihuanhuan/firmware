@@ -161,7 +161,7 @@ void oledInit() {
 
   // init
   gpio_clear(OLED_CS_PORT, OLED_CS_PIN);  // SPI select
-  SPISend(SPI_BASE, s, 25);
+  SPISend(OLED_SPI_BASE, s, 25);
   gpio_set(OLED_CS_PORT, OLED_CS_PIN);  // SPI deselect
 
   oledClear();
@@ -176,7 +176,7 @@ void oledUpdateClk(void) {
 
   // init
   gpio_clear(OLED_CS_PORT, OLED_CS_PIN);  // SPI select
-  SPISend(SPI_BASE, s, 2);
+  SPISend(OLED_SPI_BASE, s, 2);
   gpio_set(OLED_CS_PORT, OLED_CS_PIN);  // SPI deselect
 }
 #endif
@@ -232,12 +232,12 @@ void oledRefresh() {
   oledInvertDebugLink();
 
   gpio_clear(OLED_CS_PORT, OLED_CS_PIN);  // SPI select
-  SPISend(SPI_BASE, s, 3);
+  SPISend(OLED_SPI_BASE, s, 3);
   gpio_set(OLED_CS_PORT, OLED_CS_PIN);  // SPI deselect
 
   gpio_set(OLED_DC_PORT, OLED_DC_PIN);    // set to DATA
   gpio_clear(OLED_CS_PORT, OLED_CS_PIN);  // SPI select
-  SPISend(SPI_BASE, _oledbuffer, sizeof(_oledbuffer));
+  SPISend(OLED_SPI_BASE, _oledbuffer, sizeof(_oledbuffer));
   gpio_set(OLED_CS_PORT, OLED_CS_PIN);    // SPI deselect
   gpio_clear(OLED_DC_PORT, OLED_DC_PIN);  // set to CMD
 
