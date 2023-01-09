@@ -127,16 +127,21 @@ CFLAGS += -DRANDOM_DEV_FILE=\"$(RANDOM_DEV_FILE)\"
 endif
 
 else
-ifneq ($(GD32F470),0)
-LDSCRIPT  = $(TOP_DIR)/gd32_hard/memory_gd32f470.ld
-else
 ifdef APPVER
+ifneq ($(GD32F470),0)
+LDSCRIPT  = $(TOP_DIR)/gd32_hard/memory_app_gd32f470.ld
+else
 CFLAGS   += -DAPPVER=$(APPVER)
 LDSCRIPT  = $(TOP_DIR)/memory_app_$(APPVER).ld
+endif
+else
+ifneq ($(GD32F470),0)
+LDSCRIPT  = $(TOP_DIR)/gd32_hard/memory_gd32f470.ld
 else
 LDSCRIPT  = $(TOP_DIR)/memory.ld
 endif
 endif
+
 CFLAGS   += -DEMULATOR=0
 
 ifneq ($(GD32F470),0)

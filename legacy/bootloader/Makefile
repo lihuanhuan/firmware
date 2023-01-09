@@ -5,9 +5,9 @@ BUILD_COMMIT=$(shell git rev-parse HEAD | cut -c1-7)
 NAME  = bootloader
 
 OBJS += bootloader.o
-OBJS += usb_test.o
+# OBJS += usb_test.o
 OBJS += signatures.o
-# OBJS += usb.o
+OBJS += usb.o
 OBJS += swd.o
 OBJS += updateble.o
 OBJS += layout_boot.o

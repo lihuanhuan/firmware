@@ -460,7 +460,7 @@ void usbInit(void) {
 // }
 
 void usbPoll(void) {
-  //   static const uint8_t *data;
+  // static const uint8_t *data;
 
   //   bool reset = false;
 

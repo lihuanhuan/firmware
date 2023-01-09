@@ -105,7 +105,8 @@ extern void firmware_usbLoop(void);
 int main(void) {
   // setup_test();
   led_test();
-  firmware_usbLoop();
+  // firmware_usbLoop();
+  bootloader_loop();
   return 0;
 }
 
