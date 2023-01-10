@@ -29,6 +29,8 @@
 #include "fonts.h"
 #include "compatible.h"
 
+#define OLED_NSS_HIGH gpio_set(GPIOI, GPIO0);
+#define OLED_NSS_LOW gpio_clear(GPIOI, GPIO0);
 
 #define OLED_WIDTH 128
 #define OLED_HEIGHT 64

@@ -120,25 +120,29 @@ void setup(void) {
                   SE_POWER_PIN);
   se_power_on();
 
-  // set GPIO for OLED display
-  gpio_mode_setup(OLED_DC_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, OLED_DC_PIN);
-  gpio_mode_setup(OLED_CS_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, OLED_CS_PIN);
-  gpio_mode_setup(OLED_RST_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE,
-                  OLED_RST_PIN);
+  // use libopencm3 init oled
+  rcc_periph_clock_enable(RCC_OLED_DC);
+  rcc_periph_clock_enable(RCC_OLED_DATA);
+  rcc_periph_clock_enable(RCC_OLED_SPI);
+  gpio_mode_setup(OLED_DC_PORT,GPIO_MODE_OUTPUT,GPIO_PUPD_NONE,OLED_DC_PIN);
+  gpio_mode_setup(OLED_RST_PORT,GPIO_MODE_OUTPUT,GPIO_PUPD_NONE,OLED_RST_PIN);
+  gpio_set_af(OLED_CS_PORT,GPIO_AF5,OLED_SCK_PIN|OLED_MOSI_PIN);
+  gpio_mode_setup(OLED_CS_PORT,GPIO_MODE_AF,GPIO_PUPD_NONE,OLED_SCK_PIN|OLED_MOSI_PIN);
+  gpio_set_output_options(OLED_CS_PORT,GPIO_OTYPE_PP,GPIO_OSPEED_50MHZ,OLED_SCK_PIN|OLED_MOSI_PIN);
+  gpio_mode_setup(OLED_CS_PORT,GPIO_MODE_OUTPUT,GPIO_PUPD_NONE,GPIO0);
+  gpio_set_output_options(OLED_CS_PORT,GPIO_OTYPE_PP,GPIO_OSPEED_50MHZ,GPIO0);
 
-  // enable SPI 1 for OLED display
-  gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO5 | GPIO7);
-  gpio_set_af(GPIOA, GPIO_AF5, GPIO5 | GPIO7);
 
-  //	spi_disable_crc(SPI1);
   spi_init_master(
-      SPI1, SPI_CR1_BAUDRATE_FPCLK_DIV_8, SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE,
-      SPI_CR1_CPHA_CLK_TRANSITION_1, SPI_CR1_DFF_8BIT, SPI_CR1_MSBFIRST);
-  spi_enable_ss_output(SPI1);
-  //	spi_enable_software_slave_management(SPI1);
-  //	spi_set_nss_high(SPI1);
-  //	spi_clear_mode_fault(SPI1);
-  spi_enable(SPI1);
+       OLED_SPI_BASE, SPI_CR1_BAUDRATE_FPCLK_DIV_64,
+       SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE, SPI_CR1_CPHA_CLK_TRANSITION_1,
+       SPI_CR1_DFF_8BIT, SPI_CR1_MSBFIRST);
+
+  spi_enable_ss_output(OLED_SPI_BASE);
+
+  OLED_NSS_HIGH;
+
+  spi_enable(OLED_SPI_BASE);
 
   // enable OTG_FS
   gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO10);
