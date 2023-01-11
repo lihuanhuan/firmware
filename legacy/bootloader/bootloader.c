@@ -98,17 +98,22 @@ static void __attribute__((noreturn)) load_app(int signed_firmware) {
 
 static void bootloader_loop(void) { usbLoop(); }
 
-extern void led_test(void);
+extern void led_test1(void);
 extern void firmware_usbLoop(void);
-extern void SystemInit (void);
+extern void SystemInit(void);
 int main(void) {
   // setup_test();
 
   // firmware_usbLoop();
   SystemInit();
-  //led_test();
-  setup();
-  oledInit();
+
+  // setup();
+
+  led_test1();
+
+  load_app(SIG_OK);
+
+  // oledInit();
   bootloader_loop();
   return 0;
 }

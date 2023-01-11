@@ -28,6 +28,7 @@
 
 #include "ble.h"
 #include "usart.h"
+#include "compatible.h"
 
 #if (_SUPPORT_DEBUG_UART_)
 /************************************************************************

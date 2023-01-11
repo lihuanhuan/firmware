@@ -45,6 +45,8 @@
 #include "zkp_context.h"
 #endif
 
+#include "compatible.h"
+
 #ifdef USE_SECP256K1_ZKP
 void secp256k1_default_illegal_callback_fn(const char *str, void *data) {
   (void)data;
@@ -136,8 +138,18 @@ static void collect_hw_entropy(bool privileged) {
   }
 #endif
 }
+extern void led_test2(void);
 
 int main(void) {
+  led_test2();
+
+  usbInit();
+  for (;;) {
+    usbPoll();
+  }
+}
+
+int main_reff(void) {
 #ifndef APPVER
   setup();
   __stack_chk_guard = random32();  // this supports compiler provided

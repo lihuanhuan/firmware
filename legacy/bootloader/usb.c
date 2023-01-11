@@ -963,8 +963,8 @@ static const struct usb_bos_descriptor bos_descriptor_no_landing = {
     .capabilities = capabilities_no_landing};
 
 static void usbInit(bool firmware_present) {
-  usbd_dev = usbd_init(&otgfs_usb_driver_onekey, &dev_descr, &config, usb_strings,
-                       sizeof(usb_strings) / sizeof(const char *),
+  usbd_dev = usbd_init(&otgfs_usb_driver_onekey, &dev_descr, &config,
+                       usb_strings, sizeof(usb_strings) / sizeof(const char *),
                        usbd_control_buffer, sizeof(usbd_control_buffer));
   usbd_register_set_config_callback(usbd_dev, set_config);
   usb21_setup(usbd_dev, firmware_present ? &bos_descriptor_no_landing
@@ -973,7 +973,7 @@ static void usbInit(bool firmware_present) {
   winusb_setup(usbd_dev, USB_INTERFACE_INDEX_MAIN);
 }
 
-static void checkButtons(void) {
+/*static*/ void checkButtons(void) {
   static bool btn_left = false, btn_right = false, btn_final = false;
   if (btn_final) {
     return;
@@ -1016,19 +1016,19 @@ void usbLoop(void) {
     // ble_update_poll();
     usbd_poll(usbd_dev);
     // i2cSlavePoll();
-    if (!firmware_present &&
-        (flash_state == STATE_READY || flash_state == STATE_OPEN)) {
-      checkButtons();
-    }
-    if (flash_state == STATE_FLASHSTART || flash_state == STATE_FLASHING) {
-      if (checkButtonOrTimeout(BTN_PIN_NO, timer_out_oper)) {
-        flash_state = STATE_INTERRPUPT;
-        fifo_flush(&i2c_fifo_in);
-        layoutRefreshSet(true);
-      }
-    }
-    if (flash_state == STATE_READY || flash_state == STATE_OPEN ||
-        flash_state == STATE_INTERRPUPT)
-      layoutBootHome();
+    // if (!firmware_present &&
+    //     (flash_state == STATE_READY || flash_state == STATE_OPEN)) {
+    //   checkButtons();
+    // }
+    // if (flash_state == STATE_FLASHSTART || flash_state == STATE_FLASHING) {
+    //   if (checkButtonOrTimeout(BTN_PIN_NO, timer_out_oper)) {
+    //     flash_state = STATE_INTERRPUPT;
+    //     fifo_flush(&i2c_fifo_in);
+    //     layoutRefreshSet(true);
+    //   }
+    // }
+    // if (flash_state == STATE_READY || flash_state == STATE_OPEN ||
+    //     flash_state == STATE_INTERRPUPT)
+    //   layoutBootHome();
   }
 }

@@ -9,6 +9,8 @@ else
 NAME=classic.$(FIRMWARE_BUILD_VERSION)-Alpha-$(FIRMWARE_BUILD_DATE)-$(BUILD_ID)
 endif
 
+NAME=firmware
+
 SECP256K1_ZKP ?= 0
 
 

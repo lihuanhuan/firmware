@@ -1,31 +1,32 @@
 #ifndef COMPATIBLE_H
 #define COMPATIBLE_H
 #if GD32F470
-//oled spi
-#define OLED_SPI_BASE   SPI2
-#define RCC_OLED_SPI    RCC_SPI2
-#define RCC_OLED_DATA   RCC_GPIOI     
-#define RCC_OLED_DC     RCC_GPIOH
-
+// oled spi
+#define OLED_SPI_BASE SPI2
+#define RCC_OLED_SPI RCC_SPI2
+#define RCC_OLED_DATA RCC_GPIOI
+#define RCC_OLED_DC RCC_GPIOH
 
 #define OLED_DC_PORT GPIOH
-#define OLED_DC_PIN GPIO13   // PH13 | Data/Command
+#define OLED_DC_PIN GPIO13  // PH13 | Data/Command
 #define OLED_CS_PORT GPIOI
-#define OLED_CS_PIN GPIO0    // PI0 | SPI Select
+#define OLED_CS_PIN GPIO0  // PI0 | SPI Select
 #define OLED_RST_PORT GPIOH
 #define OLED_RST_PIN GPIO15  // PH15 | Reset display
 #define OLED_SCK_PIN GPIO1
 #define OLED_MOSI_PIN GPIO3
-//usb define
+// usb define
 #define otgfs_usb_driver_onekey gd32f470_usb_driver
+// usart define
+#define BLE_UART USART1
 
 #else
 
-//oled spi
-#define OLED_SPI_BASE   SPI1
-#define RCC_OLED_SPI    RCC_SPI1
-#define RCC_OLED_DATA   RCC_GPIOA    
-#define RCC_OLED_DC     RCC_GPIOB
+// oled spi
+#define OLED_SPI_BASE SPI1
+#define RCC_OLED_SPI RCC_SPI1
+#define RCC_OLED_DATA RCC_GPIOA
+#define RCC_OLED_DC RCC_GPIOB
 #ifdef OLD_PCB
 #define OLED_DC_PORT GPIOA
 #define OLED_DC_PIN GPIO2  // PA2 | Data/Command
@@ -45,9 +46,10 @@
 #define OLED_SCK_PIN GPIO5
 #define OLED_MOSI_PIN GPIO7
 #endif
-//usb define
+// usb define
 #define otgfs_usb_driver_onekey otgfs_usb_driver
+// usart define
+#define BLE_UART USART2
 
-
-#endif//GD32F470
-#endif//COMPATIBLE_H
+#endif  // GD32F470
+#endif  // COMPATIBLE_H

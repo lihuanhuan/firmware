@@ -84,7 +84,7 @@ void unregister_timer(char *name) {
 }
 
 static uint32_t timer_out_array[timer_out_null];
-static void timer_out_decrease(void) {
+/*static*/ void timer_out_decrease(void) {
   uint32_t i = timer_out_null;
   while (i--) {
     if (timer_out_array[i]) timer_out_array[i]--;
@@ -124,8 +124,12 @@ void timer_init(void) {
   systick_counter_enable();
 #endif
 }
+extern void gd32_delay_decrement(void);
 
 void sys_tick_handler(void) {
+#if GD32F470
+  gd32_delay_decrement();
+#else
   int i;
   system_millis++;
   system_millis_sleep_start++;
@@ -138,6 +142,7 @@ void sys_tick_handler(void) {
       }
     }
   }
+#endif
 }
 
 void timer_sleep_start_reset(void) { system_millis_sleep_start = 0; }
