@@ -58,6 +58,15 @@ void hard_fault_handler(void) { fault_handler("Hard fault"); }
 
 void mem_manage_handler(void) { fault_handler("Memory fault"); }
 
+void setup_button(void) {
+  rcc_periph_clock_enable(RCC_GPIOA);
+  rcc_periph_clock_enable(RCC_GPIOB);
+  rcc_periph_clock_enable(RCC_GPIOC);
+  // set GPIO for buttons for devolopment board test
+  gpio_mode_setup(UP_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_UP);
+  gpio_mode_setup(DOWN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_DOWN);
+  gpio_mode_setup(CONF_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_YES);
+}
 void setup(void) {
   // set SCB_CCR STKALIGN bit to make sure 8-byte stack alignment on exception
   // entry is in effect. This is not strictly necessary for the current Trezor
@@ -91,10 +100,16 @@ void setup(void) {
   // enable CSS (Clock Security System)
   RCC_CR |= RCC_CR_CSSON;
 
-  // set GPIO for buttons
-  gpio_mode_setup(BTN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP,
-                  BTN_PIN_YES | BTN_PIN_UP | BTN_PIN_DOWN);
-  gpio_mode_setup(BTN_PORT_NO, GPIO_MODE_INPUT, GPIO_PUPD_NONE, BTN_PIN_NO);
+  // // set GPIO for buttons
+  // gpio_mode_setup(BTN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP,
+  //                 BTN_PIN_YES | BTN_PIN_UP | BTN_PIN_DOWN);
+  // gpio_mode_setup(BTN_PORT_NO, GPIO_MODE_INPUT, GPIO_PUPD_NONE, BTN_PIN_NO);
+
+  // set GPIO for buttons for devolopment board test
+  gpio_mode_setup(UP_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_UP);
+  gpio_mode_setup(DOWN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_DOWN);
+  gpio_mode_setup(CONF_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_YES);
+  // gpio_mode_setup(BTN_PORT_NO, GPIO_MODE_INPUT, GPIO_PUPD_NONE, BTN_PIN_NO);
 
   // set GPIO for usb_insert
   gpio_mode_setup(USB_INSERT_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE,
@@ -104,9 +119,9 @@ void setup(void) {
   // stm32 power control
   gpio_mode_setup(STM32_POWER_CTRL_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN,
                   STM32_POWER_CTRL_PIN);
-  // bluetooth power control
-  gpio_mode_setup(BLE_POWER_CTRL_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN,
-                  BLE_POWER_CTRL_PIN);
+  // // bluetooth power control
+  // gpio_mode_setup(BLE_POWER_CTRL_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN,
+  //                 BLE_POWER_CTRL_PIN);
   // combus
   gpio_mode_setup(GPIO_CMBUS_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN,
                   GPIO_SI2C_CMBUS);
@@ -124,19 +139,22 @@ void setup(void) {
   rcc_periph_clock_enable(RCC_OLED_DC);
   rcc_periph_clock_enable(RCC_OLED_DATA);
   rcc_periph_clock_enable(RCC_OLED_SPI);
-  gpio_mode_setup(OLED_DC_PORT,GPIO_MODE_OUTPUT,GPIO_PUPD_NONE,OLED_DC_PIN);
-  gpio_mode_setup(OLED_RST_PORT,GPIO_MODE_OUTPUT,GPIO_PUPD_NONE,OLED_RST_PIN);
-  gpio_set_af(OLED_CS_PORT,GPIO_AF5,OLED_SCK_PIN|OLED_MOSI_PIN);
-  gpio_mode_setup(OLED_CS_PORT,GPIO_MODE_AF,GPIO_PUPD_NONE,OLED_SCK_PIN|OLED_MOSI_PIN);
-  gpio_set_output_options(OLED_CS_PORT,GPIO_OTYPE_PP,GPIO_OSPEED_50MHZ,OLED_SCK_PIN|OLED_MOSI_PIN);
-  gpio_mode_setup(OLED_CS_PORT,GPIO_MODE_OUTPUT,GPIO_PUPD_NONE,GPIO0);
-  gpio_set_output_options(OLED_CS_PORT,GPIO_OTYPE_PP,GPIO_OSPEED_50MHZ,GPIO0);
+  gpio_mode_setup(OLED_DC_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, OLED_DC_PIN);
+  gpio_mode_setup(OLED_RST_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE,
+                  OLED_RST_PIN);
+  gpio_set_af(OLED_CS_PORT, GPIO_AF5, OLED_SCK_PIN | OLED_MOSI_PIN);
+  gpio_mode_setup(OLED_CS_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE,
+                  OLED_SCK_PIN | OLED_MOSI_PIN);
+  gpio_set_output_options(OLED_CS_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
+                          OLED_SCK_PIN | OLED_MOSI_PIN);
+  gpio_mode_setup(OLED_CS_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0);
+  gpio_set_output_options(OLED_CS_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
+                          GPIO0);
 
-
-  spi_init_master(
-       OLED_SPI_BASE, SPI_CR1_BAUDRATE_FPCLK_DIV_64,
-       SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE, SPI_CR1_CPHA_CLK_TRANSITION_1,
-       SPI_CR1_DFF_8BIT, SPI_CR1_MSBFIRST);
+  spi_init_master(OLED_SPI_BASE, SPI_CR1_BAUDRATE_FPCLK_DIV_64,
+                  SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE,
+                  SPI_CR1_CPHA_CLK_TRANSITION_1, SPI_CR1_DFF_8BIT,
+                  SPI_CR1_MSBFIRST);
 
   spi_enable_ss_output(OLED_SPI_BASE);
 

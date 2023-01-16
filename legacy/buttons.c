@@ -21,6 +21,7 @@
 #include "common.h"
 #include "oled.h"
 #include "util.h"
+#include "compatible.h"
 
 struct buttonState button = {0};
 static volatile bool btn_up_long = false, btn_down_long = false;
@@ -44,16 +45,42 @@ static volatile uint32_t button_timer_counter = 0;
 static volatile uint32_t up_btn_timer_counter = 0;
 static volatile int up_btn_timer_enable = 0;
 
+// uint16_t buttonRead(void) {
+//   uint16_t tmp = 0x00;
+//   tmp |= gpio_get(BTN_PORT, BTN_PIN_YES);
+//   tmp |= gpio_get(BTN_PORT, BTN_PIN_UP);
+//   tmp |= gpio_get(BTN_PORT, BTN_PIN_DOWN);
+//   tmp |= gpio_get(BTN_PORT_NO, BTN_PIN_NO);
+//   return tmp;
+// }
+
+// button read for devolopment board test
 uint16_t buttonRead(void) {
   uint16_t tmp = 0x00;
-  tmp |= gpio_get(BTN_PORT, BTN_PIN_YES);
-  tmp |= gpio_get(BTN_PORT, BTN_PIN_UP);
-  tmp |= gpio_get(BTN_PORT, BTN_PIN_DOWN);
-  tmp |= gpio_get(BTN_PORT_NO, BTN_PIN_NO);
+  tmp |= gpio_get(CONF_PORT, BTN_PIN_YES);
+  tmp |= gpio_get(UP_PORT, BTN_PIN_UP);
+  tmp |= gpio_get(DOWN_PORT, BTN_PIN_DOWN);
   return tmp;
 }
 
 void buttonsIrqInit(void) {
+  // enable SYSCFG	clock
+  rcc_periph_clock_enable(RCC_SYSCFG);
+
+  // remap EXTI0 to GPIOC
+  SYSCFG_EXTICR1 = 0x20;
+
+  // set EXTI
+  exti_select_source(BTN_PIN_NO, BTN_PORT_NO);
+  exti_set_trigger(BTN_PIN_NO, EXTI_TRIGGER_BOTH);
+  exti_enable_request(BTN_PIN_NO);
+
+  // set NVIC
+  nvic_set_priority(NVIC_EXTI0_IRQ, 0);
+  nvic_enable_irq(NVIC_EXTI0_IRQ);
+}
+
+void buttonsIrqInit_ref(void) {
   // enable SYSCFG	clock
   rcc_periph_clock_enable(RCC_SYSCFG);
 
@@ -75,6 +102,18 @@ void buttonsIrqInit(void) {
   nvic_enable_irq(NVIC_EXTI0_IRQ);
 #endif
 }
+// for test development board
+void exti0_isr(void) {
+  if (exti_get_flag_status(BTN_PIN_NO)) {
+    SCB_SCR &= ~SCB_SCR_SLEEPONEXIT;  // exit sleep mode
+    exti_reset_request(BTN_PIN_NO);
+    if (gpio_get(BTN_PORT_NO, BTN_PIN_NO)) {
+      button_timer_enable = 1;
+      button_timer_counter = 0;
+    }
+  }
+}
+
 #if FEITIAN_PCB_V1_3
 void exti1_isr(void) {
   if (exti_get_flag_status(BTN_PIN_NO)) {
@@ -139,7 +178,7 @@ void buttonsTimer(void) {
 #endif
 }
 
-bool checkButtonOrTimeout(uint8_t btn, TimerOut type) {
+bool checkButtonOrTimeout(uint32_t btn /*uint8_t btn*/, TimerOut type) {
   bool flag = false;
   buttonUpdate();
   if (timer_out_get(type) == 0) flag = true;
@@ -147,9 +186,9 @@ bool checkButtonOrTimeout(uint8_t btn, TimerOut type) {
     case BTN_PIN_YES:
       if (button.YesUp) flag = true;
       break;
-    case BTN_PIN_NO:
-      if (button.NoUp) flag = true;
-      break;
+    // case BTN_PIN_NO://for test development board commented
+    //   if (button.NoUp) flag = true;
+    // break;
     case BTN_PIN_UP:
       if (button.UpUp) flag = true;
       break;
@@ -163,7 +202,7 @@ bool checkButtonOrTimeout(uint8_t btn, TimerOut type) {
   return flag;
 }
 
-bool waitButtonResponse(uint8_t btn, uint32_t time_out) {
+bool waitButtonResponse(uint32_t btn /*uint8_t btn*/, uint32_t time_out) {
   bool flag = false;
   timer_out_set(timer_out_oper, time_out);
   while (1) {
@@ -316,12 +355,28 @@ void buttonUpdate() {
   last_state = state;
 }
 
+// bool hasbutton(void) {
+//   buttonUpdate();
+//   if (button.YesUp || button.NoUp || button.UpUp || button.DownUp) {
+//     return true;
+//   }
+//   return false;
+// }
+// has button for development board test
+extern int SEGGER_RTT_printf(unsigned BufferIndex, const char *sFormat, ...);
 bool hasbutton(void) {
   buttonUpdate();
-  if (button.YesUp || button.NoUp || button.UpUp || button.DownUp) {
-    return true;
+  if (button.YesUp) {
+    SEGGER_RTT_printf(0, "button yes is ok \n\r");
+  } else if (button.UpUp) {
+    SEGGER_RTT_printf(0, "button up is ok \n\r");
+  } else if (button.DownUp) {
+    SEGGER_RTT_printf(0, "button down is ok \n\r");
+  } else {
+    return false;
   }
-  return false;
+
+  return true;
 }
 
 uint8_t keyScan(void) {

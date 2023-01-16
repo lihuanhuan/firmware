@@ -18,7 +18,41 @@
 // usb define
 #define otgfs_usb_driver_onekey gd32f470_usb_driver
 // usart define
-#define BLE_UART USART1
+#define BLE_UART USART2
+// keys define
+// for development board
+#define UP_PORT GPIOA
+#define DOWN_PORT GPIOC
+#define CONF_PORT GPIOB
+
+#ifndef BTN_PIN_UP
+#define BTN_PIN_UP GPIO0
+#endif
+#ifndef BTN_PIN_DOWN
+#define BTN_PIN_DOWN GPIO13
+#endif
+#ifndef BTN_PIN_YES
+#define BTN_PIN_YES GPIO14
+#endif
+
+#ifndef BTN_PORT
+#define BTN_PORT GPIOC
+#endif
+
+// power define
+// need change later
+// #undef BTN_POWER_PORT
+// #define BTN_POWER_PORT GPIOC
+// #undef BTN_POWER_PIN
+// #define BTN_POWER_PIN GPIO4
+
+#ifndef BTN_PORT_NO
+#define BTN_PORT_NO UP_PORT
+#endif
+
+#ifndef BTN_PIN_NO
+#define BTN_PIN_NO BTN_PIN_UP
+#endif
 
 #else
 
@@ -50,6 +84,30 @@
 #define otgfs_usb_driver_onekey otgfs_usb_driver
 // usart define
 #define BLE_UART USART2
+// keys define
+#ifndef BTN_PORT
+#define BTN_PORT GPIOC
+#endif
+
+#ifndef BTN_PIN_YES
+#define BTN_PIN_YES GPIO2
+#endif
+
+#ifndef BTN_PORT_NO
+#define BTN_PORT_NO BTN_POWER_PORT
+#endif
+
+#ifndef BTN_PIN_NO
+#define BTN_PIN_NO BTN_POWER_PIN
+#endif
+
+#ifndef BTN_PIN_UP
+#define BTN_PIN_UP GPIO3
+#endif
+
+#ifndef BTN_PIN_DOWN
+#define BTN_PIN_DOWN GPIO5
+#endif
 
 #endif  // GD32F470
 #endif  // COMPATIBLE_H
