@@ -182,8 +182,17 @@ bool ble_read_byte(uint8_t *buf) {
   return false;
 }
 
+// for development board
+uint8_t g_usartBuf[64];
+uint32_t g_usartCnt;
+
 void usart2_isr(void) {
   if (usart_get_flag(BLE_UART, USART_SR_RXNE) != 0) {
-    ble_uart_poll();
+    // ble_uart_poll();
+    ble_read_byte(&g_usartBuf[g_usartCnt++]);
+  }
+  if (0x08 == g_usartCnt) {
+    ble_usart_send(g_usartBuf, g_usartCnt);
+    g_usartCnt = 0;
   }
 }

@@ -31,13 +31,6 @@
 #if GD32F470
 uint32_t random32(void) {
   static uint32_t last = 0, new = 0;
-  // need adjust setup.c
-  rcu_periph_clock_enable(RCU_TRNG);
-  rcu_periph_reset_enable(RCU_TRNGRST);
-  rcu_periph_reset_disable(RCU_TRNGRST);
-
-  TRNG_CTL |= TRNG_CTL_TRNGEN;
-
   while (new == last) {
     new = TRNG_DATA;
   }

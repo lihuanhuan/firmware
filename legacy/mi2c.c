@@ -5,6 +5,7 @@
 
 #include "mi2c.h"
 #include "timer.h"
+#include "compatible.h"
 
 uint8_t g_ucMI2cRevBuf[MI2C_BUF_MAX_LEN];
 uint8_t g_ucMI2cSendBuf[MI2C_BUF_MAX_LEN];
@@ -39,12 +40,12 @@ static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
   ucSW[1] = 0x00;
 
   while (1) {
-    if (i > 5) {
+    if (i > MI2C_RETRYCNTS) {
       return false;
     }
-    while ((I2C_SR2(i2c) & I2C_SR2_BUSY)) {
-    }
-
+    while ((I2C_SR2(i2c) & I2C_SR2_BUSY))
+      ;
+  gd32_spec_lable:
     i2c_send_start(i2c);
     i2c_enable_ack(i2c);
     while (!(I2C_SR1(i2c) & I2C_SR1_SB))
@@ -61,7 +62,9 @@ static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
     if (usTimeout > MI2C_TIMEOUT) {
       usTimeout = 0;
       i++;
-      continue;
+      // only for gd32
+      goto gd32_spec_lable;
+      // continue;
     }
     /* Clearing ADDR condition sequence. */
     (void)I2C_SR2(i2c);

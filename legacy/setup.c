@@ -35,6 +35,8 @@
 #include "usart.h"
 #include "util.h"
 
+#include "compatible.h"
+
 uint32_t __stack_chk_guard;
 
 static inline void __attribute__((noreturn)) fault_handler(const char *line1) {
@@ -75,11 +77,11 @@ void setup(void) {
   // Technical Reference Manual. According to section 4.4.2 and 4.4.7 of the
   // "STM32F10xxx/20xxx/21xxx/L1xxxx Cortex-M3 programming manual", STM32F2
   // series MCUs are r2p0 and always have this bit set on reset already.
-  SCB_CCR |= SCB_CCR_STKALIGN;
+  // SCB_CCR |= SCB_CCR_STKALIGN;
 
-  // setup clock
-  struct rcc_clock_scale clock = rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_120MHZ];
-  rcc_clock_setup_hse_3v3(&clock);
+  // // setup clock
+  // struct rcc_clock_scale clock = rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_120MHZ];
+  // rcc_clock_setup_hse_3v3(&clock);
 
   // enable GPIO clock - A (oled), B(oled), C (buttons)
   rcc_periph_clock_enable(RCC_GPIOA);
@@ -92,6 +94,7 @@ void setup(void) {
   // enable RNG
   rcc_periph_clock_enable(RCC_RNG);
   RNG_CR |= RNG_CR_RNGEN;
+
   // to be extra careful and heed the STM32F205xx Reference manual,
   // Section 20.3.1 we don't use the first random number generated after setting
   // the RNGEN bit in setup
@@ -136,8 +139,8 @@ void setup(void) {
   se_power_on();
 
   // use libopencm3 init oled
-  rcc_periph_clock_enable(RCC_OLED_DC);
-  rcc_periph_clock_enable(RCC_OLED_DATA);
+  // rcc_periph_clock_enable(RCC_OLED_COTL);  // GPIOB
+  // rcc_periph_clock_enable(RCC_OLED_DATA);  // GPIOA
   rcc_periph_clock_enable(RCC_OLED_SPI);
   gpio_mode_setup(OLED_DC_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, OLED_DC_PIN);
   gpio_mode_setup(OLED_RST_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE,

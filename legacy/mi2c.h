@@ -7,7 +7,8 @@
 #include "sys.h"
 #include "usart.h"
 
-#define MI2C_TIMEOUT (40000)
+#define MI2C_RETRYCNTS (5000)  // timeout 5 s
+#define MI2C_TIMEOUT (7000)    //(40000)
 #define MI2C_BUF_MAX_LEN (1024 + 512)
 #define MI2C_SEND_MAX_LEN (1024 + 512)
 
@@ -17,8 +18,8 @@
 #define GPIO_MI2C_PORT GPIOB
 
 //#define MI2C_COMBUS     GPIO2
-#define GPIO_MI2C_SCL GPIO8
-#define GPIO_MI2C_SDA GPIO9
+// #define GPIO_MI2C_SCL GPIO8
+// #define GPIO_MI2C_SDA GPIO9
 
 #ifdef NORMAL_PCB
 // SE power IO

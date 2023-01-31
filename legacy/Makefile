@@ -12,7 +12,11 @@ endif
 
 OBJS += buttons.o
 OBJS += common.o
+ifneq ($(GD32F470),1)
 OBJS += flash.o
+else
+OBJS += flash_gd32.o
+endif
 OBJS += layout.o
 OBJS += oled.o
 OBJS += random_delays.o
