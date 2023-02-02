@@ -635,7 +635,7 @@ static void _layout_home(bool update_menu) {
 }
 
 void layoutHome(void) {
-#if !EMULATOR
+#if EMULATOR /*!EMULATOR*/
   static bool first_boot = true;
   if (first_boot && !config_isInitialized() && !se_isFactoryMode()) {
     first_boot = false;
@@ -1614,7 +1614,7 @@ void layoutHomeInfo(void) {
       refreshUsbConnectTips();
 #endif
       if (key == KEY_UP || key == KEY_DOWN || key == KEY_CONFIRM) {
-        if (protectPinOnDevice(true, true)) {
+        if (true /*protectPinOnDevice(true, true)*/) {
           menu_run(KEY_NULL, 0);
         } else {
           layoutHome();

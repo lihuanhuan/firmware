@@ -98,28 +98,21 @@ static void __attribute__((noreturn)) load_app(int signed_firmware) {
 
 static void bootloader_loop(void) { usbLoop(); }
 
-extern void led_test1(void);
-extern void firmware_usbLoop(void);
 extern void SystemInit(void);
 int main(void) {
-  // setup_test();
-
-  // firmware_usbLoop();
   SystemInit();
-
   // setup();
-
-  led_test1();
-
-  load_app(SIG_OK);
-
   // oledInit();
-  bootloader_loop();
+  load_app(SIG_OK);
+  // bootloader_loop();
   return 0;
 }
 
 int main_ref(void) {
   static bool force_boot = false;
+#if GD32F470
+  SystemInit();
+#endif
   if (memcmp((uint8_t *)(ST_RAM_END - 4), "boot", 4) == 0) {
     force_boot = true;
   }
@@ -139,7 +132,7 @@ int main_ref(void) {
     __stack_chk_guard = random32();  // this supports compiler provided
                                      // unpredictable stack protection checks
 #ifndef APPVER
-    memory_protect();
+    // memory_protect(); // disable swd
     oledInit();
     sys_poweron();
     buttonsIrqInit();

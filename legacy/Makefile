@@ -1,12 +1,7 @@
 ifneq ($(EMULATOR),1)
-ifneq ($(GD32F470),1)
 OBJS += startup.o
-else
-OBJS += startup.o
+ifeq ($(GD32F470),1)
 OBJS += gd32_hard/system_gd32f470.o
-OBJS += gd32_hard/gd32f470_irq.o
-OBJS += gd32_hard/gd32f470_systick.o
-OBJS += gd32_hard/led_test.o
 endif
 endif
 
@@ -41,6 +36,11 @@ OBJS += se_chip.o
 endif
 
 OBJS += util.o
+ifneq ($(GD32F470),1)
+OBJS += memory.o
+else
+OBJS += memory_gd32.o
+endif
 OBJS += memory.o
 OBJS += supervise.o
 

@@ -44,7 +44,6 @@
 #ifdef USE_SECP256K1_ZKP
 #include "zkp_context.h"
 #endif
-
 #include "compatible.h"
 
 #ifdef USE_SECP256K1_ZKP
@@ -138,25 +137,19 @@ static void collect_hw_entropy(bool privileged) {
   }
 #endif
 }
-extern void led_test2(void);
 
+// view debug info
+extern int SEGGER_RTT_printf(unsigned BufferIndex, const char *sFormat, ...);
+
+// main loops
 int main(void) {
-  led_test2();
-
-  usbInit();
-  for (;;) {
-    usbPoll();
-  }
-}
-
-int main_reff(void) {
 #ifndef APPVER
   setup();
   __stack_chk_guard = random32();  // this supports compiler provided
                                    // unpredictable stack protection checks
   oledInit();
 #else
-  check_and_replace_bootloader(true);
+  // check_and_replace_bootloader(true);
   setupApp();
   ble_reset();
 #if !EMULATOR
