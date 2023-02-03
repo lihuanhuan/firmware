@@ -1605,7 +1605,7 @@ void layoutHomeInfo(void) {
   if (layoutLast == layout_language_set) {
     layout_language_set(key);
   } else {
-    layoutEnterSleep();
+    // layoutEnterSleep(); // 0203
     if (layoutNeedRefresh()) {
       layoutHome();
     }

@@ -60,15 +60,6 @@ void hard_fault_handler(void) { fault_handler("Hard fault"); }
 
 void mem_manage_handler(void) { fault_handler("Memory fault"); }
 
-void setup_button(void) {
-  rcc_periph_clock_enable(RCC_GPIOA);
-  rcc_periph_clock_enable(RCC_GPIOB);
-  rcc_periph_clock_enable(RCC_GPIOC);
-  // set GPIO for buttons for devolopment board test
-  gpio_mode_setup(UP_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_UP);
-  gpio_mode_setup(DOWN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_DOWN);
-  gpio_mode_setup(CONF_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_YES);
-}
 void setup(void) {
   // set SCB_CCR STKALIGN bit to make sure 8-byte stack alignment on exception
   // entry is in effect. This is not strictly necessary for the current Trezor
@@ -103,16 +94,18 @@ void setup(void) {
   // enable CSS (Clock Security System)
   RCC_CR |= RCC_CR_CSSON;
 
-  // // set GPIO for buttons
-  // gpio_mode_setup(BTN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP,
-  //                 BTN_PIN_YES | BTN_PIN_UP | BTN_PIN_DOWN);
-  // gpio_mode_setup(BTN_PORT_NO, GPIO_MODE_INPUT, GPIO_PUPD_NONE, BTN_PIN_NO);
+  // set GPIO for buttons
+  gpio_mode_setup(BTN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP,
+                  BTN_PIN_YES | BTN_PIN_UP | BTN_PIN_DOWN);
+  gpio_mode_setup(BTN_PORT_NO, GPIO_MODE_INPUT, GPIO_PUPD_NONE, BTN_PIN_NO);
 
-  // set GPIO for buttons for devolopment board test
-  gpio_mode_setup(UP_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_UP);
-  gpio_mode_setup(DOWN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_DOWN);
-  gpio_mode_setup(CONF_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_YES);
-  // gpio_mode_setup(BTN_PORT_NO, GPIO_MODE_INPUT, GPIO_PUPD_NONE, BTN_PIN_NO);
+  // // set GPIO for buttons for devolopment board test
+  // gpio_mode_setup(UP_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_UP);
+  // gpio_mode_setup(DOWN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP,
+  // BTN_PIN_DOWN); gpio_mode_setup(CONF_PORT, GPIO_MODE_INPUT,
+  // GPIO_PUPD_PULLUP, BTN_PIN_YES);
+  // // gpio_mode_setup(BTN_PORT_NO, GPIO_MODE_INPUT, GPIO_PUPD_NONE,
+  // BTN_PIN_NO);
 
   // set GPIO for usb_insert
   gpio_mode_setup(USB_INSERT_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE,

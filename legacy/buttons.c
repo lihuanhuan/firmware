@@ -45,23 +45,23 @@ static volatile uint32_t button_timer_counter = 0;
 static volatile uint32_t up_btn_timer_counter = 0;
 static volatile int up_btn_timer_enable = 0;
 
-// uint16_t buttonRead(void) {
-//   uint16_t tmp = 0x00;
-//   tmp |= gpio_get(BTN_PORT, BTN_PIN_YES);
-//   tmp |= gpio_get(BTN_PORT, BTN_PIN_UP);
-//   tmp |= gpio_get(BTN_PORT, BTN_PIN_DOWN);
-//   tmp |= gpio_get(BTN_PORT_NO, BTN_PIN_NO);
-//   return tmp;
-// }
-
-// button read for devolopment board test
 uint16_t buttonRead(void) {
   uint16_t tmp = 0x00;
-  tmp |= gpio_get(CONF_PORT, BTN_PIN_YES);
-  tmp |= gpio_get(UP_PORT, BTN_PIN_UP);
-  tmp |= gpio_get(DOWN_PORT, BTN_PIN_DOWN);
+  tmp |= gpio_get(BTN_PORT, BTN_PIN_YES);
+  tmp |= gpio_get(BTN_PORT, BTN_PIN_UP);
+  tmp |= gpio_get(BTN_PORT, BTN_PIN_DOWN);
+  tmp |= gpio_get(BTN_PORT_NO, BTN_PIN_NO);
   return tmp;
 }
+
+// // button read for devolopment board test
+// uint16_t buttonRead(void) {
+//   uint16_t tmp = 0x00;
+//   tmp |= gpio_get(CONF_PORT, BTN_PIN_YES);
+//   tmp |= gpio_get(UP_PORT, BTN_PIN_UP);
+//   tmp |= gpio_get(DOWN_PORT, BTN_PIN_DOWN);
+//   return tmp;
+// }
 
 void buttonsIrqInit(void) {
   // enable SYSCFG	clock
