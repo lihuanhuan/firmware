@@ -100,7 +100,9 @@ static void bootloader_loop(void) { usbLoop(); }
 
 extern void SystemInit(void);
 int main(void) {
+#if GD32F470
   SystemInit();
+#endif
   // setup();
   // oledInit();
   load_app(SIG_OK);
