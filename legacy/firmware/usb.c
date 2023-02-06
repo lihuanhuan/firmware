@@ -407,12 +407,7 @@ static const struct usb_bos_descriptor bos_descriptor = {
     .bNumDeviceCaps = sizeof(capabilities) / sizeof(capabilities[0]),
     .capabilities = capabilities};
 
-// just for test
-void config_init_uuid(void) {
-  strcpy(config_uuid_str, "A72F9A3514053C5A48E197BA");
-}
 void usbInit(void) {
-  config_init_uuid();
   usbd_dev = usbd_init(&otgfs_usb_driver_onekey, &dev_descr, &config,
                        usb_strings, sizeof(usb_strings) / sizeof(*usb_strings),
                        usbd_control_buffer, sizeof(usbd_control_buffer));
@@ -434,8 +429,6 @@ static void i2c_slave_poll(void) {
     main_rx_callback(NULL, 0);
   }
 }
-
-extern void gd32_delay_1ms(uint32_t count);
 
 void usbPoll(void) {
   static const uint8_t *data;
@@ -477,7 +470,6 @@ void usbPoll(void) {
   if (CHANNEL_USB == host_channel) {
     data = msg_out_data();
     if (data) {
-      // gd32_delay_1ms(2);
       timer_out_set(timer_out_resp, timer1s / 2);
       while (usbd_ep_write_packet(usbd_dev, ENDPOINT_ADDRESS_MAIN_IN, data,
                                   USB_PACKET_SIZE) != USB_PACKET_SIZE) {

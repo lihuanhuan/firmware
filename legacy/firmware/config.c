@@ -454,8 +454,7 @@ void config_init(void) {
 
   // get whether use se flag
   for (uint8_t i = 0; i < 5; i++) {
-    // se_version = se_get_version();
-    se_version = "1.1.0.3";  // for test 20230201
+    se_version = se_get_version();
     if (se_version == NULL) {
       se_power_off();
       delay_ms(100);
@@ -494,7 +493,7 @@ void config_init(void) {
     storage_unlock(PIN_EMPTY, PIN_EMPTY_LEN, NULL);
   }
 #if !EMULATOR
-  // se_sync_session_key(); // for test 20230201
+  se_sync_session_key();
 #endif
 
   uint16_t len = 0;

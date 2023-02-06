@@ -306,330 +306,6 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       flash_state = STATE_OPEN;
       flash_pos = 0;
       return;
-    }
-    send_msg_failure(dev, 1);  // Failure_UnexpectedMessage
-    return;
-  }
-  if (flash_state == STATE_INTERRPUPT)
-    if (msg_id == 0x0000) {
-      send_msg_failure(dev, 9);  // Failure_ProcessError
-      flash_state = STATE_FLASHSTART;
-      timer_out_set(timer_out_oper, timer1s * 5);
-      return;
-    }
-
-  if (flash_state == STATE_FLASHING) {
-    if (p_buf[0] != '?') {       // invalid contents
-      send_msg_failure(dev, 9);  // Failure_ProcessError
-      flash_state = STATE_END;
-      show_halt("Error installing", "firmware.");
-      return;
-    }
-    timer_out_set(timer_out_oper, timer1s * 5);
-    static uint8_t flash_anim = 0;
-    if (flash_anim % 32 == 4) {
-      layoutProgress("INSTALLING ... Please wait",
-                     1000 * flash_pos / flash_len);
-    }
-    flash_anim++;
-
-    const uint8_t *p = p_buf + 1;
-    while (p < p_buf + 64 && flash_pos < flash_len) {
-      // assign byte to first byte of uint32_t w
-      w = (w >> 8) | (((uint32_t)*p) << 24);
-      wi++;
-      if (wi == 4) {
-        if (flash_pos < FLASH_FWHEADER_LEN) {
-          FW_HEADER[flash_pos / 4] = w;
-        } else {
-          FW_CHUNK[(flash_pos % FW_CHUNK_SIZE) / 4] = w;
-          flash_enter();
-          if (UPDATE_ST == update_mode) {
-            flash_program_word(FLASH_FWHEADER_START + flash_pos, w);
-          } else {
-            flash_program_word(FLASH_BLE_ADDR_START + flash_pos, w);
-          }
-          flash_exit();
-        }
-        flash_pos += 4;
-        wi = 0;
-        // finished the whole chunk
-        if (flash_pos % FW_CHUNK_SIZE == 0) {
-          check_and_write_chunk();
-        }
-      }
-      p++;
-    }
-    // flashing done
-    if (flash_pos == flash_len) {
-      // flush remaining data in the last chunk
-      if (flash_pos % FW_CHUNK_SIZE > 0) {
-        check_and_write_chunk();
-      }
-      flash_state = STATE_CHECK;
-      if (UPDATE_ST == update_mode) {
-        const image_header *hdr = (const image_header *)FW_HEADER;
-        if (SIG_OK != signatures_new_ok(hdr, NULL)) {
-          send_msg_buttonrequest_firmwarecheck(dev);
-          return;
-        }
-      }
-    } else {
-      return;
-    }
-  }
-
-  if (flash_state == STATE_CHECK) {
-    timer_out_set(timer_out_oper, 0);
-    if (UPDATE_ST == update_mode) {
-      // use the firmware header from RAM
-      const image_header *hdr = (const image_header *)FW_HEADER;
-
-      bool hash_check_ok;
-      // show fingerprint of unsigned firmware
-      if (SIG_OK != signatures_new_ok(hdr, NULL)) {
-        if (msg_id != 0x001B) {  // ButtonAck message (id 27)
-          return;
-        }
-        uint8_t hash[32] = {0};
-        compute_firmware_fingerprint(hdr, hash);
-        layoutFirmwareFingerprint(hash);
-        hash_check_ok = waitButtonResponse(BTN_PIN_YES, default_oper_time);
-      } else {
-        hash_check_ok = true;
-      }
-      layoutProgress("Programing ... Please wait", 1000);
-
-      // wipe storage if:
-      // 1) old firmware was unsigned or not present
-      // 2) signatures are not OK
-      // 3) hashes are not OK
-      if (SIG_OK != old_was_signed || SIG_OK != signatures_new_ok(hdr, NULL) ||
-          SIG_OK != check_firmware_hashes(hdr)) {
-        // erase storage
-        erase_storage();
-        // check erasure
-        uint8_t hash[32] = {0};
-        sha256_Raw(FLASH_PTR(FLASH_STORAGE_START), FLASH_STORAGE_LEN, hash);
-        if (memcmp(
-                hash,
-                "\x2d\x86\x4c\x0b\x78\x9a\x43\x21\x4e\xee\x85\x24\xd3\x18\x20"
-                "\x75\x12\x5e\x5c\xa2\xcd\x52\x7f\x35\x82\xec\x87\xff\xd9\x40"
-                "\x76\xbc",
-                32) != 0) {
-          send_msg_failure(dev, 9);  // Failure_ProcessError
-          show_halt("Error installing", "firmware.");
-          return;
-        }
-      }
-
-      flash_enter();
-      // write firmware header only when hash was confirmed
-      if (hash_check_ok) {
-        for (size_t i = 0; i < FLASH_FWHEADER_LEN / sizeof(uint32_t); i++) {
-          flash_program_word(FLASH_FWHEADER_START + i * sizeof(uint32_t),
-                             FW_HEADER[i]);
-        }
-      } else {
-        for (size_t i = 0; i < FLASH_FWHEADER_LEN / sizeof(uint32_t); i++) {
-          flash_program_word(FLASH_FWHEADER_START + i * sizeof(uint32_t), 0);
-        }
-      }
-      flash_exit();
-
-      flash_state = STATE_END;
-      if (hash_check_ok) {
-        send_msg_success(dev);
-        show_unplug("New firmware", "successfully installed.");
-        shutdown();
-      } else {
-        layoutDialog(&bmp_icon_warning, NULL, NULL, NULL,
-                     "Firmware installation", "aborted.", NULL,
-                     "You need to repeat", "the procedure with",
-                     "the correct firmware.");
-        send_msg_failure(dev, 9);  // Failure_ProcessError
-        shutdown();
-      }
-      return;
-    } else {
-      flash_state = STATE_END;
-      i2c_set_wait(false);
-      send_msg_success(dev);
-      layoutProgress("Updating ... Please wait", 1000);
-      delay_ms(500);  // important!!! delay for nordic reset
-
-      uint32_t fw_len = flash_len - FLASH_FWHEADER_LEN;
-      bool update_status = false;
-#if BLE_SWD_UPDATE
-      update_status = bUBLE_UpdateBleFirmware(
-          fw_len, FLASH_BLE_ADDR_START + FLASH_FWHEADER_LEN, ERASE_ALL);
-
-#else
-      uint8_t *p_init = (uint8_t *)FLASH_INIT_DATA_START;
-      uint32_t init_data_len = p_init[0] + (p_init[1] << 8);
-#if NORDIC_BLE_UPDATE
-      update_status = updateBle(p_init + 4, init_data_len,
-                                (uint8_t *)FLASH_BLE_FIRMWARE_START,
-                                fw_len - FLASH_INIT_DATA_LEN);
-#else
-      (void)fw_len;
-      (void)init_data_len;
-      update_status = false;
-#endif
-#endif
-      if (update_status == false) {
-        layoutDialog(&bmp_icon_warning, NULL, NULL, NULL, "ble installation",
-                     "aborted.", NULL, "You need to repeat",
-                     "the procedure with", "the correct firmware.");
-      } else {
-        show_unplug("ble firmware", "successfully installed.");
-      }
-      delay_ms(1000);
-      shutdown();
-    }
-  }
-}
-void rx_callback_ref(usbd_device *dev, uint8_t ep) {
-  (void)ep;
-  static uint16_t msg_id = 0xFFFF;
-  static uint32_t w;
-  static int wi;
-  static int old_was_signed;
-  uint8_t *p_buf;
-
-  p_buf = packet_buf;
-
-  if (dev != NULL) {
-    if (usbd_ep_read_packet(dev, ENDPOINT_ADDRESS_OUT, packet_buf, 64) != 64)
-      return;
-    host_channel = CHANNEL_USB;
-    if (flash_state == STATE_INTERRPUPT) {
-      flash_state = STATE_READY;
-      flash_pos = 0;
-    }
-  } else {
-    host_channel = CHANNEL_SLAVE;
-  }
-
-  if (flash_state == STATE_END) {
-    return;
-  }
-
-  if (flash_state == STATE_READY || flash_state == STATE_OPEN ||
-      flash_state == STATE_FLASHSTART || flash_state == STATE_CHECK ||
-      flash_state == STATE_INTERRPUPT) {
-    if (p_buf[0] != '?' || p_buf[1] != '#' ||
-        p_buf[2] != '#') {  // invalid start - discard
-      return;
-    }
-    // struct.unpack(">HL") => msg, size
-    msg_id = (p_buf[3] << 8) + p_buf[4];
-  }
-
-  if (flash_state == STATE_READY || flash_state == STATE_OPEN) {
-    if (msg_id == 0x0000) {  // Initialize message (id 0)
-      send_msg_features(dev);
-      flash_state = STATE_OPEN;
-      return;
-    }
-    if (msg_id == 0x0037) {  // GetFeatures message (id 55)
-      send_msg_features(dev);
-      return;
-    }
-    if (msg_id == 0x0001) {  // Ping message (id 1)
-      send_msg_success(dev);
-      return;
-    }
-    if (msg_id == 0x0005) {  // WipeDevice message (id 5)
-      layoutDialog(&bmp_icon_question, "Cancel", "Confirm", NULL,
-                   "Do you really want to", "wipe the device?", NULL,
-                   "All data will be lost.", NULL, NULL);
-      bool but = waitButtonResponse(BTN_PIN_YES, default_oper_time);
-      if (host_channel == CHANNEL_SLAVE) {
-      } else {
-        if (but) {
-          erase_storage_code_progress();
-          flash_state = STATE_END;
-          show_unplug("Device", "successfully wiped.");
-          send_msg_success(dev);
-
-        } else {
-          flash_state = STATE_END;
-          show_unplug("Device wipe", "aborted.");
-          send_msg_failure(dev, 4);  // Failure_ActionCancelled
-          shutdown();
-        }
-      }
-      return;
-    }
-    if (msg_id != 0x0006 && msg_id != 0x0010) {
-      send_msg_failure(dev, 1);  // Failure_UnexpectedMessage
-      return;
-    }
-  }
-
-  if (flash_state == STATE_OPEN) {
-    if (msg_id == 0x0006) {  // FirmwareErase message (id 6)
-      bool proceed = false;
-      if (firmware_present_new()) {
-        layoutDialog(&bmp_icon_question, "Abort", "Continue", NULL,
-                     "Install new", "firmware?", NULL, "Never do this without",
-                     "your recovery card!", NULL);
-        proceed = waitButtonResponse(BTN_PIN_YES, default_oper_time);
-      } else {
-        proceed = true;
-      }
-      if (proceed) {
-        // check whether the current firmware is signed (old or new method)
-        if (firmware_present_new()) {
-          const image_header *hdr =
-              (const image_header *)FLASH_PTR(FLASH_FWHEADER_START);
-          old_was_signed =
-              signatures_new_ok(hdr, NULL) & check_firmware_hashes(hdr);
-        } else if (firmware_present_old()) {
-          old_was_signed = signatures_old_ok();
-        } else {
-          old_was_signed = SIG_FAIL;
-        }
-        erase_code_progress();
-        send_msg_success(dev);
-        flash_state = STATE_FLASHSTART;
-        timer_out_set(timer_out_oper, timer1s * 5);
-      } else {
-        send_msg_failure(dev, 4);  // Failure_ActionCancelled
-        flash_state = STATE_END;
-        show_unplug("Firmware installation", "aborted.");
-        shutdown();
-      }
-      return;
-    } else if (msg_id == 0x0010) {  // FirmwareErase message (id 16)
-      bool proceed = false;
-      layoutDialog(&bmp_icon_question, "Abort", "Continue", NULL, "Install ble",
-                   "firmware?", NULL, NULL, NULL, NULL);
-      proceed = waitButtonResponse(BTN_PIN_YES, default_oper_time);
-      if (proceed) {
-        erase_ble_code_progress();
-        send_msg_success(dev);
-        flash_state = STATE_FLASHSTART;
-        timer_out_set(timer_out_oper, timer1s * 5);
-      } else {
-        send_msg_failure(dev, 4);
-        flash_state = STATE_END;
-        show_unplug("Firmware installation", "aborted.");
-        shutdown();
-      }
-      return;
-    }
-    send_msg_failure(dev, 1);  // Failure_UnexpectedMessage
-    return;
-  }
-
-  if (flash_state == STATE_FLASHSTART) {
-    if (msg_id == 0x0000) {  // end resume state
-      send_msg_features(dev);
-      flash_state = STATE_OPEN;
-      flash_pos = 0;
-      return;
     } else if (msg_id == 0x0007) {  // FirmwareUpload message (id 7)
       if (p_buf[9] != 0x0a) {       // invalid contents
         send_msg_failure(dev, 9);   // Failure_ProcessError
@@ -925,7 +601,6 @@ void rx_callback_ref(usbd_device *dev, uint8_t ep) {
     }
   }
 }
-
 static void set_config(usbd_device *dev, uint16_t wValue) {
   (void)wValue;
 
@@ -973,7 +648,7 @@ static void usbInit(bool firmware_present) {
   winusb_setup(usbd_dev, USB_INTERFACE_INDEX_MAIN);
 }
 
-/*static*/ void checkButtons(void) {
+static void checkButtons(void) {
   static bool btn_left = false, btn_right = false, btn_final = false;
   if (btn_final) {
     return;
@@ -995,40 +670,40 @@ static void usbInit(bool firmware_present) {
   }
 }
 
-// static void i2cSlavePoll(void) {
-//   volatile uint32_t total_len, len;
-//   if (i2c_recv_done) {
-//     while (1) {
-//       total_len = fifo_lockdata_len(&i2c_fifo_in);
-//       if (total_len == 0) break;
-//       len = total_len > 64 ? 64 : total_len;
-//       fifo_read_lock(&i2c_fifo_in, packet_buf, len);
-//       rx_callback(NULL, 0);
-//     }
-//     i2c_recv_done = false;
-//   }
-// }
+static void i2cSlavePoll(void) {
+  volatile uint32_t total_len, len;
+  if (i2c_recv_done) {
+    while (1) {
+      total_len = fifo_lockdata_len(&i2c_fifo_in);
+      if (total_len == 0) break;
+      len = total_len > 64 ? 64 : total_len;
+      fifo_read_lock(&i2c_fifo_in, packet_buf, len);
+      rx_callback(NULL, 0);
+    }
+    i2c_recv_done = false;
+  }
+}
 
 void usbLoop(void) {
   bool firmware_present = firmware_present_new();
   usbInit(firmware_present);
   for (;;) {
-    // ble_update_poll();
+    ble_update_poll();
     usbd_poll(usbd_dev);
-    // i2cSlavePoll();
-    // if (!firmware_present &&
-    //     (flash_state == STATE_READY || flash_state == STATE_OPEN)) {
-    //   checkButtons();
-    // }
-    // if (flash_state == STATE_FLASHSTART || flash_state == STATE_FLASHING) {
-    //   if (checkButtonOrTimeout(BTN_PIN_NO, timer_out_oper)) {
-    //     flash_state = STATE_INTERRPUPT;
-    //     fifo_flush(&i2c_fifo_in);
-    //     layoutRefreshSet(true);
-    //   }
-    // }
-    // if (flash_state == STATE_READY || flash_state == STATE_OPEN ||
-    //     flash_state == STATE_INTERRPUPT)
-    //   layoutBootHome();
+    i2cSlavePoll();
+    if (!firmware_present &&
+        (flash_state == STATE_READY || flash_state == STATE_OPEN)) {
+      checkButtons();
+    }
+    if (flash_state == STATE_FLASHSTART || flash_state == STATE_FLASHING) {
+      if (checkButtonOrTimeout(BTN_PIN_NO, timer_out_oper)) {
+        flash_state = STATE_INTERRPUPT;
+        fifo_flush(&i2c_fifo_in);
+        layoutRefreshSet(true);
+      }
+    }
+    if (flash_state == STATE_READY || flash_state == STATE_OPEN ||
+        flash_state == STATE_INTERRPUPT)
+      layoutBootHome();
   }
 }

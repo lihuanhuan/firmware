@@ -17,9 +17,6 @@
 // master I2C gpio
 #define GPIO_MI2C_PORT GPIOB
 
-//#define MI2C_COMBUS     GPIO2
-// #define GPIO_MI2C_SCL GPIO8
-// #define GPIO_MI2C_SDA GPIO9
 
 #ifdef NORMAL_PCB
 // SE power IO

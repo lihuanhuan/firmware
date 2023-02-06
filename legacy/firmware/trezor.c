@@ -138,10 +138,6 @@ static void collect_hw_entropy(bool privileged) {
 #endif
 }
 
-// view debug info
-extern int SEGGER_RTT_printf(unsigned BufferIndex, const char *sFormat, ...);
-
-// main loops
 int main(void) {
 #ifndef APPVER
   setup();
@@ -149,7 +145,7 @@ int main(void) {
                                    // unpredictable stack protection checks
   oledInit();
 #else
-  // check_and_replace_bootloader(true);
+  check_and_replace_bootloader(true);
   setupApp();
   ble_reset();
 #if !EMULATOR

@@ -84,7 +84,7 @@ void unregister_timer(char *name) {
 }
 
 static uint32_t timer_out_array[timer_out_null];
-/*static*/ void timer_out_decrease(void) {
+static void timer_out_decrease(void) {
   uint32_t i = timer_out_null;
   while (i--) {
     if (timer_out_array[i]) timer_out_array[i]--;
@@ -98,6 +98,7 @@ uint32_t timer_out_get(TimerOut type) { return timer_out_array[type]; }
  */
 void timer_init(void) {
   system_millis = 0;
+
   /*
    * MCU clock (120 MHz) as source
    *
@@ -121,7 +122,6 @@ void timer_init(void) {
 
   systick_counter_enable();
 }
-extern void gd32_delay_decrement(void);
 
 void sys_tick_handler(void) {
   int i;

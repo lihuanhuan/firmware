@@ -48,8 +48,8 @@ void buttonUpdate(void);
 bool hasbutton(void);
 void buttonsIrqInit(void);
 void buttonsTimer(void);
-bool checkButtonOrTimeout(uint32_t btn /*uint8_t btn*/, TimerOut type);
-bool waitButtonResponse(uint32_t btn /*uint8_t btn*/, uint32_t time_out);
+bool checkButtonOrTimeout(uint8_t btn, TimerOut type);
+bool waitButtonResponse(uint8_t btn, uint32_t time_out);
 uint8_t keyScan(void);
 uint8_t waitKey(uint32_t time_out, uint8_t mode);
 

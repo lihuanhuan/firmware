@@ -68,11 +68,11 @@ void setup(void) {
   // Technical Reference Manual. According to section 4.4.2 and 4.4.7 of the
   // "STM32F10xxx/20xxx/21xxx/L1xxxx Cortex-M3 programming manual", STM32F2
   // series MCUs are r2p0 and always have this bit set on reset already.
-  // SCB_CCR |= SCB_CCR_STKALIGN;
+  SCB_CCR |= SCB_CCR_STKALIGN;
 
-  // // setup clock
-  // struct rcc_clock_scale clock = rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_120MHZ];
-  // rcc_clock_setup_hse_3v3(&clock);
+  // setup clock
+  struct rcc_clock_scale clock = rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_120MHZ];
+  rcc_clock_setup_hse_3v3(&clock);
 
   // enable GPIO clock - A (oled), B(oled), C (buttons)
   rcc_periph_clock_enable(RCC_GPIOA);
@@ -80,7 +80,7 @@ void setup(void) {
   rcc_periph_clock_enable(RCC_GPIOC);
 
   // enable SPI clock
-  rcc_periph_clock_enable(RCC_SPI1);
+   rcc_periph_clock_enable(RCC_OLED_SPI);
 
   // enable RNG
   rcc_periph_clock_enable(RCC_RNG);
@@ -99,14 +99,6 @@ void setup(void) {
                   BTN_PIN_YES | BTN_PIN_UP | BTN_PIN_DOWN);
   gpio_mode_setup(BTN_PORT_NO, GPIO_MODE_INPUT, GPIO_PUPD_NONE, BTN_PIN_NO);
 
-  // // set GPIO for buttons for devolopment board test
-  // gpio_mode_setup(UP_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP, BTN_PIN_UP);
-  // gpio_mode_setup(DOWN_PORT, GPIO_MODE_INPUT, GPIO_PUPD_PULLUP,
-  // BTN_PIN_DOWN); gpio_mode_setup(CONF_PORT, GPIO_MODE_INPUT,
-  // GPIO_PUPD_PULLUP, BTN_PIN_YES);
-  // // gpio_mode_setup(BTN_PORT_NO, GPIO_MODE_INPUT, GPIO_PUPD_NONE,
-  // BTN_PIN_NO);
-
   // set GPIO for usb_insert
   gpio_mode_setup(USB_INSERT_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE,
                   USB_INSERT_PIN);
@@ -115,9 +107,9 @@ void setup(void) {
   // stm32 power control
   gpio_mode_setup(STM32_POWER_CTRL_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN,
                   STM32_POWER_CTRL_PIN);
-  // // bluetooth power control
-  // gpio_mode_setup(BLE_POWER_CTRL_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN,
-  //                 BLE_POWER_CTRL_PIN);
+  // bluetooth power control
+  gpio_mode_setup(BLE_POWER_CTRL_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN,
+                  BLE_POWER_CTRL_PIN);
   // combus
   gpio_mode_setup(GPIO_CMBUS_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN,
                   GPIO_SI2C_CMBUS);
@@ -132,9 +124,6 @@ void setup(void) {
   se_power_on();
 
   // use libopencm3 init oled
-  // rcc_periph_clock_enable(RCC_OLED_COTL);  // GPIOB
-  // rcc_periph_clock_enable(RCC_OLED_DATA);  // GPIOA
-  rcc_periph_clock_enable(RCC_OLED_SPI);
   gpio_mode_setup(OLED_DC_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, OLED_DC_PIN);
   gpio_mode_setup(OLED_RST_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE,
                   OLED_RST_PIN);
@@ -209,13 +198,6 @@ void setupApp(void) {
 
   // master i2c init
   vMI2CDRV_Init();
-}
-
-void setup_test(void) {
-  // enable OTG_FS
-  gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_PULLUP, GPIO10);
-  gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO11 | GPIO12);
-  gpio_set_af(GPIOA, GPIO_AF10, GPIO10 | GPIO11 | GPIO12);
 }
 
 #define MPU_RASR_SIZE_32B (0x04UL << MPU_RASR_SIZE_LSB)
