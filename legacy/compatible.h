@@ -95,6 +95,8 @@
 // se chip define
 #define GPIO_MI2C_SCL GPIO6
 #define GPIO_MI2C_SDA GPIO7
+#define MI2C_RETRYCNTS (5000)  // timeout 5 s
+#define MI2C_TIMEOUT (7000)
 #else
 
 // oled spi
@@ -153,6 +155,8 @@
 // se chip define
 #define GPIO_MI2C_SCL GPIO8
 #define GPIO_MI2C_SDA GPIO9
+#define MI2C_RETRYCNTS (5)
+#define MI2C_TIMEOUT (40000)
 
 #endif  // GD32F470
 #endif  // COMPATIBLE_H

@@ -128,8 +128,8 @@ endif
 
 else
 ifdef APPVER
-	ifneq ($(GD32F470),1)
 	CFLAGS   += -DAPPVER=$(APPVER)
+	ifneq ($(GD32F470),1)
 	LDSCRIPT  = $(TOP_DIR)/memory_app_$(APPVER).ld
 	else
 	LDSCRIPT  = $(TOP_DIR)/gd32_hard/memory_app_$(APPVER)_gd32.ld

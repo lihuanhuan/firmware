@@ -45,7 +45,9 @@ static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
     }
     while ((I2C_SR2(i2c) & I2C_SR2_BUSY))
       ;
+#if GD32F470
   gd32_spec_lable:
+#endif
     i2c_send_start(i2c);
     i2c_enable_ack(i2c);
     while (!(I2C_SR1(i2c) & I2C_SR1_SB))
@@ -62,9 +64,12 @@ static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
     if (usTimeout > MI2C_TIMEOUT) {
       usTimeout = 0;
       i++;
+#if GD32F470
       // only for gd32
       goto gd32_spec_lable;
-      // continue;
+#else
+      continue;
+#endif
     }
     /* Clearing ADDR condition sequence. */
     (void)I2C_SR2(i2c);

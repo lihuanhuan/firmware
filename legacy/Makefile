@@ -10,7 +10,7 @@ OBJS += common.o
 ifneq ($(GD32F470),1)
 OBJS += flash.o
 else
-OBJS += flash_gd32.o
+OBJS += gd32_hard/flash_gd32.o
 endif
 OBJS += layout.o
 OBJS += oled.o
@@ -39,7 +39,7 @@ OBJS += util.o
 ifneq ($(GD32F470),1)
 OBJS += memory.o
 else
-OBJS += memory_gd32.o
+OBJS += gd32_hard/memory_gd32.o
 endif
 OBJS += memory.o
 OBJS += supervise.o

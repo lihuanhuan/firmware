@@ -103,8 +103,8 @@ int main(void) {
 #if GD32F470
   SystemInit();
 #endif
-  // setup();
-  // oledInit();
+  setup();
+  oledInit();
   load_app(SIG_OK);
   // bootloader_loop();
   return 0;
