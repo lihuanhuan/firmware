@@ -34,6 +34,7 @@
 #include "sys.h"
 #include "usart.h"
 #include "util.h"
+#include "memory.h"
 
 #include "compatible.h"
 
@@ -232,6 +233,7 @@ void mpu_config_off(void) {
 
 void mpu_config_bootloader(void) {
 #if GD32F470
+  mpu_setup_gd32(MPU_CONFIG_BOOT);
 #else
   // Disable MPU
   MPU_CTRL = 0;
@@ -282,6 +284,7 @@ void mpu_config_bootloader(void) {
 // Never use in bootloader! Disables access to PPB (including MPU, NVIC, SCB)
 void mpu_config_firmware(void) {
 #if GD32F470
+  mpu_setup_gd32(MPU_CONFIG_FIRM);
 #else
 #if MEMORY_PROTECT
   // Disable MPU

@@ -68,3 +68,12 @@ int memory_bootloader_hash(uint8_t *hash) {
   sha256_Raw(hash, 32, hash);
   return 32;
 }
+
+void mpu_setup_gd32(uint8_t mode) {
+  if (mode == MPU_CONFIG_BOOT)
+    mpu_setup_boot_region();
+  else if (mode == MPU_CONFIG_FIRM)
+    mpu_setup_firm_region();
+  else
+    return;
+}

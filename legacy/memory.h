@@ -88,6 +88,9 @@ extern uint8_t *emulator_flash_base;
 #define FLASH_STORAGE_SECTOR_FIRST 2
 #define FLASH_STORAGE_SECTOR_LAST 3
 
+#define MPU_CONFIG_BOOT 0x5a
+#define MPU_CONFIG_FIRM 0xa5
+
 #if BLE_SWD_UPDATE
 #define FLASH_CODE_SECTOR_FIRST 4
 #define FLASH_CODE_SECTOR_LAST 9
@@ -115,6 +118,7 @@ extern uint8_t *emulator_flash_base;
 void memory_protect(void);
 void memory_write_unlock(void);
 int memory_bootloader_hash(uint8_t *hash);
+void mpu_setup_gd32(uint8_t mode);
 
 static inline void flash_write32(uint32_t addr, uint32_t word) {
   *(volatile uint32_t *)FLASH_PTR(addr) = word;
