@@ -224,9 +224,12 @@ void setupApp(void) {
 #define SRAM_BASE (0x20000000U)
 
 void mpu_config_off(void) {
+#if GD32F470
+  mpu_setup_gd32(MPU_CONFIG_OFF);
+#else
   // Disable MPU
   MPU_CTRL = 0;
-
+#endif
   __asm__ volatile("dsb");
   __asm__ volatile("isb");
 }

@@ -74,6 +74,8 @@ void mpu_setup_gd32(uint8_t mode) {
     mpu_setup_boot_region();
   else if (mode == MPU_CONFIG_FIRM)
     mpu_setup_firm_region();
+  else if (mode == MPU_CONFIG_OFF)
+    mpu_disable();
   else
     return;
 }

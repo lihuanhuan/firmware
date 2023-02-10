@@ -90,6 +90,7 @@ extern uint8_t *emulator_flash_base;
 
 #define MPU_CONFIG_BOOT 0x5a
 #define MPU_CONFIG_FIRM 0xa5
+#define MPU_CONFIG_OFF 0xee
 
 #if BLE_SWD_UPDATE
 #define FLASH_CODE_SECTOR_FIRST 4
