@@ -83,12 +83,7 @@ static void svhandler_system_privileged(void) {
 
 static void __attribute__((noreturn)) svhandler_reboot_to_bootloader(void) {
   *STAY_IN_BOOTLOADER_FLAG_ADDR = STAY_IN_BOOTLOADER_FLAG;
-#if GD32F470
-  while (1)
-    ;
-#else
   scb_reset_system();
-#endif
 }
 
 extern volatile uint32_t system_millis;

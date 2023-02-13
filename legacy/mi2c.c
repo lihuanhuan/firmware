@@ -26,7 +26,7 @@ static uint8_t ucXorCheck(uint8_t ucInputXor, uint8_t *pucSrc, uint16_t usLen) {
 static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
                                uint16_t *pusOutLen) {
   uint8_t ucLenBuf[2], ucSW[2], ucXor, ucXor1;
-  uint16_t i, usRevLen, usTimeout, usRealLen;
+  uint32_t i, usRevLen, usTimeout, usRealLen;
 
   ucXor = 0;
   i = 0;
@@ -45,9 +45,6 @@ static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
     }
     while ((I2C_SR2(i2c) & I2C_SR2_BUSY))
       ;
-#if GD32F470
-  gd32_spec_lable:
-#endif
     i2c_send_start(i2c);
     i2c_enable_ack(i2c);
     while (!(I2C_SR1(i2c) & I2C_SR1_SB))
@@ -57,23 +54,22 @@ static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
     // Waiting for address is transferred.
     while (!(I2C_SR1(i2c) & I2C_SR1_ADDR)) {
       usTimeout++;
-      if (usTimeout > MI2C_TIMEOUT) {
+      if (usTimeout > MI2C_TIMEOUT * 5) {  // setup timeout is 5ms once
         break;
       }
     }
-    if (usTimeout > MI2C_TIMEOUT) {
+    if (usTimeout > MI2C_TIMEOUT * 5) {
       usTimeout = 0;
       i++;
 #if GD32F470
       // only for gd32
-      goto gd32_spec_lable;
-#else
-      continue;
+      i2c_send_stop(i2c);  // it will release i2c bus
 #endif
+      continue;
     }
     /* Clearing ADDR condition sequence. */
+    (void)I2C_SR1(i2c);
     (void)I2C_SR2(i2c);
-    (void)I2C_SR1(I2C2);
     break;
   }
   // rev len
@@ -185,8 +181,8 @@ static bool bMI2CDRV_WriteBytes(uint32_t i2c, uint8_t *data,
       continue;
     }
     /* Clearing ADDR condition sequence. */
+    (void)I2C_SR1(i2c);
     (void)I2C_SR2(i2c);
-    (void)I2C_SR1(I2C2);
     break;
   }
   // send L + V + xor
