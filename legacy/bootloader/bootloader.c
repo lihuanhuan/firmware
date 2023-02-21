@@ -104,9 +104,15 @@ int main(void) {
   SystemInit();
 #endif
   setup();
+
+  setupApp();
+
   oledInit();
-  load_app(SIG_OK);
-  // bootloader_loop();
+
+  // mpu_config_bootloader();
+
+  // load_app(SIG_OK);
+  bootloader_loop();
   return 0;
 }
 

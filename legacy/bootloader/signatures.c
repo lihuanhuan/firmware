@@ -30,6 +30,7 @@
 const uint32_t FIRMWARE_MAGIC_OLD = 0x525a5254;  // TRZR
 const uint32_t FIRMWARE_MAGIC_NEW = 0x465a5254;  // TRZF
 const uint32_t FIRMWARE_MAGIC_BLE = 0x33383235;  // 5283
+const uint32_t FIRMWARE_MAGIC_SE = 0x31433233;   // 32C1
 
 #define PUBKEYS 5
 
@@ -125,15 +126,16 @@ void compute_firmware_fingerprint(const image_header *hdr, uint8_t hash[32]) {
 bool firmware_present_new(void) {
   const image_header *hdr =
       (const image_header *)FLASH_PTR(FLASH_FWHEADER_START);
-  if (hdr->magic != FIRMWARE_MAGIC_NEW) return false;
-  // we need to ignore hdrlen for now
-  // because we keep reset_handler ptr there
-  // for compatibility with older bootloaders
-  // after this is no longer necessary, let's uncomment the line below:
-  // if (hdr->hdrlen != FLASH_FWHEADER_LEN) return false;
-  if (hdr->codelen > FLASH_APP_LEN) return false;
-  if (hdr->codelen < 4096) return false;
-
+  // add 0220 skip check
+  // if (hdr->magic != FIRMWARE_MAGIC_NEW) return false;
+  // // we need to ignore hdrlen for now
+  // // because we keep reset_handler ptr there
+  // // for compatibility with older bootloaders
+  // // after this is no longer necessary, let's uncomment the line below:
+  // // if (hdr->hdrlen != FLASH_FWHEADER_LEN) return false;
+  // if (hdr->codelen > FLASH_APP_LEN) return false;
+  // if (hdr->codelen < 4096) return false;
+  (void)hdr;
   return true;
 }
 
