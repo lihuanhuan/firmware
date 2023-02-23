@@ -115,10 +115,13 @@ bool get_features(Features *resp) {
   strlcpy(resp->onekey_version, ONEKEY_VERSION, sizeof(resp->onekey_version));
 
   if (se_get_sn(&serial)) {
-    resp->has_onekey_serial = true;
-    strlcpy(resp->onekey_serial, serial, sizeof(resp->onekey_serial));
+    if (serial[0] == 0xff && serial[1] == 0xff) {
+      resp->has_onekey_serial = false;
+    } else {
+      resp->has_onekey_serial = true;
+      strlcpy(resp->onekey_serial, serial, sizeof(resp->onekey_serial));
+    }
   }
-
 #ifdef BUILD_ID
   resp->has_build_id = true;
   strlcpy(resp->build_id, BUILD_ID, sizeof(resp->build_id));

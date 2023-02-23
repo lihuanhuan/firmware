@@ -1,9 +1,11 @@
-/* STM32F205RG - 1024K Flash, 128K RAM */
-
+/* GD32F470VK - 3072K Flash, 256K RAM */
 MEMORY
-{
+{		
 	rom (rx) : ORIGIN = 0x08000000, LENGTH = 3072K
 	ram (rwx) : ORIGIN = 0x20000000, LENGTH = 192K
+	/*
+	ram1 (rwx) : ORIGIN = 0x10000000, LENGTH = 64K
+	*/
 }
 
 SECTIONS

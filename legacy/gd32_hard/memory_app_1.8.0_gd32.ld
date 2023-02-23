@@ -1,9 +1,12 @@
-/* STM32F205RG - 1024K Flash, 128K RAM */
+/* GD32F470VK - 3072K Flash, 256K RAM */
 /* program starts at 0x08010400 */
 MEMORY
 {
 	rom (rx) : ORIGIN = 0x08010000, LENGTH = 3072K - 320K
 	ram (rwx) : ORIGIN = 0x20000000, LENGTH = 192K
+	/*
+	ram1 (rwx) : ORIGIN = 0x10000000, LENGTH = 64K
+	*/
 }
 SECTIONS
 {
