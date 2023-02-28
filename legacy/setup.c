@@ -162,6 +162,9 @@ void setup(void) {
 #endif
   ble_usart_init();
   i2c_slave_init_irq();
+
+  // master i2c init
+  vMI2CDRV_Init();
 }
 
 void setReboot(void) {
@@ -196,9 +199,6 @@ void setupApp(void) {
 
   // change oled refresh frequency
   oledUpdateClk();
-
-  // master i2c init
-  vMI2CDRV_Init();
 }
 
 #define MPU_RASR_SIZE_32B (0x04UL << MPU_RASR_SIZE_LSB)

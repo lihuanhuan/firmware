@@ -594,16 +594,12 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
         send_msg_failure(dev, 1);
         return;
       }
-      // //设置APP存在标志 防止升级过程中意外插拔生效
+      //设置APP存在标志 防止升级过程中意外插拔生效
       // if (0 == ucFLASH_Pagerase(K21_APP_EXIST_ADDR)) {
       //   send_msg_failure(dev);
       //   return;
       // }
       send_msg_success(dev);
-      // layoutBootLoaderProgress((bootloader_image)NULL, 100);
-      // delay_ms(timer1s);
-      // //显示升级完成
-      // layoutBootLoaderPage(BLCG, "Succeed", "Press any key to continue");
       return;
     }
 
@@ -650,9 +646,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
         layoutDialog(&bmp_icon_question, "Abort", "Continue", NULL,
                      "Install new", "firmware?", NULL, "Never do this without",
                      "your recovery card!", NULL);
-        // add test 0220 skip button
-        // proceed = waitButtonResponse(BTN_PIN_YES, default_oper_time);
-        proceed = true;
+        proceed = waitButtonResponse(BTN_PIN_YES, default_oper_time);
       } else {
         proceed = true;
       }
@@ -670,11 +664,10 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
         } else {
           old_was_signed = SIG_FAIL;
         }
-        // add test 0217
+        // add mode detect
         if (update_mode == UPDATE_ST) {
           erase_code_progress();
         }
-        // add test end
         send_msg_success(dev);
         flash_state = STATE_FLASHSTART;
         timer_out_set(timer_out_oper, timer1s * 5);
@@ -723,46 +716,8 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       // read payload length
       const uint8_t *p = p_buf + 10;
       if (flash_pos) {
-        // uint32_t tmp_len;
-        // if (readprotobufint(&p, &tmp_len) != sectrue) {  // integer too large
-        //   send_msg_failure(dev, 9);                      //
-        //   Failure_ProcessError flash_state = STATE_END; show_halt("Firmware
-        //   is", "too big."); return;
-        // }
-        // w = 0;
-        // wi = 0;
-        // while (p < p_buf + 64 && flash_pos < flash_len) {
-        //   // assign byte to first byte of uint32_t w
-        //   w = (w >> 8) | (((uint32_t)*p) << 24);
-        //   wi++;
-        //   if (wi == 4) {
-        //     if (flash_pos < FLASH_FWHEADER_LEN) {
-        //       FW_HEADER[flash_pos / 4] = w;
-        //     } else {
-        //       FW_CHUNK[(flash_pos % FW_CHUNK_SIZE) / 4] = w;
-        //       flash_enter();
-        //       if (UPDATE_ST == update_mode) {
-        //         flash_program_word(FLASH_FWHEADER_START + flash_pos, w);
-        //       } else {
-        //         flash_program_word(FLASH_BLE_ADDR_START + flash_pos, w);
-        //       }
-        //       flash_exit();
-        //     }
-        //     flash_pos += 4;
-        //     wi = 0;
-        //     // finished the whole chunk
-        //     if (flash_pos % FW_CHUNK_SIZE == 0) {
-        //       //  add test 0220 skip check
-        //       // check_and_write_chunk();
-        //     }
-        //   }
-        //   p++;
-        // }
-        // flash_state = STATE_FLASHING;
-        // return;
-        // add test 0221
         flash_pos = 0;
-      }  // else { // add test 0221
+      }
       if (readprotobufint(&p, &flash_len) != sectrue) {  // integer too large
         send_msg_failure(dev, 9);                        // Failure_ProcessError
         flash_state = STATE_END;
@@ -831,7 +786,6 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
         p++;
       }
       return;
-      // } // add test 0221
     } else {                     // add test 0221
       send_msg_failure(dev, 1);  // Failure_UnexpectedMessage
     }
@@ -897,7 +851,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
                   shutdown();
                   return;
                 }
-                // SE jump into boot ,delay 1000
+                // SE jump into boot mode ,it need delay 1000
                 delay_ms(1000);
               }
               // 80FC000160 hash(32) sign(64)
@@ -937,9 +891,6 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
             // do nothing
           }
           flash_exit();
-          // flash_pos += 4;
-          // wi = 0;
-          // finished the whole chunk
         }
         if ((flash_pos - FLASH_FWHEADER_LEN) % FW_CHUNK_SIZE == 0) {
           //  add test 0220 skip check
@@ -986,7 +937,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
           return;
         }
 
-        if (false == bSE_AcitveAPP()) {  // 激活se app
+        if (false == bSE_AcitveAPP()) {  // enable se app
           flash_state = STATE_END;
           show_unplug("Update SE", "aborted.");
           send_msg_failure(dev, 4);  // Failure_ActionCancelled
