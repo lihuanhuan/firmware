@@ -82,8 +82,6 @@ typedef enum {
   COIN_SWITCH_SOLANA = 0x02
 } CoinSwitch;
 
-extern Storage configUpdate;
-
 #define MIN_PIN_LEN 1
 #define MAX_PIN_LEN 9
 #define DEFAULT_PIN_LEN 4
@@ -160,7 +158,6 @@ uint32_t config_nextU2FCounter(void);
 void config_setU2FCounter(uint32_t u2fcounter);
 
 bool config_isInitialized(void);
-bool config_isInitializedSeeds(void);
 
 bool config_getImported(bool *imported);
 void config_setImported(bool imported);
@@ -210,13 +207,7 @@ void config_setIsBixinAPP(void);
 void config_setSeSessionKey(uint8_t *data, uint32_t size);
 bool config_getSeSessionKey(uint8_t *dest, uint16_t dest_size);
 
-uint32_t config_getDeviceState(void);
-void config_setDeviceState(uint32_t device_state);
 bool config_setSeedPin(const char *pin);
-bool config_STSeedBackUp(void *plain_data, uint16_t plain_len,
-                         void *cipher_data, uint16_t *cipher_len);
-bool config_STSeedRestore(void *cipher_data, uint16_t cipher_len,
-                          void *plain_data, uint16_t *plain_len);
 uint32_t config_getPinFails(void);
 
 bool config_getCoinSwitch(CoinSwitch loc);

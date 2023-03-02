@@ -79,7 +79,7 @@ static const uint32_t META_MAGIC_V10 = 0xFFFFFFFF;
 #define KEY_HOMESCREEN (6 | APP | FLAG_PUBLIC_SHIFTED)                  // bytes(1024)
 #define KEY_NEEDS_BACKUP (7 | APP)                                      // bool
 #define KEY_FLAGS (8 | APP)                                             // uint32
-#define KEY_U2F_COUNTER (9 | APP | FLAGS_WRITE_SHIFTED)                 // uint32 // se instruction 
+#define KEY_U2F_COUNTER (9 | APP | FLAGS_WRITE_SHIFTED)                 // uint32 // se instruction
 #define KEY_UNFINISHED_BACKUP (11 | APP)                                // bool
 #define KEY_AUTO_LOCK_DELAY_MS (12 | APP | FLAG_PUBLIC_SHIFTED)         // uint32
 #define KEY_NO_BACKUP (13 | APP)                                        // bool
@@ -87,8 +87,8 @@ static const uint32_t META_MAGIC_V10 = 0xFFFFFFFF;
 #define KEY_NODE (15 | APP)                                             // node
 #define KEY_IMPORTED (16 | APP)                                         // bool //se private
 #define KEY_U2F_ROOT (17 | APP | FLAG_PUBLIC_SHIFTED)                   // node
-#define KEY_SEEDS (18 | APP)                                            // bytes // se instruction 
-#define KEY_SEEDSFLAG (19 | APP | FLAG_PUBLIC_SHIFTED)                  // uint32 
+#define KEY_SEEDS (18 | APP)                                            // bytes // se instruction
+#define KEY_SEEDSFLAG (19 | APP | FLAG_PUBLIC_SHIFTED)                  // uint32
 //#define KEY_PIN (20| APP_PIN )                                        // uint32
 //#define KEY_PINFLAG (21| APP_PIN )                                    // uint32
 //#define KEY_VERIFYPIN (22| APP_PIN)                                   // uint32
@@ -296,8 +296,6 @@ static secbool autoLockDelayMsCached = secfalse;
 static secbool sleepDelayMsCached = secfalse;
 static uint32_t autoLockDelayMs = autoLockDelayMsDefault;
 static uint32_t autoSleepDelayMs = sleepDelayMsDefault;
-
-static uint32_t deviceState = 0;
 
 static SafetyCheckLevel safetyCheckLevel = SafetyCheckLevel_Strict;
 
@@ -1033,7 +1031,6 @@ bool config_setSeedsBytes(const uint8_t *seeds, uint8_t len) {
   }
   if (!g_bSelectSEFlag) {
     config_set_bool(KEY_INITIALIZED, true);
-    config_set_bool(KEY_SEEDSFLAG, true);
   }
 
   return true;
@@ -1285,20 +1282,6 @@ bool config_isInitialized(void) {
   } else {
     config_get_bool(KEY_INITIALIZED, &initialized);
   }
-  return initialized;
-}
-bool config_isInitializedSeeds(void) {
-  bool initialized = false;
-  // add 0301
-  uint8_t ret = 0xff;
-  if (!se_get_private_region(KEY_SEEDSFLAG, &ret, KEY_SEEDSFLAG_LEN)) {
-    return false;
-  }
-  if (ret != false && ret != true) {
-    return false;
-  }
-  initialized = (bool)ret;
-  // config_get_bool(KEY_SEEDSFLAG, &initialized);
   return initialized;
 }
 
@@ -1568,20 +1551,6 @@ bool config_getSeSessionKey(uint8_t *dest, uint16_t dest_size) {
   return true;
 }
 
-uint32_t config_getDeviceState() {
-  if (sectrue != config_get_uint32(KEY_DEVICE_STATE, &deviceState)) {
-    deviceState = 0;
-  }
-  return deviceState;
-}
-
-void config_setDeviceState(uint32_t device_state) {
-  if (sectrue ==
-      storage_set(KEY_DEVICE_STATE, &device_state, sizeof(device_state))) {
-    deviceState = device_state;
-  }
-}
-
 bool config_setSeedPin(const char *pin) {
   uint32_t seedpin;
   seedpin = pin_to_int(pin);
@@ -1589,17 +1558,6 @@ bool config_setSeedPin(const char *pin) {
     return false;
   }
   return se_set_value(KEY_SEED_PASSPHRASE, &seedpin, sizeof(uint32_t));
-}
-
-bool config_STSeedBackUp(void *plain_data, uint16_t plain_len,
-                         void *cipher_data, uint16_t *cipher_len) {
-  return se_st_seed_en(KEY_SEED_ST, plain_data, plain_len, cipher_data,
-                       cipher_len);
-}
-bool config_STSeedRestore(void *cipher_data, uint16_t cipher_len,
-                          void *plain_data, uint16_t *plain_len) {
-  return se_st_seed_de(KEY_SEED_ST, cipher_data, cipher_len, plain_data,
-                       plain_len);
 }
 
 bool config_stBackUpEntoryToSe(uint8_t *seed, uint8_t seed_len) {
