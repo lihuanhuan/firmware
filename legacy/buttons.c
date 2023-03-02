@@ -65,7 +65,7 @@ void buttonsIrqInit(void) {
   exti_set_trigger(BTN_PIN_NO, EXTI_TRIGGER_BOTH);
   exti_enable_request(BTN_PIN_NO);
 
-#if FEITIAN_PCB_V1_3
+#if FEITIAN_PCB_V1_3 || FEITIAN_PCB_V1_4
   // set NVIC
   nvic_set_priority(NVIC_EXTI1_IRQ, 0);
   nvic_enable_irq(NVIC_EXTI1_IRQ);
@@ -75,7 +75,7 @@ void buttonsIrqInit(void) {
   nvic_enable_irq(NVIC_EXTI0_IRQ);
 #endif
 }
-#if FEITIAN_PCB_V1_3
+#if FEITIAN_PCB_V1_3 || FEITIAN_PCB_V1_4
 void exti1_isr(void) {
   if (exti_get_flag_status(BTN_PIN_NO)) {
     SCB_SCR &= ~SCB_SCR_SLEEPONEXIT;  // exit sleep mode

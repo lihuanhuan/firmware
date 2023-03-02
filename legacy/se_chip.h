@@ -36,6 +36,10 @@
 #define MI2C_CMD_WR_PIN (0xE1)
 #define MI2C_CMD_AES (0xE2)
 #define MI2C_CMD_ECC_EDDSA (0xE3)
+#define MI2C_CMD_READ_SESTOR_REGION (0xE5)
+#define MI2C_CMD_WRITE_SESTOR_REGION (0xE6)
+#define PUBLIC_REGION_SIZE (0x400)
+#define PRIVATE_REGION_SIZE (PUBLIC_REGION_SIZE)
 
 // ecc ed2519 index
 #define ECC_INDEX_GITPUBKEY (0x00)
@@ -48,6 +52,12 @@
 #define EDDSA_INDEX_U2FKEY (0x07)
 
 #define SE_EXPORT_SEED (0x24)
+#define SE_WRFLG_GENSEED 0                        // se generate seed
+#define SE_WRFLG_GENMINISECRET 1                  // se generate minisecret
+#define SE_VERIFYPIN_FIRST 0xff                   // for first verify se pin
+#define SE_VERIFYPIN_OTHER 0x5a                   // for others
+#define SE_GENSEDMNISEC_FIRST SE_VERIFYPIN_FIRST  // for first generate
+#define SE_GENSEDMNISEC_OTHER SE_VERIFYPIN_OTHER  // for others
 
 // mnemonic index
 #define MNEMONIC_INDEX_TOSEED (26)
@@ -93,7 +103,7 @@ bool st_restore_entory_from_se(const uint16_t key, uint8_t *seed,
 bool se_isInitialized(void);
 bool se_hasPin(void);
 bool se_setPin(uint32_t pin);
-bool se_verifyPin(uint32_t pin);
+bool se_verifyPin(uint32_t pin, uint8_t mode);
 bool se_changePin(uint32_t oldpin, uint32_t newpin);
 uint32_t se_pinFailedCounter(void);
 bool se_setSeedStrength(uint32_t strength);
@@ -103,6 +113,16 @@ bool se_setNeedsBackup(bool needs_backup);
 bool se_export_seed(uint8_t *seed);
 bool se_importSeed(uint8_t *seed);
 bool se_isFactoryMode(void);
+bool se_isLifecyComSta(void);
+bool se_set_u2f_counter(uint32_t u2fcounter);
+bool se_get_u2f_counter(uint32_t *u2fcounter);
+bool se_set_mnemonic(void *mnemonic, uint16_t len);
+bool se_set_public_region(const uint16_t offset, const void *val_dest,
+                          uint16_t len);
+bool se_get_public_region(const uint16_t offset, void *val_dest, uint16_t len);
+bool se_set_private_region(const uint16_t offset, const void *val_dest,
+                           uint16_t len);
+bool se_get_private_region(const uint16_t offset, void *val_dest, uint16_t len);
 
 #else
 #define se_transmit(...) 0
@@ -131,5 +151,11 @@ bool se_isFactoryMode(void);
 #define se_export_seed(...) false
 #define se_importSeed(...) false
 #define se_isFactoryMode(...) false
+#define se_set_u2f_counter(...) false
+#define se_get_u2f_counter(...) false
+#define se_set_public_region(...) false
+#define se_get_public_region(...) false
+#define se_set_private_region(...) false
+#define se_get_private_region(...) false
 #endif
 #endif

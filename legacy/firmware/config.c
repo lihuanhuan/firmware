@@ -72,23 +72,23 @@ static const uint32_t META_MAGIC_V10 = 0xFFFFFFFF;
 // clang-format off
 #define KEY_UUID (0 | APP | FLAG_PUBLIC_SHIFTED)                        // bytes(12)
 #define KEY_VERSION (1 | APP)                                           // uint32
-#define KEY_MNEMONIC (2 | APP)                                          // string(241)
+#define KEY_MNEMONIC (2 | APP)                                          // string(241) // se instruction only write
 #define KEY_LANGUAGE (3 | APP | FLAG_PUBLIC_SHIFTED)                    // string(17)
 #define KEY_LABEL (4 | APP | FLAG_PUBLIC_SHIFTED)                       // string(33)
 #define KEY_PASSPHRASE_PROTECTION (5 | APP | FLAG_PUBLIC_SHIFTED)       // bool
 #define KEY_HOMESCREEN (6 | APP | FLAG_PUBLIC_SHIFTED)                  // bytes(1024)
 #define KEY_NEEDS_BACKUP (7 | APP)                                      // bool
 #define KEY_FLAGS (8 | APP)                                             // uint32
-#define KEY_U2F_COUNTER (9 | APP | FLAGS_WRITE_SHIFTED)                 // uint32
+#define KEY_U2F_COUNTER (9 | APP | FLAGS_WRITE_SHIFTED)                 // uint32 // se instruction 
 #define KEY_UNFINISHED_BACKUP (11 | APP)                                // bool
 #define KEY_AUTO_LOCK_DELAY_MS (12 | APP | FLAG_PUBLIC_SHIFTED)         // uint32
 #define KEY_NO_BACKUP (13 | APP)                                        // bool
-#define KEY_INITIALIZED (14 | APP | FLAG_PUBLIC_SHIFTED)                // uint32
+#define KEY_INITIALIZED (14 | APP | FLAG_PUBLIC_SHIFTED)                // uint32 // se instruction only read
 #define KEY_NODE (15 | APP)                                             // node
-#define KEY_IMPORTED (16 | APP)                                         // bool
+#define KEY_IMPORTED (16 | APP)                                         // bool //se private
 #define KEY_U2F_ROOT (17 | APP | FLAG_PUBLIC_SHIFTED)                   // node
-#define KEY_SEEDS (18 | APP)                                            // bytes
-#define KEY_SEEDSFLAG (19 | APP | FLAG_PUBLIC_SHIFTED)                  // uint32
+#define KEY_SEEDS (18 | APP)                                            // bytes // se instruction 
+#define KEY_SEEDSFLAG (19 | APP | FLAG_PUBLIC_SHIFTED)                  // uint32 
 //#define KEY_PIN (20| APP_PIN )                                        // uint32
 //#define KEY_PINFLAG (21| APP_PIN )                                    // uint32
 //#define KEY_VERIFYPIN (22| APP_PIN)                                   // uint32
@@ -115,6 +115,113 @@ static const uint32_t META_MAGIC_V10 = 0xFFFFFFFF;
 
 #define KEY_DEBUG_LINK_PIN (255 | APP | FLAG_PUBLIC_SHIFTED)            // string(10)
 // clang-format on
+
+// begin se storge region setup offset ...addr... ...len...
+// public
+#undef KEY_UUID
+#define KEY_UUID (0)  // bytes(12)
+#define KEY_UUID_LEN (12)
+#undef KEY_LANGUAGE
+#define KEY_LANGUAGE (KEY_UUID + KEY_UUID_LEN)  // string(17)
+#define KEY_LANGUAGE_LEN (17)
+#undef KEY_LABEL
+#define KEY_LABEL (KEY_LANGUAGE + KEY_LANGUAGE_LEN)  // string(33)
+#define KEY_LABEL_LEN (33)
+#undef KEY_PASSPHRASE_PROTECTION
+#define KEY_PASSPHRASE_PROTECTION (KEY_LABEL + KEY_LABEL_LEN)  // bool
+#define KEY_PASSPHRASE_PROTECTION_LEN (1)
+#undef KEY_HOMESCREEN
+#define KEY_HOMESCREEN \
+  (KEY_PASSPHRASE_PROTECTION + KEY_PASSPHRASE_PROTECTION_LEN)  // bytes(1024)
+#define KEY_HOMESCREEN_LEN (1024)
+#undef KEY_AUTO_LOCK_DELAY_MS
+#define KEY_AUTO_LOCK_DELAY_MS (KEY_HOMESCREEN + KEY_HOMESCREEN_LEN)  // uint32
+#define KEY_AUTO_LOCK_DELAY_MS_LEN (4)
+#undef KEY_U2F_ROOT
+#define KEY_U2F_ROOT \
+  (KEY_AUTO_LOCK_DELAY_MS + KEY_AUTO_LOCK_DELAY_MS_LEN)  // node
+#define KEY_U2F_ROOT_LEN (sizeof(StorageHDNode))
+#undef KEY_SEEDSFLAG
+#define KEY_SEEDSFLAG (KEY_U2F_ROOT + KEY_U2F_ROOT_LEN)
+#define KEY_SEEDSFLAG_LEN (4)
+#undef KEY_TRANSBLEMODE
+#define KEY_TRANSBLEMODE (KEY_SEEDSFLAG + KEY_SEEDSFLAG_LEN)  // bool
+#define KEY_TRANSBLEMODE_LEN (1)
+#undef KEY_SEFLAG
+#define KEY_SEFLAG (KEY_TRANSBLEMODE + KEY_TRANSBLEMODE_LEN)  // bool
+#define KEY_SEFLAG_LEN (1)
+#undef KEY_SE_SESSIONKEY
+#define KEY_SE_SESSIONKEY (KEY_SEFLAG + KEY_SEFLAG_LEN)  // bytes(16)
+#define KEY_SE_SESSIONKEY_LEN (16)
+#undef KEY_DEVICE_STATE
+#define KEY_DEVICE_STATE (KEY_SE_SESSIONKEY + KEY_SE_SESSIONKEY_LEN)  // uint32
+#define KEY_DEVICE_STATE_LEN (4)
+#undef KEY_MNEMONICS_IMPORTED
+#define KEY_MNEMONICS_IMPORTED \
+  (KEY_DEVICE_STATE + KEY_DEVICE_STATE_LEN)  // bool
+#define KEY_MNEMONICS_IMPORTED_LEN (1)
+#undef KEY_SLEEP_DELAY_MS
+#define KEY_SLEEP_DELAY_MS \
+  (KEY_MNEMONICS_IMPORTED + KEY_MNEMONICS_IMPORTED_LEN)  // uint32
+#define KEY_SLEEP_DELAY_MS_LEN (4)
+#undef KEY_COIN_FUNCTION_SWITCH
+#define KEY_COIN_FUNCTION_SWITCH \
+  (KEY_SLEEP_DELAY_MS + KEY_SLEEP_DELAY_MS_LEN)  // uint32
+#undef KEY_DEBUG_LINK_PIN
+#define KEY_DEBUG_LINK_PIN \
+  (KEY_COIN_FUNCTION_SWITCH + KEY_COIN_FUNCTION_SWITCH_LEN)  // string(10)
+#define KEY_DEBUG_LINK_PIN_LEN (10)
+
+// private
+#undef KEY_VERSION
+#define KEY_VERSION (1024 + 512)  // uint32
+#define KEY_VERSION_LEN (4)
+#undef KEY_NEEDS_BACKUP
+#define KEY_NEEDS_BACKUP (KEY_VERSION + KEY_VERSION_LEN)  // bool
+#define KEY_NEEDS_BACKUP_LEN (1)
+#undef KEY_FLAGS
+#define KEY_FLAGS (KEY_NEEDS_BACKUP + KEY_NEEDS_BACKUP_LEN)  // uint32
+#define KEY_FLAGS_LEN (4)
+#undef KEY_UNFINISHED_BACKUP
+#define KEY_UNFINISHED_BACKUP (KEY_FLAGS + KEY_FLAGS_LEN)  // bool
+#define KEY_UNFINISHED_BACKUP_LEN (1)
+#undef KEY_NO_BACKUP
+#define KEY_NO_BACKUP \
+  (KEY_UNFINISHED_BACKUP + KEY_UNFINISHED_BACKUP_LEN)  // bool
+#define KEY_NO_BACKUP_LEN (1)
+#undef KEY_NODE
+#define KEY_NODE (KEY_NO_BACKUP + KEY_NEEDS_BACKUP_LEN)  // node
+#define KEY_NODE_LEN (sizeof(StorageHDNode))
+#undef KEY_IMPORTED
+#define KEY_IMPORTED (KEY_NODE + KEY_NODE_LEN)  // bool
+#define KEY_IMPORTED_LEN (1)
+#undef KEY_FREEPAYPINFLAG
+#define KEY_FREEPAYPINFLAG (KEY_IMPORTED + KEY_IMPORTED_LEN)  // bool
+#define KEY_FREEPAYPINFLAG_LEN (1)
+#undef KEY_RESET
+#define KEY_RESET (KEY_FREEPAYPINFLAG + KEY_FREEPAYPINFLAG_LEN)  // bool
+#define KEY_RESET_LEN (1)
+#undef KEY_FREEPAYCONFIRMFLAG
+#define KEY_FREEPAYCONFIRMFLAG (KEY_RESET + KEY_RESET_LEN)  // bool
+#define KEY_FREEPAYCONFIRMFLAG_LEN (1)
+#undef KEY_FREEPAYMONEYLIMT
+#define KEY_FREEPAYMONEYLIMT \
+  (KEY_FREEPAYCONFIRMFLAG + KEY_FREEPAYCONFIRMFLAG_LEN)  // uint64
+#define KEY_FREEPAYMONEYLIMT_LEN (8)
+#undef KEY_FREEPAYPTIMES
+#define KEY_FREEPAYPTIMES \
+  (KEY_FREEPAYMONEYLIMT + KEY_FREEPAYMONEYLIMT_LEN)  // uint32
+#define KEY_FREEPAYPTIMES_LEN (4)
+
+#undef KEY_SEED_PASSPHRASE
+#define KEY_SEED_PASSPHRASE \
+  (KEY_FREEPAYPTIMES + KEY_FREEPAYPTIMES_LEN)  // string
+#define KEY_SEED_PASSPHRASE_LEN (4)
+
+// doesnot export seed
+// #define KEY_SEED_ST (34 | APP)           // string
+// #define KEY_ST_SEED_EXCHANGE (35 | APP)  // bytes, only used in se
+// end se storge region setup offset
 
 #define MAX_SESSIONS_COUNT 10
 
@@ -393,12 +500,22 @@ static secbool config_upgrade_v10(void) {
     pin_wait >>= 1;
   }
 
+#if USE_SE != 1  // add 0301
   storage_set(KEY_UUID, config_uuid, sizeof(config_uuid));
   storage_set(KEY_VERSION, &CONFIG_VERSION, sizeof(CONFIG_VERSION));
+#else
+  se_set_public_region(KEY_UUID, config_uuid, sizeof(config_uuid));
+  se_set_private_region(KEY_VERSION, &CONFIG_VERSION, sizeof(CONFIG_VERSION));
+#endif
+
   if (config.has_node) {
+#if USE_SE != 1  // add 0301
     if (sectrue == storage_set(KEY_NODE, &config.node, sizeof(config.node))) {
       config_set_bool(KEY_INITIALIZED, true);
     }
+#else
+    se_set_private_region(KEY_NODE, &config.node, sizeof(config.node));
+#endif
   }
   if (config.has_mnemonic) {
     config_setMnemonic(config.mnemonic, false);
@@ -647,9 +764,14 @@ void config_loadDevice_ex(const BixinLoadDevice *msg) {
 
 void config_setLabel(const char *label) {
   if (label == NULL || label[0] == '\0') {
-    storage_delete(KEY_LABEL);
+    // add 0301
+    uint8_t no_label[MAX_LABEL_LEN];
+    memset(no_label, 0xff, MAX_LABEL_LEN);
+    se_set_public_region(KEY_LABEL, no_label, MAX_LABEL_LEN);
+    // storage_delete(KEY_LABEL);
   } else {
-    storage_set(KEY_LABEL, label, strnlen(label, MAX_LABEL_LEN));
+    // storage_set(KEY_LABEL, label, strnlen(label, MAX_LABEL_LEN));
+    se_set_public_region(KEY_LABEL, label, strnlen(label, MAX_LABEL_LEN));
   }
 }
 
@@ -666,12 +788,17 @@ void config_setLanguage(const char *lang) {
     return;
   }
 
-  storage_set(KEY_LANGUAGE, lang, strnlen(lang, MAX_LANGUAGE_LEN));
+  // add 0301
+  se_set_public_region(KEY_LANGUAGE, lang, KEY_LANGUAGE_LEN);
+  // storage_set(KEY_LANGUAGE, lang, strnlen(lang, MAX_LANGUAGE_LEN));
   font_set(ui_language ? "dingmao_9x9" : "english");
 }
 
 void config_setPassphraseProtection(bool passphrase_protection) {
-  config_set_bool(KEY_PASSPHRASE_PROTECTION, passphrase_protection);
+  // add 0301
+  se_set_public_region(KEY_PASSPHRASE_PROTECTION, &passphrase_protection,
+                       KEY_PASSPHRASE_PROTECTION_LEN);
+  // config_set_bool(KEY_PASSPHRASE_PROTECTION, passphrase_protection);
 }
 
 bool config_getPassphraseProtection(bool *passphrase_protection) {
@@ -835,11 +962,18 @@ bool config_isLanguageSet(void) {
 }
 
 bool config_getHomescreen(uint8_t *dest, uint16_t dest_size) {
+#if USE_SE != 1  // add 0301
   uint16_t len = 0;
   secbool ret = storage_get(KEY_HOMESCREEN, dest, dest_size, &len);
   if (sectrue != ret || len != HOMESCREEN_SIZE) {
     return false;
   }
+#else
+  (void)dest_size;
+  if (!se_get_public_region(KEY_HOMESCREEN, dest, KEY_HOMESCREEN_LEN)) {
+    return false;
+  }
+#endif
   return true;
 }
 
@@ -849,17 +983,23 @@ bool config_setMnemonic(const char *mnemonic, bool import) {
   }
 
   if (g_bSelectSEFlag) {
-    se_setNeedsBackup(false);
-    if (import) {
-      uint8_t seed[64] = {0};
-      uint32_t strength = 0;
-      (void)strength;
-      random_buffer(seed, sizeof(seed));
-      strength = (mnemonic_to_bits(mnemonic, seed) / 11) * 8 * 4 / 3;
-      se_setSeedStrength(strength);
-      if (!se_importSeed(seed)) {
-        return false;
-      }
+    // add 0301
+    // se_setNeedsBackup(false);
+    // if (import) {
+    //   uint8_t seed[64] = {0};
+    //   uint32_t strength = 0;
+    //   (void)strength;
+    //   random_buffer(seed, sizeof(seed));
+    //   strength = (mnemonic_to_bits(mnemonic, seed) / 11) * 8 * 4 / 3;
+    //   se_setSeedStrength(strength);
+    //   if (!se_importSeed(seed)) {
+    //     return false;
+    //   }
+    // }
+    (void)import;
+    if (!se_set_mnemonic((void *)mnemonic,
+                         strnlen(mnemonic, MAX_MNEMONIC_LEN))) {
+      return false;
     }
   } else {
     if (sectrue != storage_set(KEY_MNEMONIC, mnemonic,
@@ -989,7 +1129,7 @@ bool config_containsMnemonic(const char *mnemonic) {
  */
 bool config_unlock(const char *pin) {
   if (g_bSelectSEFlag) {
-    if (se_verifyPin((pin_to_int(pin)))) {
+    if (se_verifyPin((pin_to_int(pin)), SE_VERIFYPIN_OTHER)) {
       se_unlocked = sectrue;
       return true;
     } else {
@@ -1149,21 +1289,52 @@ bool config_isInitialized(void) {
 }
 bool config_isInitializedSeeds(void) {
   bool initialized = false;
-  config_get_bool(KEY_SEEDSFLAG, &initialized);
+  // add 0301
+  uint8_t ret = 0xff;
+  if (!se_get_private_region(KEY_SEEDSFLAG, &ret, KEY_SEEDSFLAG_LEN)) {
+    return false;
+  }
+  if (ret != false && ret != true) {
+    return false;
+  }
+  initialized = (bool)ret;
+  // config_get_bool(KEY_SEEDSFLAG, &initialized);
   return initialized;
 }
 
 bool config_getImported(bool *imported) {
-  return sectrue == config_get_bool(KEY_IMPORTED, imported);
+  // add 0301
+  uint8_t ret = 0xff;
+  if (!se_get_public_region(KEY_IMPORTED, &ret, KEY_IMPORTED_LEN)) {
+    return false;
+  }
+  if (ret != false && ret != true) {
+    return false;
+  }
+  *imported = (bool)ret;
+  return true;
+  // return sectrue == config_get_bool(KEY_IMPORTED, imported);
 }
 
 void config_setImported(bool imported) {
-  config_set_bool(KEY_IMPORTED, imported);
+  // add 0301
+  se_set_private_region(KEY_IMPORTED, &imported, KEY_IMPORTED_LEN);
+  // config_set_bool(KEY_IMPORTED, imported);
 }
 
 bool config_getMnemonicsImported(void) {
   bool mnemonic_imported = false;
-  config_get_bool(KEY_MNEMONICS_IMPORTED, &mnemonic_imported);
+  // add 0301
+  uint8_t ret = 0xff;
+  if (!se_get_public_region(KEY_MNEMONICS_IMPORTED, &ret,
+                            KEY_MNEMONICS_IMPORTED_LEN)) {
+    return false;
+  }
+  if (ret != false && ret != true) {
+    return false;
+  }
+  mnemonic_imported = (bool)ret;
+  // config_get_bool(KEY_MNEMONICS_IMPORTED, &mnemonic_imported);
   return mnemonic_imported;
 }
 
@@ -1205,12 +1376,18 @@ bool config_getFlags(uint32_t *flags) {
 
 uint32_t config_nextU2FCounter(void) {
   uint32_t u2fcounter = 0;
-  storage_next_counter(KEY_U2F_COUNTER, &u2fcounter);
+  if (g_bSelectSEFlag)
+    se_get_u2f_counter(&u2fcounter);
+  else
+    storage_next_counter(KEY_U2F_COUNTER, &u2fcounter);
   return u2fcounter;
 }
 
 void config_setU2FCounter(uint32_t u2fcounter) {
-  storage_set_counter(KEY_U2F_COUNTER, u2fcounter);
+  if (g_bSelectSEFlag)
+    se_set_u2f_counter(u2fcounter);
+  else
+    storage_set_counter(KEY_U2F_COUNTER, u2fcounter);
 }
 
 uint32_t config_getAutoLockDelayMs() {

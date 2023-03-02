@@ -134,7 +134,7 @@ static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
   usRealLen -= MI2C_XOR_LEN;
 
   if ((0x90 != ucSW[0]) || (0x00 != ucSW[1])) {
-    if (ucSW[0] == 0x6c) {
+    if (ucSW[0] == 0x6c || ucSW[0] == 0x62) {  // for se generate seed  0x62
       res[0] = ucSW[1];
       *pusOutLen = 1;
     } else {

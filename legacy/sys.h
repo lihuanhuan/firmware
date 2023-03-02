@@ -11,7 +11,15 @@
 #define FEITIAN_PCB_V1_3 1
 #endif
 
-#if !FEITIAN_PCB_V1_3
+#if GD32F470
+#ifndef FEITIAN_PCB_V1_4
+#define FEITIAN_PCB_V1_4 1
+#undef FEITIAN_PCB_V1_3
+#define FEITIAN_PCB_V1_3 0
+#endif
+#endif
+
+#if !FEITIAN_PCB_V1_3 && !FEITIAN_PCB_V1_4
 
 #ifndef FEITIAN_PCB_V1_1
 #define FEITIAN_PCB_V1_1 1
@@ -19,7 +27,7 @@
 
 #endif
 
-#if FEITIAN_PCB_V1_3
+#if FEITIAN_PCB_V1_3 || FEITIAN_PCB_V1_4
 
 #define BTN_POWER_PORT GPIOA
 #define BTN_POWER_PIN GPIO1
