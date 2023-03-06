@@ -22,27 +22,23 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "messages-common.pb.h"
 #include "bip32.h"
-#include "bip39.h"
 #include "ble.h"
 #include "common.h"
 #include "config.h"
 #include "font.h"
-#include "fsm.h"
-#include "gettext.h"
-#include "layout2.h"
 #include "memzero.h"
 #include "mi2c.h"
-#include "protect.h"
-#include "rng.h"
+#include "rand.h"
 #include "se_chip.h"
 #include "secbool.h"
-#include "storage.h"
 #include "usb.h"
 #include "util.h"
 
-#define CONFIG_FIELD(TYPE, NAME) TYPE NAME
+#define CONFIG_FIELD(TYPE, NAME) \
+  uint8_t has_##NAME;            \
+  TYPE NAME
+
 #define CONFIG_BOOL(NAME) CONFIG_FIELD(bool, NAME)
 #define CONFIG_STRING(NAME, SIZE) char NAME[SIZE + 1]
 #define CONFIG_BYTES(NAME, SIZE) \
@@ -65,14 +61,14 @@ typedef struct {
   CONFIG_UINT32(language);
   CONFIG_STRING(label, 12);
   CONFIG_BOOL(passphrase_protection);
-  CONFIG_BYTES(homescreen, 1204);
+  CONFIG_BYTES(homescreen, 1024);
   CONFIG_UINT32(auto_lock_delay_ms);
   CONFIG_BOOL(initialized);
   CONFIG_BYTES(session_key, 16);
   CONFIG_BOOL(mnemonics_imported);
   CONFIG_BOOL(sleep_delay_ms);
   CONFIG_UINT32(coin_function_switch);
-} PubConfig __attribute__((aligned(4)));
+} PubConfig __attribute__((aligned(1)));
 
 // a helper type to group all private config
 typedef struct {
@@ -87,7 +83,7 @@ typedef struct {
   CONFIG_UINT64(free_pay_limit);
   CONFIG_UINT32(seed_passphrase);
 
-} PriConfig __attribute__((aligned(4)));
+} PriConfig __attribute__((aligned(1)));
 
 // config object store information in SE
 struct CfgRecord {
@@ -236,24 +232,33 @@ static uint32_t pin_to_int(const char *pin) {
   return val;
 }
 
+#define CHECK_CONFIG_OP(cond)     \
+  do {                            \
+    if (!(cond)) return secfalse; \
+  } while (0)
+
 inline static secbool config_get(const struct CfgRecord rcd, void *v) {
   bool pri = rcd.id & (1 << 31);
-  if (pri) return se_get_private_region(rcd.meta.offset, v, rcd.size);
+  bool (*reader)(uint16_t, void *, uint16_t) =
+      pri ? se_get_private_region : se_get_public_region;
 
-  return se_get_public_region(rcd.meta.offset, v, rcd.size);
+  uint8_t has;
+  // read has_xxx flag
+  CHECK_CONFIG_OP(reader(rcd.meta.offset - 1, &has, 1));
+  if (has != TRUE_BYTE) return secfalse;
+
+  return reader(rcd.meta.offset, v, rcd.size);
 }
 
 inline static secbool config_set(const struct CfgRecord rcd, const void *v,
                                  uint16_t l) {
   bool pri = rcd.id & (1 << 31);
-  if (pri) return se_set_private_region(rcd.meta.offset, v, l);
-  return se_set_public_region(rcd.meta.offset, v, l);
+  bool (*writer)(uint16_t, const void *, uint16_t) =
+      pri ? se_set_private_region : se_set_public_region;
+  // set has_xxx flag
+  CHECK_CONFIG_OP(writer(rcd.meta.offset - 1, &TRUE_BYTE, 1));
+  return writer(rcd.meta.offset, v, l);
 }
-
-#define CHECK_CONFIG_OP(cond)     \
-  do {                            \
-    if (!(cond)) return secfalse; \
-  } while (0)
 
 inline static secbool config_get_bool(const struct CfgRecord id, bool *value) {
   uint8_t v;
@@ -272,6 +277,10 @@ inline static secbool config_get_bytes(const struct CfgRecord id, uint8_t *dest,
   bool pri = id.id & (1 << 31);
   bool (*reader)(uint16_t, void *, uint16_t) =
       pri ? se_get_private_region : se_get_public_region;
+  uint8_t has;
+  // read has_xxx flag
+  CHECK_CONFIG_OP(reader(id.meta.offset - 1, &has, 1));
+  if (has != TRUE_BYTE) return secfalse;
   uint32_t size = 0;
   // size|bytes
   CHECK_CONFIG_OP(reader(id.meta.offset, &size, sizeof(size)));
@@ -287,6 +296,8 @@ inline static secbool config_set_bytes(const struct CfgRecord id,
   bool pri = id.id & (1 << 31);
   bool (*writer)(uint16_t, const void *, uint16_t) =
       pri ? se_set_private_region : se_set_public_region;
+  // set has_xxx flag
+  CHECK_CONFIG_OP(writer(id.meta.offset - 1, &TRUE_BYTE, 1));
   uint32_t size = len;
   // size|bytes
   CHECK_CONFIG_OP(writer(id.meta.offset, &size, sizeof(size)));
@@ -298,6 +309,8 @@ inline static secbool config_clear_bytes(const struct CfgRecord id) {
   bool pri = id.id & (1 << 31);
   bool (*writer)(uint16_t, const void *, uint16_t) =
       pri ? se_set_private_region : se_set_public_region;
+  // clear has_xxx flag
+  CHECK_CONFIG_OP(writer(id.meta.offset - 1, &FALSE_BYTE, 1));
   uint8_t zero[id.size];
   memzero(zero, id.size);
   return writer(id.meta.offset, zero, id.size);
@@ -342,10 +355,6 @@ void config_init(void) {
     config_set_bool(id_initialized, true);
   }
 
-  // Auto-unlock storage if no PIN is set.
-  if (storage_is_unlocked() == secfalse && storage_has_pin() == secfalse) {
-    storage_unlock(PIN_EMPTY, PIN_EMPTY_LEN, NULL);
-  }
 #if !EMULATOR
   // se_sync_session_key();
 #endif
@@ -650,17 +659,6 @@ bool config_getPin(char *dest, uint16_t dest_size) {
   return sectrue == config_get_string(KEY_DEBUG_LINK_PIN, dest, dest_size);
 }
 #endif
-
-bool config_hasWipeCode(void) { return sectrue == storage_has_wipe_code(); }
-
-bool config_changeWipeCode(const char *pin, const char *wipe_code) {
-  char oldTiny = usbTiny(1);
-  secbool ret = storage_change_wipe_code(
-      (const uint8_t *)pin, strnlen(pin, MAX_PIN_LEN), NULL,
-      (const uint8_t *)wipe_code, strnlen(wipe_code, MAX_PIN_LEN));
-  usbTiny(oldTiny);
-  return sectrue == ret;
-}
 
 uint8_t session_findLeastRecent(void) {
   uint8_t least_recent_index = MAX_SESSIONS_COUNT;

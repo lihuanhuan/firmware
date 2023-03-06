@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <stdbool.h>
 #include "flash.h"
 #include "menu_list.h"
 #include "mi2c.h"
@@ -68,8 +69,7 @@ bool get_features(Features *resp) {
   resp->has_safety_checks = true;
   resp->safety_checks = config_getSafetyCheckLevel();
   if (session_isUnlocked()) {
-    resp->has_wipe_code_protection = true;
-    resp->wipe_code_protection = config_hasWipeCode();
+    resp->has_wipe_code_protection = false;
     resp->has_auto_lock_delay_ms = true;
     resp->auto_lock_delay_ms = config_getAutoLockDelayMs();
   }
@@ -243,6 +243,7 @@ void fsm_msgChangePin(const ChangePin *msg) {
   layoutHome();
 }
 
+// TODO what's wipe code, doing what?
 void fsm_msgChangeWipeCode(const ChangeWipeCode *msg) {
   CHECK_INITIALIZED
   if (g_bIsBixinAPP) {
@@ -250,7 +251,8 @@ void fsm_msgChangeWipeCode(const ChangeWipeCode *msg) {
   }
 
   bool removal = msg->has_remove && msg->remove;
-  bool has_wipe_code = config_hasWipeCode();
+  /* bool has_wipe_code = config_hasWipeCode(); */
+  bool has_wipe_code = false;
 
   if (removal) {
     // Note that if storage is locked, then config_hasWipeCode() returns false.
@@ -282,8 +284,8 @@ void fsm_msgChangeWipeCode(const ChangeWipeCode *msg) {
   if (protectChangeWipeCode(removal)) {
     if (removal) {
       fsm_sendSuccess(_("Wipe code removed"));
-    } else if (has_wipe_code) {
-      fsm_sendSuccess(_("Wipe code changed"));
+      /* } else if (has_wipe_code) { */
+      /*   fsm_sendSuccess(_("Wipe code changed")); */
     } else {
       fsm_sendSuccess(_("Wipe code set"));
     }
