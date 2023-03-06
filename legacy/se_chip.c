@@ -1,4 +1,5 @@
 #include "se_chip.h"
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "mi2c.h"
@@ -9,6 +10,7 @@
 #include "rand.h"
 #include "secbool.h"
 #include "sys.h"
+#include "util.h"
 
 #define APP (0x01 << 8)
 
@@ -40,18 +42,20 @@ const uint8_t ucDefaultSessionKey[16] = {0x97, 0x1e, 0xaa, 0x62, 0xbf, 0xb1,
 extern void config_setSeSessionKey(const uint8_t *data, uint32_t size);
 extern bool config_getSeSessionKey(uint8_t *dest, uint16_t dest_size);
 
-void randomBuf_SE(uint8_t *ucRandom, uint8_t ucLen) {
+bool randomBuf_SE(uint8_t *ucRandom, uint8_t ucLen) {
   uint8_t ucRandomCmd[5] = {0x00, 0x84, 0x00, 0x00, 0x00}, ucTempBuf[32];
   uint16_t usLen;
 
   ucRandomCmd[4] = ucLen;
   usLen = sizeof(ucTempBuf);
-  if (false == bMI2CDRV_SendData(ucRandomCmd, sizeof(ucRandomCmd))) {
-    return;
+  if (!bMI2CDRV_SendData(ucRandomCmd, sizeof(ucRandomCmd))) {
+    return false;
   }
-  if (true == bMI2CDRV_ReceiveData(ucTempBuf, &usLen)) {
-    memcpy(ucRandom, ucTempBuf, ucLen);
+  if (!bMI2CDRV_ReceiveData(ucTempBuf, &usLen)) {
+    return false;
   }
+  memcpy(ucRandom, ucTempBuf, ucLen);
+  return true;
 }
 
 void random_buffer_ST(uint8_t *buf, size_t len) {
@@ -781,7 +785,7 @@ bool se_get_u2f_counter(uint32_t *u2fcounter) {
   return se_get_value(SE_U2FCOUNTER, u2fcounter, sizeof(uint32_t), &len);
 }
 
-bool se_set_mnemonic(void *mnemonic, uint16_t len) {
+bool se_set_mnemonic(const void *mnemonic, uint16_t len) {
   return se_set_value(SE_MNEMONIC, mnemonic, len);
 }
 
@@ -901,5 +905,11 @@ bool se_get_private_region(uint16_t offset, void *val_dest, uint16_t len) {
   if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), val_dest, &recv_len)) {
     return false;
   }
+  return true;
+}
+
+bool se_get_entroy(uint8_t entroy[32]) {
+  if (!randomBuf_SE(entroy, 0x10)) return false;
+  if (!randomBuf_SE(entroy + 0x10, 0x10)) return false;
   return true;
 }

@@ -429,47 +429,6 @@ static struct menu settings_menu = {
     .previous = &main_menu,
 };
 
-void menu_check_all_words(int index) {
-  (void)index;
-  char desc[64] = "";
-  uint8_t key = KEY_NULL;
-  uint32_t word_count = 0;
-
-  if (protectPinOnDevice(false, true)) {
-    char mnemonic[MAX_MNEMONIC_LEN + 1] = {0};
-    memset(desc, 0, sizeof(desc));
-    config_getMnemonic(mnemonic, sizeof(mnemonic));
-
-    word_count = get_mnemonic_number(mnemonic);
-    if (word_count == 12)
-      strcat(
-          desc,
-          _("Please enter 12 words\nin order to verify\nyour recovery phrase"));
-    else if (word_count == 18)
-      strcat(
-          desc,
-          _("Please enter 18 words\nin order to verify\nyour recovery phrase"));
-    else if (word_count == 24)
-      strcat(
-          desc,
-          _("Please enter 24 words\nin order to verify\nyour recovery phrase"));
-    else
-      return;
-
-    layoutDialogCenterAdapter(NULL, &bmp_button_back, _("Back"),
-                              &bmp_button_forward, _("Next"), NULL, NULL, NULL,
-                              desc, NULL, NULL, NULL);
-    key = protectWaitKey(0, 1);
-    if (key != KEY_CONFIRM) {
-      return;
-    }
-
-    if (!verify_words(word_count)) {
-      return;
-    }
-  }
-}
-
 void menu_check_specified_word(int index) {
   (void)index;
   uint32_t word_count = 0;
@@ -502,7 +461,6 @@ void menu_check_specified_word(int index) {
 static struct menu_item security_set_menu_items[] = {
     {"Change PIN", NULL, true, menu_changePin, NULL, false},
     {"Blind Signing", NULL, true, menu_blindSign, NULL, false},
-    {"Check Recovery Phrase", NULL, true, menu_check_all_words, NULL, false},
     {"Passphrase", NULL, false, .sub_menu = &passphrase_set_menu,
      menu_para_passphrase, true},
     {"Reset", NULL, true, menu_erase_device, NULL, false},

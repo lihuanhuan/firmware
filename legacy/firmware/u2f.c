@@ -568,11 +568,11 @@ static void getReadableAppId(const uint8_t appid[U2F_APPID_SIZE],
 static const HDNode *getDerivedNode(uint32_t *address_n,
                                     size_t address_n_count) {
   static CONFIDENTIAL HDNode node;
-  if (!config_getU2FRoot(&node)) {
-    layoutHome();
-    debugLog(0, "", "ERR: Device not init");
-    return 0;
-  }
+  /* if (!config_getU2FRoot(&node)) { */
+  /*   layoutHome(); */
+  /*   debugLog(0, "", "ERR: Device not init"); */
+  /*   return 0; */
+  /* } */
 
   if (!address_n || address_n_count == 0) {
     return &node;

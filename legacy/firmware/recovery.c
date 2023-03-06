@@ -212,8 +212,11 @@ static bool recovery_done(void) {
     } else {
       // Inform the user about new mnemonic correctness (as well as whether it
       // is the same as the current one).
-      bool match =
-          (config_isInitialized() && config_containsMnemonic(new_mnemonic));
+      /* bool match = */
+      /*     (config_isInitialized() && config_containsMnemonic(new_mnemonic));
+       */
+      // TODO change this logic
+      bool match = (config_isInitialized());
       memzero(new_mnemonic, sizeof(new_mnemonic));
       if (recovery_byself) {
         if (match) {

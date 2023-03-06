@@ -80,7 +80,6 @@ extern uint32_t se_transmit_plain(uint8_t *pucSendData, uint16_t usSendLen,
                                   uint8_t *pucRevData, uint16_t *pusRevLen);
 
 bool se_device_init(uint8_t mode, const char *passphrase);
-void se_get_seed(bool mode, const char *passphrase, uint8_t *seed);
 bool se_ecdsa_get_pubkey(uint32_t *address, uint8_t count, uint8_t *pubkey);
 bool se_set_value(uint16_t key, const void *val_dest, uint16_t len);
 bool se_get_value(uint16_t key, void *val_dest, uint16_t max_len,
@@ -98,8 +97,6 @@ bool se_st_seed_en(uint16_t key, void *plain_data, uint16_t plain_len,
                    void *cipher_data, uint16_t *cipher_len);
 bool se_st_seed_de(uint16_t key, void *cipher_data, uint16_t cipher_len,
                    void *plain_data, uint16_t *plain_len);
-bool st_backup_entory_to_se(uint16_t key, uint8_t *seed, uint8_t seed_len);
-bool st_restore_entory_from_se(uint16_t key, uint8_t *seed, uint8_t *seed_len);
 
 bool se_isInitialized(void);
 bool se_hasPin(void);
@@ -117,11 +114,13 @@ bool se_isFactoryMode(void);
 bool se_isLifecyComSta(void);
 bool se_set_u2f_counter(uint32_t u2fcounter);
 bool se_get_u2f_counter(uint32_t *u2fcounter);
-bool se_set_mnemonic(void *mnemonic, uint16_t len);
+bool se_set_mnemonic(const void *mnemonic, uint16_t len);
 bool se_set_public_region(uint16_t offset, const void *val_dest, uint16_t len);
 bool se_get_public_region(uint16_t offset, void *val_dest, uint16_t len);
 bool se_set_private_region(uint16_t offset, const void *val_dest, uint16_t len);
 bool se_get_private_region(uint16_t offset, void *val_dest, uint16_t len);
+
+bool se_get_entroy(uint8_t entroy[32]);
 
 #else
 #define se_transmit(...) 0

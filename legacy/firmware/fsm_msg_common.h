@@ -401,11 +401,12 @@ void fsm_msgBackupDevice(const BackupDevice *msg) {
 
   CHECK_PIN_UNCACHED
 
-  char mnemonic[MAX_MNEMONIC_LEN + 1];
-  if (config_getMnemonic(mnemonic, sizeof(mnemonic))) {
-    reset_backup(true, mnemonic);
-  }
-  memzero(mnemonic, sizeof(mnemonic));
+  // TODO SE can't export mnemonic, does we need this function??
+  // char mnemonic[MAX_MNEMONIC_LEN + 1];
+  // if (config_getMnemonic(mnemonic, sizeof(mnemonic))) {
+  //   reset_backup(true, mnemonic);
+  // }
+  // memzero(mnemonic, sizeof(mnemonic));
 }
 
 void fsm_msgCancel(const Cancel *msg) {
@@ -685,7 +686,11 @@ void fsm_msgBixinReboot(const BixinReboot *msg) {
 #endif
 }
 
+// TODO: change logic SE can't export `mnemonic` `seed`
 void fsm_msgBixinMessageSE(const BixinMessageSE *msg) {
+  (void)msg;
+
+  /*
   bool request_restore = false;
   bool request_backup = false;
   RESP_INIT(BixinOutMessageSE);
@@ -700,6 +705,7 @@ void fsm_msgBixinMessageSE(const BixinMessageSE *msg) {
       layoutHome();
       return;
     }
+    // TODO SE can't export mnemonic
     if (config_hasMnemonic()) {
       char mnemonic[MAX_MNEMONIC_LEN + 1] = {0};
       uint8_t entropy[64] = {0};
@@ -778,7 +784,7 @@ void fsm_msgBixinMessageSE(const BixinMessageSE *msg) {
     msg_write(MessageType_MessageType_BixinOutMessageSE, resp);
   }
   layoutHome();
-  return;
+  return; */
 }
 
 void fsm_msgBixinVerifyDeviceRequest(const BixinVerifyDeviceRequest *msg) {
@@ -844,7 +850,9 @@ void fsm_msgBixinLoadDevice(const BixinLoadDevice *msg) {
   layoutHome();
 }
 
+// TODO SE can't export `mnemonic`
 void fsm_msgBixinBackupDevice(void) {
+  /*
   if (!config_getMnemonicsImported()) {
     fsm_sendFailure(FailureType_Failure_ProcessError,
                     "device is not supported");
@@ -859,7 +867,7 @@ void fsm_msgBixinBackupDevice(void) {
 
   msg_write(MessageType_MessageType_BixinBackupDeviceAck, resp);
   layoutHome();
-  return;
+  return;*/
 }
 
 void fsm_msgDeviceEraseSector(void) {

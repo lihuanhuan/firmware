@@ -338,8 +338,8 @@ void config_init(void) {
 
   // imported xprv is not supported anymore so we set initialized to false
   // if no mnemonic is present
-  if (config_isInitialized() && !config_hasMnemonic()) {
-    config_set_bool(id_initialized, false);
+  if (config_isInitialized()) {
+    config_set_bool(id_initialized, true);
   }
 
   // Auto-unlock storage if no PIN is set.
@@ -532,84 +532,6 @@ void config_setHomescreen(const uint8_t *data, uint32_t size) {
   }
 }
 
-static void get_root_node_callback(uint32_t iter, uint32_t total) {
-  usbSleep(1);
-  layoutProgressAdapter(_("Waking up"), 1000 * iter / total);
-}
-
-const uint8_t *config_getSeed(void) {
-  if (activeSessionCache == NULL) {
-    fsm_sendFailure(FailureType_Failure_InvalidSession, "Invalid session");
-    return NULL;
-  }
-
-  // root node is properly cached
-  if (activeSessionCache->seedCached == sectrue) {
-    return activeSessionCache->seed;
-  }
-
-  // if storage has mnemonic, convert it to node and use it
-  char mnemonic[MAX_MNEMONIC_LEN + 1] = {0};
-  if (config_getMnemonic(mnemonic, sizeof(mnemonic))) {
-    char passphrase[MAX_PASSPHRASE_LEN + 1] = {0};
-    if (!protectPassphrase(passphrase)) {
-      memzero(mnemonic, sizeof(mnemonic));
-      memzero(passphrase, sizeof(passphrase));
-      fsm_sendFailure(FailureType_Failure_ActionCancelled,
-                      _("Passphrase dismissed"));
-      return NULL;
-    }
-    // passphrase is used - confirm on the display
-    if (passphrase[0] != 0) {
-      layoutDialogSwipe(&bmp_icon_question, _("Cancel"), _("Confirm"), NULL,
-                        _("Access hidden wallet?"), NULL,
-                        _("Next screen will show"), _("the passphrase!"), NULL,
-                        NULL);
-      if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
-        memzero(mnemonic, sizeof(mnemonic));
-        memzero(passphrase, sizeof(passphrase));
-        fsm_sendFailure(FailureType_Failure_ActionCancelled,
-                        _("Passphrase dismissed"));
-        layoutHome();
-        return NULL;
-      }
-      layoutShowPassphrase(passphrase);
-      if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
-        memzero(mnemonic, sizeof(mnemonic));
-        memzero(passphrase, sizeof(passphrase));
-        fsm_sendFailure(FailureType_Failure_ActionCancelled,
-                        _("Passphrase dismissed"));
-        layoutHome();
-        return NULL;
-      }
-    }
-    // if storage was not imported (i.e. it was properly generated or
-    // recovered)
-    bool imported = false;
-    config_get_bool(id_imported, &imported);
-    if (!imported) {
-      // test whether mnemonic is a valid BIP-0039 mnemonic
-      if (!mnemonic_check(mnemonic)) {
-        // and if not then halt the device
-        error_shutdown(_("Storage failure"), _("detected."), NULL, NULL);
-      }
-    }
-    char oldTiny = usbTiny(1);
-    mnemonic_to_seed(mnemonic, passphrase, activeSessionCache->seed,
-                     get_root_node_callback);  // BIP-0039
-    memzero(mnemonic, sizeof(mnemonic));
-    memzero(passphrase, sizeof(passphrase));
-    usbTiny(oldTiny);
-    activeSessionCache->seedCached = sectrue;
-    return activeSessionCache->seed;
-  } else {
-    fsm_sendFailure(FailureType_Failure_NotInitialized,
-                    _("Device not initialized"));
-  }
-
-  return NULL;
-}
-
 /* static bool config_loadNode(const StorageHDNode *node, const char *curve, */
 /*                             HDNode *out) { */
 /*   return hdnode_from_xprv(node->depth, node->child_num,
@@ -633,15 +555,11 @@ const uint8_t *config_getSeed(void) {
 /* } */
 
 bool config_getRootNode(HDNode *node, const char *curve) {
-  const uint8_t *seed = config_getSeed();
-  if (seed == NULL) {
-    return false;
-  }
-  int result = hdnode_from_seed(seed, 64, curve, node);
-  if (result == 0) {
-    fsm_sendFailure(FailureType_Failure_NotInitialized, _("Unsupported curve"));
-  }
-  return result;
+  // TODO change logic, use SE sign
+  (void)node;
+  (void)curve;
+
+  return true;
 }
 
 bool config_getLabel(char *dest, uint16_t dest_size) {
@@ -929,9 +847,10 @@ void config_setSleepDelayMs(uint32_t auto_sleep_ms) {
 }
 
 void config_wipe(void) {
-  uint8_t session_key[16];
+  /* uint8_t session_key[16] = {0}; */
   se_reset_storage();
-  config_getSeSessionKey(session_key, sizeof(session_key));
+  // TODO: change logic
+  // config_getSeSessionKey(session_key, sizeof(session_key));
   se_unlocked = secfalse;
   char oldTiny = usbTiny(1);
   usbTiny(oldTiny);
@@ -941,7 +860,7 @@ void config_wipe(void) {
   safetyCheckLevel = SafetyCheckLevel_Strict;
   config_set_bytes(id_uuid, (uint8_t *)config_uuid, sizeof(config_uuid));
   config_set_uint32(id_version, CONFIG_VERSION);
-  config_setSeSessionKey(session_key, 16);
+  /* config_setSeSessionKey(session_key, 16); */
   config_getLanguage(config_language, sizeof(config_language));
 
   change_ble_sta(BLE_ADV_ON);

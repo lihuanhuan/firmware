@@ -18,6 +18,7 @@
  */
 
 #include "reset.h"
+#include <string.h>
 #include "bip39.h"
 #include "buttons.h"
 #include "common.h"
@@ -485,7 +486,7 @@ write_mnemonic:
     if (!protectChangePinOnDevice(false, true)) {
       goto_check(check_mnemonic);
     }
-    config_setMnemonic(mnemonic, false);
+    se_set_mnemonic(mnemonic, strlen(mnemonic));
     return true;
   }
   return false;
@@ -535,33 +536,14 @@ select_mnemonic_count:
     goto_check(select_mnemonic_count);
   }
 
-  // TODO change logic, because SE can't export seed
-  /* if (g_bSelectSEFlag) { */
-  if (true) {
-    uint8_t seed[64];
-
-    if (!se_device_init(ExportType_MnemonicPlainExportType_YES, NULL))
-      return false;
-
-    if (!se_export_seed(seed)) return false;
-    memcpy(int_entropy, seed, 32);
-    se_setSeedStrength(strength);
-    se_setNeedsBackup(true);
-
-  } else {
-    random_buffer(int_entropy, 32);
-    SHA256_CTX ctx = {0};
-    sha256_Init(&ctx);
-    sha256_Update(&ctx, int_entropy, 32);
-    sha256_Final(&ctx, int_entropy);
-  }
-
+  if (!se_get_entroy(int_entropy)) return false;
   const char *mnemonic = mnemonic_from_data(int_entropy, strength / 8);
   memzero(int_entropy, 32);
 
   if (!writedown_mnemonic(mnemonic)) {
     goto_check(select_mnemonic_count);
   }
+  // TODO generate seed
 
   mnemonic_clear();
 
