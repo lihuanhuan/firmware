@@ -21,61 +21,7 @@
 #define __CONFIG_H__
 
 #include "bip32.h"
-#include "messages-common.pb.h"
 #include "messages-management.pb.h"
-
-#define STORAGE_FIELD(TYPE, NAME) \
-  bool has_##NAME;                \
-  TYPE NAME;
-
-#define STORAGE_STRING(NAME, SIZE) \
-  bool has_##NAME;                 \
-  char NAME[SIZE];
-
-#define STORAGE_BYTES(NAME, SIZE) \
-  bool has_##NAME;                \
-  struct {                        \
-    uint32_t size;                \
-    uint8_t bytes[SIZE];          \
-  } NAME;
-
-#define STORAGE_BOOL(NAME) STORAGE_FIELD(bool, NAME)
-#define STORAGE_NODE(NAME) STORAGE_FIELD(StorageHDNode, NAME)
-#define STORAGE_UINT32(NAME) STORAGE_FIELD(uint32_t, NAME)
-
-typedef struct {
-  uint32_t depth;
-  uint32_t fingerprint;
-  uint32_t child_num;
-  struct {
-    uint32_t size;
-    uint8_t bytes[32];
-  } chain_code;
-
-  STORAGE_BYTES(private_key, 32);
-  STORAGE_BYTES(public_key, 33);
-} StorageHDNode;
-
-typedef struct _Storage {
-  uint32_t version;
-
-  STORAGE_NODE(node)
-  STORAGE_STRING(mnemonic, 241)
-  STORAGE_BOOL(passphrase_protection)
-  STORAGE_UINT32(pin_failed_attempts)
-  STORAGE_STRING(pin, 10)
-  STORAGE_STRING(language, 17)
-  STORAGE_STRING(label, 33)
-  STORAGE_BOOL(imported)
-  STORAGE_BYTES(homescreen, 1024)
-  STORAGE_UINT32(u2f_counter)
-  STORAGE_BOOL(needs_backup)
-  STORAGE_UINT32(flags)
-  STORAGE_NODE(u2froot)
-  STORAGE_BOOL(unfinished_backup)
-  STORAGE_UINT32(auto_lock_delay_ms)
-  STORAGE_BOOL(no_backup)
-} Storage;
 
 typedef enum {
   COIN_SWITCH_ETH_EIP712 = 0x01,
@@ -118,7 +64,6 @@ void config_setLabel(const char *label);
 
 bool config_getLanguage(char *dest, uint16_t dest_size);
 void config_setLanguage(const char *lang);
-bool config_isLanguageSet(void);
 
 void config_setPassphraseProtection(bool passphrase_protection);
 bool config_getPassphraseProtection(bool *passphrase_protection);

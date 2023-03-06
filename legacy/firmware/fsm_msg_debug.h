@@ -54,7 +54,7 @@ void fsm_msgDebugLinkGetState(const DebugLinkGetState *msg) {
       &resp.mnemonic_secret.size);
   resp.mnemonic_type = 0;  // BIP-39
 
-  resp.has_node = config_dumpNode(&(resp.node));
+  resp.has_node = false;
 
   resp.has_passphrase_protection =
       config_getPassphraseProtection(&(resp.passphrase_protection));

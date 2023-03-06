@@ -128,6 +128,7 @@ void reset_init(bool display_random, uint32_t _strength,
   awaiting_entropy = true;
 }
 
+// TODO change/delete this function logic, because SE can't export seed
 void reset_entropy(const uint8_t *ext_entropy, uint32_t len) {
   if (!awaiting_entropy) {
     fsm_sendFailure(FailureType_Failure_UnexpectedMessage,
@@ -136,7 +137,8 @@ void reset_entropy(const uint8_t *ext_entropy, uint32_t len) {
   }
   awaiting_entropy = false;
 
-  if (g_bSelectSEFlag) {
+  /* if (g_bSelectSEFlag) { */
+  if (true) {
     uint8_t seed[64];
 
     if (!se_device_init(ExportType_MnemonicPlainExportType_YES, NULL)) {
@@ -533,7 +535,9 @@ select_mnemonic_count:
     goto_check(select_mnemonic_count);
   }
 
-  if (g_bSelectSEFlag) {
+  // TODO change logic, because SE can't export seed
+  /* if (g_bSelectSEFlag) { */
+  if (true) {
     uint8_t seed[64];
 
     if (!se_device_init(ExportType_MnemonicPlainExportType_YES, NULL))
