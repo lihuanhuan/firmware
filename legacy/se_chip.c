@@ -799,7 +799,49 @@ bool se_isLifecyComSta(void) {
   return false;
 }
 
-bool se_set_public_region(uint16_t offset, const void *val_dest, uint16_t len) {
+bool se_sessionStart(uint8_t *session_id_bytes) {
+  uint16_t recv_len = 0;  // 32 bytes session id
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x00, NULL, 0,
+                             session_id_bytes, &recv_len, MI2C_ENCRYPT,
+                             GET_SESTORE_DATA)) {
+    return false;
+  }
+  if (recv_len != 32) return false;
+  return true;
+}
+
+bool se_sessionOpen(uint8_t *session_id_bytes) {
+  uint16_t recv_len = 0;
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x01, session_id_bytes, 32,
+                             NULL, &recv_len, MI2C_ENCRYPT, SET_SESTORE_DATA)) {
+    return false;
+  }
+  return true;
+}
+
+bool se_sessionGens(uint8_t *pass_phase, uint16_t len, uint8_t mode) {
+  uint16_t recv_len = 0;
+  uint8_t cur_wrflag = 0xff;  // seed and minisecret is different
+  cur_wrflag =
+      (mode == SE_WRFLG_GENSEED) ? SE_WRFLG_GENSEED : SE_WRFLG_GENMINISECRET;
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x02, pass_phase, len, NULL,
+                             &recv_len, MI2C_ENCRYPT, cur_wrflag)) {
+    return false;
+  }
+  return true;
+}
+
+bool se_sessionClose(uint8_t *session_id_bytes) {
+  uint16_t recv_len = 0;
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x02, session_id_bytes, 32,
+                             NULL, &recv_len, MI2C_ENCRYPT, GET_SESTORE_DATA)) {
+    return false;
+  }
+  return true;
+}
+
+bool se_set_public_region(const uint16_t offset, const void *val_dest,
+                          uint16_t len) {
   uint8_t cmd[5] = {0x00, 0xE6, 0x00, 0x00, 0x10};
   uint8_t recv_buf[8];
   uint16_t recv_len = sizeof(recv_buf);
@@ -830,7 +872,6 @@ bool se_get_public_region(uint16_t offset, void *val_dest, uint16_t len) {
   return true;
 }
 
-#define SE_PRIVATE_REGION_BASE PUBLIC_REGION_SIZE
 bool se_set_private_region(uint16_t offset, const void *val_dest,
                            uint16_t len) {
   uint8_t cmd[5] = {0x00, 0xE6, 0x00, 0x00, 0x10};
