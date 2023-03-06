@@ -626,7 +626,7 @@ static void _layout_home(bool update_menu) {
 
   oledRefresh();
 
-  bool initialized = config_isInitialized() | config_getMnemonicsImported();
+  bool initialized = config_isInitialized() || config_getMnemonicsImported();
 
   if (update_menu) main_menu_init(initialized);
 
