@@ -420,7 +420,7 @@ bool se_ecdsa_get_pubkey(uint32_t *address, uint8_t count, uint8_t *pubkey) {
   return true;
 }
 
-bool se_set_value(const uint16_t key, const void *val_dest, uint16_t len) {
+bool se_set_value(uint16_t key, const void *val_dest, uint16_t len) {
   uint8_t flag = key >> 8;
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (key & 0xFF), (uint8_t *)val_dest,
                              len, NULL, 0, (flag & MI2C_PLAIN),
@@ -430,7 +430,7 @@ bool se_set_value(const uint16_t key, const void *val_dest, uint16_t len) {
   return true;
 }
 
-bool se_get_value(const uint16_t key, void *val_dest, uint16_t max_len,
+bool se_get_value(uint16_t key, void *val_dest, uint16_t max_len,
                   uint16_t *len) {
   uint8_t flag = key >> 8;
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (key & 0xFF), NULL, 0, val_dest,
@@ -441,7 +441,7 @@ bool se_get_value(const uint16_t key, void *val_dest, uint16_t max_len,
   return true;
 }
 
-bool se_delete_key(const uint16_t key) {
+bool se_delete_key(uint16_t key) {
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (key & 0xFF), NULL, 0, NULL, 0,
                              MI2C_PLAIN, DELETE_SESTORE_DATA)) {
     return false;
@@ -578,7 +578,7 @@ bool se_device_init(uint8_t mode, const char *passphrase) {
   return true;
 }
 
-bool se_st_seed_en(const uint16_t key, void *plain_data, uint16_t plain_len,
+bool se_st_seed_en(uint16_t key, void *plain_data, uint16_t plain_len,
                    void *cipher_data, uint16_t *cipher_len) {
   uint8_t flag = key >> 8;
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (key & 0xFF), plain_data,
@@ -589,7 +589,7 @@ bool se_st_seed_en(const uint16_t key, void *plain_data, uint16_t plain_len,
   return true;
 }
 
-bool se_st_seed_de(const uint16_t key, void *cipher_data, uint16_t cipher_len,
+bool se_st_seed_de(uint16_t key, void *cipher_data, uint16_t cipher_len,
                    void *plain_data, uint16_t *plain_len) {
   uint8_t flag = key >> 8;
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (key & 0xFF), cipher_data,
@@ -600,8 +600,7 @@ bool se_st_seed_de(const uint16_t key, void *cipher_data, uint16_t cipher_len,
   return true;
 }
 
-bool st_backup_entory_to_se(const uint16_t key, uint8_t *seed,
-                            uint8_t seed_len) {
+bool st_backup_entory_to_se(uint16_t key, uint8_t *seed, uint8_t seed_len) {
   uint8_t flag = key >> 8;
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (key & 0xFF), seed, seed_len,
                              NULL, NULL, (flag & MI2C_PLAIN),
@@ -611,8 +610,7 @@ bool st_backup_entory_to_se(const uint16_t key, uint8_t *seed,
   return true;
 }
 
-bool st_restore_entory_from_se(const uint16_t key, uint8_t *seed,
-                               uint8_t *seed_len) {
+bool st_restore_entory_from_se(uint16_t key, uint8_t *seed, uint8_t *seed_len) {
   uint8_t flag = key >> 8;
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (key & 0xFF), NULL, 0, seed,
                              (uint16_t *)seed_len, (flag & MI2C_PLAIN),
@@ -801,8 +799,7 @@ bool se_isLifecyComSta(void) {
   return false;
 }
 
-bool se_set_public_region(const uint16_t offset, const void *val_dest,
-                          uint16_t len) {
+bool se_set_public_region(uint16_t offset, const void *val_dest, uint16_t len) {
   uint8_t cmd[5] = {0x00, 0xE6, 0x00, 0x00, 0x10};
   uint8_t recv_buf[8];
   uint16_t recv_len = sizeof(recv_buf);
@@ -818,7 +815,7 @@ bool se_set_public_region(const uint16_t offset, const void *val_dest,
   return true;
 }
 
-bool se_get_public_region(const uint16_t offset, void *val_dest, uint16_t len) {
+bool se_get_public_region(uint16_t offset, void *val_dest, uint16_t len) {
   uint8_t cmd[5] = {0x00, 0xE5, 0x00, 0x00, 0x10};
   uint16_t recv_len = len;
   if (offset > PUBLIC_REGION_SIZE) return false;
@@ -833,14 +830,14 @@ bool se_get_public_region(const uint16_t offset, void *val_dest, uint16_t len) {
   return true;
 }
 
-bool se_set_private_region(const uint16_t offset, const void *val_dest,
+#define SE_PRIVATE_REGION_BASE PUBLIC_REGION_SIZE
+bool se_set_private_region(uint16_t offset, const void *val_dest,
                            uint16_t len) {
   uint8_t cmd[5] = {0x00, 0xE6, 0x00, 0x00, 0x10};
   uint8_t recv_buf[8];
   uint16_t recv_len = sizeof(recv_buf);
-  if (offset < PUBLIC_REGION_SIZE ||
-      offset > PUBLIC_REGION_SIZE + PRIVATE_REGION_SIZE)
-    return false;
+  if (offset + len > PRIVATE_REGION_SIZE) return false;
+  offset += SE_PRIVATE_REGION_BASE;
   cmd[2] = (uint8_t)((uint16_t)offset >> 8 & 0x00FF);
   cmd[3] = (uint8_t)((uint16_t)offset & 0x00FF);
   cmd[4] = len;
@@ -852,13 +849,11 @@ bool se_set_private_region(const uint16_t offset, const void *val_dest,
   return true;
 }
 
-bool se_get_private_region(const uint16_t offset, void *val_dest,
-                           uint16_t len) {
+bool se_get_private_region(uint16_t offset, void *val_dest, uint16_t len) {
   uint8_t cmd[5] = {0x00, 0xE5, 0x00, 0x00, 0x10};
   uint16_t recv_len = len;
-  if (offset < PUBLIC_REGION_SIZE ||
-      offset > PUBLIC_REGION_SIZE + PRIVATE_REGION_SIZE)
-    return false;
+  if (offset + len > PRIVATE_REGION_SIZE) return false;
+  offset += SE_PRIVATE_REGION_BASE;
   cmd[2] = (uint8_t)((uint16_t)offset >> 8 & 0x00FF);
   cmd[3] = (uint8_t)((uint16_t)offset & 0x00FF);
   cmd[4] = len;

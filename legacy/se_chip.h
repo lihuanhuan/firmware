@@ -38,8 +38,8 @@
 #define MI2C_CMD_ECC_EDDSA (0xE3)
 #define MI2C_CMD_READ_SESTOR_REGION (0xE5)
 #define MI2C_CMD_WRITE_SESTOR_REGION (0xE6)
-#define PUBLIC_REGION_SIZE (0x400)
-#define PRIVATE_REGION_SIZE (PUBLIC_REGION_SIZE)
+#define PUBLIC_REGION_SIZE (0x600)
+#define PRIVATE_REGION_SIZE (0x200)
 
 // ecc ed2519 index
 #define ECC_INDEX_GITPUBKEY (0x00)
@@ -79,10 +79,10 @@ extern uint32_t se_transmit_plain(uint8_t *pucSendData, uint16_t usSendLen,
 bool se_device_init(uint8_t mode, const char *passphrase);
 void se_get_seed(bool mode, const char *passphrase, uint8_t *seed);
 bool se_ecdsa_get_pubkey(uint32_t *address, uint8_t count, uint8_t *pubkey);
-bool se_set_value(const uint16_t key, const void *val_dest, uint16_t len);
-bool se_get_value(const uint16_t key, void *val_dest, uint16_t max_len,
+bool se_set_value(uint16_t key, const void *val_dest, uint16_t len);
+bool se_get_value(uint16_t key, void *val_dest, uint16_t max_len,
                   uint16_t *len);
-bool se_delete_key(const uint16_t key);
+bool se_delete_key(uint16_t key);
 void se_reset_storage(void);
 bool se_get_sn(char **serial);
 char *se_get_version(void);
@@ -91,14 +91,12 @@ bool se_verify(void *message, uint16_t message_len, uint16_t max_len,
                uint16_t *signature_len);
 bool se_backup(void *val_dest, uint16_t *len);
 bool se_restore(void *val_src, uint16_t src_len);
-bool se_st_seed_en(const uint16_t key, void *plain_data, uint16_t plain_len,
+bool se_st_seed_en(uint16_t key, void *plain_data, uint16_t plain_len,
                    void *cipher_data, uint16_t *cipher_len);
-bool se_st_seed_de(const uint16_t key, void *cipher_data, uint16_t cipher_len,
+bool se_st_seed_de(uint16_t key, void *cipher_data, uint16_t cipher_len,
                    void *plain_data, uint16_t *plain_len);
-bool st_backup_entory_to_se(const uint16_t key, uint8_t *seed,
-                            uint8_t seed_len);
-bool st_restore_entory_from_se(const uint16_t key, uint8_t *seed,
-                               uint8_t *seed_len);
+bool st_backup_entory_to_se(uint16_t key, uint8_t *seed, uint8_t seed_len);
+bool st_restore_entory_from_se(uint16_t key, uint8_t *seed, uint8_t *seed_len);
 
 bool se_isInitialized(void);
 bool se_hasPin(void);
@@ -117,12 +115,10 @@ bool se_isLifecyComSta(void);
 bool se_set_u2f_counter(uint32_t u2fcounter);
 bool se_get_u2f_counter(uint32_t *u2fcounter);
 bool se_set_mnemonic(void *mnemonic, uint16_t len);
-bool se_set_public_region(const uint16_t offset, const void *val_dest,
-                          uint16_t len);
-bool se_get_public_region(const uint16_t offset, void *val_dest, uint16_t len);
-bool se_set_private_region(const uint16_t offset, const void *val_dest,
-                           uint16_t len);
-bool se_get_private_region(const uint16_t offset, void *val_dest, uint16_t len);
+bool se_set_public_region(uint16_t offset, const void *val_dest, uint16_t len);
+bool se_get_public_region(uint16_t offset, void *val_dest, uint16_t len);
+bool se_set_private_region(uint16_t offset, const void *val_dest, uint16_t len);
+bool se_get_private_region(uint16_t offset, void *val_dest, uint16_t len);
 
 #else
 #define se_transmit(...) 0
