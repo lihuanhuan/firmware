@@ -68,76 +68,59 @@ void random_buffer_ST(uint8_t *buf, size_t len) {
   }
 }
 
-void se_ecdh_session_key(uint8_t *inputdata, uint16_t len) {
-  uint8_t ucRandom[32];
-  uint8_t ucSTPubkey[65];
-  uint8_t ucSEPubkey[65 + 3];
-  uint8_t ucSessionkey[65];
-  uint8_t ucGetPubCmd[5] = {0x00, 0xfa, 0x00, 0x00, 0x00};
-  uint8_t ucEcdhCmd[85] = {0x00, 0xfa, 0x01, 0x00, 0x50};
-  uint16_t usRevLen;
-  uint8_t ucHash[32];
-  uint8_t ucEncData[16];
-  aes_encrypt_ctx ctxe;
+// TODO
+static bool xor_cal(uint8_t *pucSrc1, uint8_t *pucSrc2, uint16_t usLen,
+                    uint8_t *pucDest) {
+  uint16_t i;
 
-  const curve_info *info = get_curve_by_name(NIST256P1);
-  // st gen keypair
-  random_buffer_ST(ucRandom, sizeof(ucRandom));
-  ecdsa_get_public_key65(info->params, ucRandom, ucSTPubkey);
-  // get se pubkey
-  usRevLen = sizeof(ucSEPubkey);
-  se_transmit_plain(ucGetPubCmd, sizeof(ucGetPubCmd), ucSEPubkey, &usRevLen);
-  // ecdh hash
-  ecdh_multiply(info->params, ucRandom, ucSEPubkey, ucSessionkey);
-  // x hash256
-  hasher_Raw(HASHER_SHA2, ucSessionkey + 1, 32, ucHash);
-  memcpy(g_ucSessionKey, ucHash, 16);
-  // enc st tag
-  memset(&ctxe, 0, sizeof(aes_encrypt_ctx));
-  aes_encrypt_key128(g_ucSessionKey, &ctxe);
-  aes_ecb_encrypt(inputdata, ucEncData, len, &ctxe);
-  // data: st pubkey+ enc session tag
-  memcpy(ucEcdhCmd + 5, ucSTPubkey + 1, 64);
-  memcpy(ucEcdhCmd + 5 + 64, ucEncData, 16);
-  if (MI2C_OK !=
-      se_transmit_plain(ucEcdhCmd, sizeof(ucEcdhCmd), ucSEPubkey, &usRevLen)) {
-    memset(g_ucSessionKey, 0x00, SESSION_KEYLEN);
+  for (i = 0; i < usLen; i++) {
+    pucDest[i] = pucSrc1[i] ^ pucSrc2[i];
   }
+  return true;
 }
 
 /*
  *master i2c synsessionkey
  */
 void se_sync_session_key(void) {
-  uint8_t ucSessionMode;
-  uint8_t ucRandom[16];
-  uint8_t session_key[16];
-  uint8_t SessionTag[16];
+  uint8_t r1[16], r2[16], r3[32];
+  uint8_t
+      default_key[SESSION_KEYLEN];  // TODO need read from special flash addr
+  uint8_t data_buf[64], hash_buf[32];
+  uint8_t sync_cmd[5 + 48] = {0x00, 0xfa, 0x00, 0x00, 0x30};
+  uint16_t recv_len = 0xff;
+  aes_encrypt_ctx en_ctxe;
+  aes_decrypt_ctx de_ctxe;
 
-  if (!config_getSeSessionKey(session_key, sizeof(session_key))) {
-    // enable mode session
-    ucSessionMode = 1;
-    memcpy(g_ucSessionKey, (uint8_t *)SessionModeMode_ROMKEY,
-           sizeof(SessionModeMode_ROMKEY));
-    if (MI2C_OK == se_transmit(MI2C_CMD_WR_PIN, SESSION_FALG_INDEX,
-                               (uint8_t *)&ucSessionMode, 1, NULL, 0, 0x00,
-                               SET_SESTORE_DATA)) {
-      random_buffer_ST(ucRandom, sizeof(ucRandom));
-      memcpy(g_ucSessionKey, (uint8_t *)ucDefaultSessionKey,
-             sizeof(ucDefaultSessionKey));
-      if (MI2C_OK == se_transmit(MI2C_CMD_WR_PIN, SESSION_ADDR_INDEX, ucRandom,
-                                 sizeof(ucRandom), NULL, 0, 0x00,
-                                 SET_SESTORE_DATA)) {
-        memcpy(g_ucSessionKey, ucRandom, SESSION_KEYLEN);
-        config_setSeSessionKey(g_ucSessionKey, SESSION_KEYLEN);
-      }
-    }
-  } else {
-    memcpy(g_ucSessionKey, session_key, SESSION_KEYLEN);
+  // get random from se
+  randomBuf_SE(r1, 16);
+  // get random itself
+  random_buffer_ST(r2, 16);
+  // cal tmp sessionkey with x hash256
+  xor_cal(r1, r2, sizeof(r1), data_buf);
+  hasher_Raw(HASHER_SHA2, data_buf, 16, hash_buf);
+  // use session key organization data1
+  memcpy(g_ucSessionKey, hash_buf, 16);
+  aes_encrypt_key128(g_ucSessionKey, &en_ctxe);
+  aes_ecb_encrypt(r1, data_buf, sizeof(r1), &en_ctxe);
+  // organization data2
+  memcpy(r3, r1, sizeof(r1));
+  memcpy(r3 + sizeof(r1), r2, sizeof(r2));
+  aes_encrypt_key128(default_key, &en_ctxe);
+  aes_ecb_encrypt(r3, data_buf + 16, sizeof(r1) + sizeof(r2), &en_ctxe);
+  // send data1 + data2 to se and recv returned result
+  memcpy(sync_cmd + 5, data_buf, 48);
+  if (MI2C_OK !=
+      se_transmit_plain(sync_cmd, sizeof(sync_cmd), data_buf, &recv_len)) {
+    memset(g_ucSessionKey, 0x00, SESSION_KEYLEN);
   }
-  memcpy(SessionTag, g_ucSessionKey, SESSION_KEYLEN);
 
-  se_ecdh_session_key(SessionTag, SESSION_KEYLEN);
+  // handle the returned data
+  aes_decrypt_key128(g_ucSessionKey, &de_ctxe);
+  aes_ecb_decrypt(data_buf, r3, recv_len, &de_ctxe);
+  if (memcmp(r2, r3, sizeof(r2)) != 0) {
+    memset(g_ucSessionKey, 0x00, SESSION_KEYLEN);
+  }
 }
 
 /*

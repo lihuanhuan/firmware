@@ -66,7 +66,7 @@ typedef struct {
   CONFIG_BOOL(initialized);
   CONFIG_BYTES(session_key, 16);
   CONFIG_BOOL(mnemonics_imported);
-  CONFIG_BOOL(sleep_delay_ms);
+  CONFIG_UINT32(sleep_delay_ms);
   CONFIG_UINT32(coin_function_switch);
 } PubConfig __attribute__((aligned(1)));
 
@@ -356,7 +356,7 @@ void config_init(void) {
   }
 
 #if !EMULATOR
-  // se_sync_session_key();
+  se_sync_session_key();
 #endif
 
   // If UUID is not set, then the config is uninitialized.
