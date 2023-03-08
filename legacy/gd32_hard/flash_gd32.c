@@ -61,6 +61,13 @@ secbool flash_unlock_write(void) { return sectrue; }
 
 secbool flash_lock_write(void) { return sectrue; }
 
+/**
+ * @brief  Flash memory read routine
+ * @param  addr: address to be read from
+ * @retval Pointer to the physical address where data should be read
+ */
+uint8_t *flash_read_bytes(uint32_t addr) { return (uint8_t *)(addr); }
+
 const void *flash_get_address(uint8_t sector, uint32_t offset, uint32_t size) {
   if (sector >= FLASH_SECTOR_COUNT) {
     return NULL;

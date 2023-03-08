@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define SESSION_KEYLEN (16)
+#define DEFAULT_SECKEYADDR (0x0800F000UL)
 
 // session key addr
 #define SESSION_FALG (0x55AA55AA)

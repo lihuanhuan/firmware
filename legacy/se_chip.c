@@ -11,6 +11,8 @@
 #include "secbool.h"
 #include "sys.h"
 #include "util.h"
+#include "flash.h"
+#include "memzero.h"
 
 #define APP (0x01 << 8)
 
@@ -31,13 +33,14 @@ uint8_t g_ucSessionKey[SESSION_KEYLEN];
 
 const char NIST256P1[] = "nist256p1";
 
-const uint8_t SessionModeMode_ROMKEY[16] = {0x80, 0xBA, 0x15, 0x37, 0xD2, 0x84,
-                                            0x8D, 0x64, 0xA7, 0xB4, 0x58, 0xF4,
-                                            0x58, 0xFE, 0xD8, 0x84};
+// const uint8_t SessionModeMode_ROMKEY[16] = {0x80, 0xBA, 0x15, 0x37, 0xD2,
+// 0x84,
+//                                             0x8D, 0x64, 0xA7, 0xB4, 0x58,
+//                                             0xF4, 0x58, 0xFE, 0xD8, 0x84};
 
-const uint8_t ucDefaultSessionKey[16] = {0x97, 0x1e, 0xaa, 0x62, 0xbf, 0xb1,
-                                         0xfe, 0xb6, 0x99, 0x88, 0x0a, 0xb2,
-                                         0xdb, 0x59, 0x88, 0x59};
+// const uint8_t ucDefaultSessionKey[16] = {0x97, 0x1e, 0xaa, 0x62, 0xbf, 0xb1,
+//                                          0xfe, 0xb6, 0x99, 0x88, 0x0a, 0xb2,
+//                                          0xdb, 0x59, 0x88, 0x59};
 
 extern void config_setSeSessionKey(const uint8_t *data, uint32_t size);
 extern bool config_getSeSessionKey(uint8_t *dest, uint16_t dest_size);
@@ -79,24 +82,28 @@ static bool xor_cal(uint8_t *pucSrc1, uint8_t *pucSrc2, uint16_t usLen,
   return true;
 }
 
+// extern uint32_t _g_sec_session_key_addr[];
 /*
  *master i2c synsessionkey
  */
 void se_sync_session_key(void) {
   uint8_t r1[16], r2[16], r3[32];
-  uint8_t
-      default_key[SESSION_KEYLEN];  // TODO need read from special flash addr
+  uint8_t *pDefault_key;  // TODO need read from special flash addr
   uint8_t data_buf[64], hash_buf[32];
   uint8_t sync_cmd[5 + 48] = {0x00, 0xfa, 0x00, 0x00, 0x30};
   uint16_t recv_len = 0xff;
   aes_encrypt_ctx en_ctxe;
   aes_decrypt_ctx de_ctxe;
 
+  pDefault_key = flash_read_bytes(DEFAULT_SECKEYADDR);  // DEFAULT_SECKEYADDR
+  // memzero(data_buf, sizeof(data_buf));
+  // memcpy(data_buf, pDefault_key, 16);
   // get random from se
   randomBuf_SE(r1, 16);
   // get random itself
   random_buffer_ST(r2, 16);
   // cal tmp sessionkey with x hash256
+  memzero(data_buf, sizeof(data_buf));
   xor_cal(r1, r2, sizeof(r1), data_buf);
   hasher_Raw(HASHER_SHA2, data_buf, 16, hash_buf);
   // use session key organization data1
@@ -106,7 +113,7 @@ void se_sync_session_key(void) {
   // organization data2
   memcpy(r3, r1, sizeof(r1));
   memcpy(r3 + sizeof(r1), r2, sizeof(r2));
-  aes_encrypt_key128(default_key, &en_ctxe);
+  aes_encrypt_key128(pDefault_key, &en_ctxe);
   aes_ecb_encrypt(r3, data_buf + 16, sizeof(r1) + sizeof(r2), &en_ctxe);
   // send data1 + data2 to se and recv returned result
   memcpy(sync_cmd + 5, data_buf, 48);

@@ -69,7 +69,10 @@ void setup(void) {
 // Technical Reference Manual. According to section 4.4.2 and 4.4.7 of the
 // "STM32F10xxx/20xxx/21xxx/L1xxxx Cortex-M3 programming manual", STM32F2
 // series MCUs are r2p0 and always have this bit set on reset already.
-#if (GD32F470 != 1)
+#if GD32F470
+  extern void SystemInit(void);
+  SystemInit();
+#else
   SCB_CCR |= SCB_CCR_STKALIGN;
   // setup clock
   struct rcc_clock_scale clock = rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_120MHZ];

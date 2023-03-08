@@ -116,7 +116,7 @@ struct CfgRecord {
 
 #define DEF_PRIVATE_ID(field)                                                \
   static const struct CfgRecord id_##field = {                               \
-      MARK_PUBLIC_ID(offsetof(PriConfig, field)),                            \
+      MARK_PRIVATE_ID(offsetof(PriConfig, field)),                           \
       field_size(PriConfig, field),                                          \
   };                                                                         \
   _Static_assert(offsetof(PriConfig, field) + field_size(PriConfig, field) < \
@@ -255,9 +255,10 @@ inline static secbool config_set(const struct CfgRecord rcd, const void *v,
   bool pri = rcd.id & (1 << 31);
   bool (*writer)(uint16_t, const void *, uint16_t) =
       pri ? se_set_private_region : se_set_public_region;
+
+  CHECK_CONFIG_OP(writer(rcd.meta.offset, v, l));
   // set has_xxx flag
-  CHECK_CONFIG_OP(writer(rcd.meta.offset - 1, &TRUE_BYTE, 1));
-  return writer(rcd.meta.offset, v, l);
+  return writer(rcd.meta.offset - 1, &TRUE_BYTE, 1);
 }
 
 inline static secbool config_get_bool(const struct CfgRecord id, bool *value) {
