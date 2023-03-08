@@ -99,10 +99,9 @@ static void __attribute__((noreturn)) load_app(int signed_firmware) {
 static void bootloader_loop(void) { usbLoop(); }
 
 extern void SystemInit(void);
+
 int main(void) {
-#if GD32F470
   SystemInit();
-#endif
   setup();
 
   setupApp();
@@ -118,9 +117,7 @@ int main(void) {
 
 int main_ref(void) {
   static bool force_boot = false;
-#if GD32F470
   SystemInit();
-#endif
   if (memcmp((uint8_t *)(ST_RAM_END - 4), "boot", 4) == 0) {
     force_boot = true;
   }

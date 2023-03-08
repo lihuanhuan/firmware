@@ -25,11 +25,10 @@
 #include <libopencm3/stm32/rng.h>
 #include <libopencm3/stm32/spi.h>
 
-#include "buttons.h"
 #include "layout.h"
 #include "mi2c.h"
 #include "oled.h"
-#include "rng.h"
+#include "rand.h"
 #include "si2c.h"
 #include "sys.h"
 #include "usart.h"
@@ -62,22 +61,17 @@ void hard_fault_handler(void) { fault_handler("Hard fault"); }
 void mem_manage_handler(void) { fault_handler("Memory fault"); }
 
 void setup(void) {
-// set SCB_CCR STKALIGN bit to make sure 8-byte stack alignment on exception
-// entry is in effect. This is not strictly necessary for the current Trezor
-// system. This is here to comply with guidance from section 3.3.3 "Binary
-// compatibility with other Cortex processors" of the ARM Cortex-M3 Processor
-// Technical Reference Manual. According to section 4.4.2 and 4.4.7 of the
-// "STM32F10xxx/20xxx/21xxx/L1xxxx Cortex-M3 programming manual", STM32F2
-// series MCUs are r2p0 and always have this bit set on reset already.
-#if GD32F470
+  // set SCB_CCR STKALIGN bit to make sure 8-byte stack alignment on exception
+  // entry is in effect. This is not strictly necessary for the current Trezor
+  // system. This is here to comply with guidance from section 3.3.3 "Binary
+  // compatibility with other Cortex processors" of the ARM Cortex-M3 Processor
+  // Technical Reference Manual. According to section 4.4.2 and 4.4.7 of the
+  // "STM32F10xxx/20xxx/21xxx/L1xxxx Cortex-M3 programming manual", STM32F2
+  // series MCUs are r2p0 and always have this bit set on reset already.
+
+  // gd32f470
   extern void SystemInit(void);
   SystemInit();
-#else
-  SCB_CCR |= SCB_CCR_STKALIGN;
-  // setup clock
-  struct rcc_clock_scale clock = rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_120MHZ];
-  rcc_clock_setup_hse_3v3(&clock);
-#endif
   // enable GPIO clock - A (oled), B(oled), C (buttons)
   rcc_periph_clock_enable(RCC_GPIOA);
   rcc_periph_clock_enable(RCC_GPIOB);
@@ -204,156 +198,13 @@ void setupApp(void) {
   oledUpdateClk();
 }
 
-#define MPU_RASR_SIZE_32B (0x04UL << MPU_RASR_SIZE_LSB)
-#define MPU_RASR_SIZE_1KB (0x09UL << MPU_RASR_SIZE_LSB)
-#define MPU_RASR_SIZE_4KB (0x0BUL << MPU_RASR_SIZE_LSB)
-#define MPU_RASR_SIZE_8KB (0x0CUL << MPU_RASR_SIZE_LSB)
-#define MPU_RASR_SIZE_16KB (0x0DUL << MPU_RASR_SIZE_LSB)
-#define MPU_RASR_SIZE_32KB (0x0EUL << MPU_RASR_SIZE_LSB)
-#define MPU_RASR_SIZE_64KB (0x0FUL << MPU_RASR_SIZE_LSB)
-#define MPU_RASR_SIZE_128KB (0x10UL << MPU_RASR_SIZE_LSB)
-#define MPU_RASR_SIZE_256KB (0x11UL << MPU_RASR_SIZE_LSB)
-#define MPU_RASR_SIZE_512KB (0x12UL << MPU_RASR_SIZE_LSB)
-#define MPU_RASR_SIZE_1MB (0x13UL << MPU_RASR_SIZE_LSB)
-#define MPU_RASR_SIZE_512MB (0x1CUL << MPU_RASR_SIZE_LSB)
-#define MPU_RASR_SIZE_4GB (0x1FUL << MPU_RASR_SIZE_LSB)
-
-// http://infocenter.arm.com/help/topic/com.arm.doc.dui0552a/BABDJJGF.html
-#define MPU_RASR_ATTR_FLASH (MPU_RASR_ATTR_C)
-#define MPU_RASR_ATTR_SRAM (MPU_RASR_ATTR_C | MPU_RASR_ATTR_S)
-#define MPU_RASR_ATTR_PERIPH (MPU_RASR_ATTR_B | MPU_RASR_ATTR_S)
-
-#define FLASH_BASE (0x08000000U)
-#define SRAM_BASE (0x20000000U)
-
 void mpu_config_off(void) {
-#if GD32F470
   mpu_setup_gd32(MPU_CONFIG_OFF);
-#else
-  // Disable MPU
-  MPU_CTRL = 0;
-#endif
   __asm__ volatile("dsb");
   __asm__ volatile("isb");
 }
 
-void mpu_config_bootloader(void) {
-#if GD32F470
-  mpu_setup_gd32(MPU_CONFIG_BOOT);
-#else
-  // Disable MPU
-  MPU_CTRL = 0;
-
-  // Note: later entries overwrite previous ones
-
-  // Everything (0x00000000 - 0xFFFFFFFF, 4 GiB, read-write)
-  MPU_RBAR = 0 | MPU_RBAR_VALID | (0 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_FLASH | MPU_RASR_SIZE_4GB |
-             MPU_RASR_ATTR_AP_PRW_URW;
-
-  // Flash (0x8007FE0 - 0x08007FFF, 32 B, no-access)
-  MPU_RBAR =
-      (FLASH_BASE + 0x7FE0) | MPU_RBAR_VALID | (1 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_FLASH | MPU_RASR_SIZE_32B |
-             MPU_RASR_ATTR_AP_PNO_UNO;
-
-  // SRAM (0x20000000 - 0x2001FFFF, read-write, execute never)
-  MPU_RBAR = SRAM_BASE | MPU_RBAR_VALID | (2 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_SRAM | MPU_RASR_SIZE_128KB |
-             MPU_RASR_ATTR_AP_PRW_URW | MPU_RASR_ATTR_XN;
-
-  // Peripherals (0x40000000 - 0x4001FFFF, read-write, execute never)
-  MPU_RBAR = PERIPH_BASE | MPU_RBAR_VALID | (3 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_PERIPH | MPU_RASR_SIZE_128KB |
-             MPU_RASR_ATTR_AP_PRW_URW | MPU_RASR_ATTR_XN;
-  // Peripherals (0x40020000 - 0x40023FFF, read-write, execute never)
-  MPU_RBAR = 0x40020000 | MPU_RBAR_VALID | (4 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_PERIPH | MPU_RASR_SIZE_16KB |
-             MPU_RASR_ATTR_AP_PRW_URW | MPU_RASR_ATTR_XN;
-  // Don't enable DMA controller access
-  // Peripherals (0x50000000 - 0x5007ffff, read-write, execute never)
-  MPU_RBAR = 0x50000000 | MPU_RBAR_VALID | (5 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_PERIPH | MPU_RASR_SIZE_512KB |
-             MPU_RASR_ATTR_AP_PRW_URW | MPU_RASR_ATTR_XN;
-
-  // Enable MPU
-  MPU_CTRL = MPU_CTRL_ENABLE | MPU_CTRL_HFNMIENA;
-
-  // Enable memory fault handler
-  SCB_SHCSR |= SCB_SHCSR_MEMFAULTENA;
-
-  __asm__ volatile("dsb");
-  __asm__ volatile("isb");
-#endif
-}
+void mpu_config_bootloader(void) { mpu_setup_gd32(MPU_CONFIG_BOOT); }
 
 // Never use in bootloader! Disables access to PPB (including MPU, NVIC, SCB)
-void mpu_config_firmware(void) {
-#if GD32F470
-  mpu_setup_gd32(MPU_CONFIG_FIRM);
-#else
-#if MEMORY_PROTECT
-  // Disable MPU
-  MPU_CTRL = 0;
-
-  // Note: later entries overwrite previous ones
-
-  // Flash (0x08000000 - 0x0807FFFF, 1 MiB, read-only)
-  MPU_RBAR = FLASH_BASE | MPU_RBAR_VALID | (0 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_FLASH | MPU_RASR_SIZE_1MB |
-             MPU_RASR_ATTR_AP_PRW_URW;
-
-  // Metadata in Flash is read-write when unlocked
-  // (0x08008000 - 0x0800FFFF, 32 KiB, read-write, execute never)
-  MPU_RBAR =
-      (FLASH_BASE + 0x8000) | MPU_RBAR_VALID | (1 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_FLASH | MPU_RASR_SIZE_32KB |
-             MPU_RASR_ATTR_AP_PRW_URW | MPU_RASR_ATTR_XN;
-
-  // UTXO in Flash is read-write when unlocked
-  // ( 0x080C0000 - 0x080DFFFF, 128 KiB, read-write, execute never)
-  MPU_RBAR =
-      (FLASH_BASE + 0xC0000) | MPU_RBAR_VALID | (2 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_FLASH | MPU_RASR_SIZE_128KB |
-             MPU_RASR_ATTR_AP_PRW_URW;
-
-  // SRAM (0x20000000 - 0x2001FFFF, read-write, execute never)
-  MPU_RBAR = SRAM_BASE | MPU_RBAR_VALID | (3 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_SRAM | MPU_RASR_SIZE_128KB |
-             MPU_RASR_ATTR_AP_PRW_URW | MPU_RASR_ATTR_XN;
-
-  // Peripherals (0x40000000 - 0x5FFFFFFF, read-write, execute never)
-  MPU_RBAR = PERIPH_BASE | MPU_RBAR_VALID | (4 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_PERIPH | MPU_RASR_SIZE_512MB |
-             MPU_RASR_ATTR_AP_PRW_URW | MPU_RASR_ATTR_XN;
-
-  // Flash controller is protected
-  // (0x40023C00 - 0x40023FFF, privileged read-write, user no, execute never)
-  MPU_RBAR = 0x40023c00 | MPU_RBAR_VALID | (5 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_PERIPH | MPU_RASR_SIZE_1KB |
-             MPU_RASR_ATTR_AP_PRW_UNO | MPU_RASR_ATTR_XN;
-  // Don't enable DMA controller access
-  // Peripherals  DMA (0x40024000 - 0x4003CFFF, read-write, execute never)
-  MPU_RBAR = 0x40024000 | MPU_RBAR_VALID | (6 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_PERIPH | MPU_RASR_SIZE_16KB |
-             MPU_RASR_ATTR_AP_PNO_UNO;
-  // SYSCFG_* registers are disabled
-  // (0x40013800 - 0x40013BFF, read-only, execute never)
-  MPU_RBAR = 0x40013800 | MPU_RBAR_VALID | (7 << MPU_RBAR_REGION_LSB);
-  MPU_RASR = MPU_RASR_ENABLE | MPU_RASR_ATTR_PERIPH | MPU_RASR_SIZE_1KB |
-             MPU_RASR_ATTR_AP_PRO_URO | MPU_RASR_ATTR_XN;
-
-  // Enable MPU
-  MPU_CTRL = MPU_CTRL_ENABLE | MPU_CTRL_HFNMIENA;
-
-  // Enable memory fault handler
-  SCB_SHCSR |= SCB_SHCSR_MEMFAULTENA;
-
-  __asm__ volatile("dsb");
-  __asm__ volatile("isb");
-
-  // Switch to unprivileged software execution to prevent access to MPU
-  set_mode_unprivileged();
-#endif
-#endif
-}
+void mpu_config_firmware(void) { mpu_setup_gd32(MPU_CONFIG_FIRM); }

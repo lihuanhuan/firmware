@@ -61,10 +61,7 @@ static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
     if (usTimeout > MI2C_TIMEOUT * 5) {
       usTimeout = 0;
       i++;
-#if GD32F470
-      // only for gd32
       i2c_send_stop(i2c);  // it will release i2c bus
-#endif
       continue;
     }
     /* Clearing ADDR condition sequence. */

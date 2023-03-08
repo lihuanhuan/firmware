@@ -10,11 +10,7 @@ cd "$(dirname "$0")/.."
 if [ "$EMULATOR" = 1 ]; then
     make -C emulator
 else
-    if [ "$GD32F470" = 1 ];then
     make -C vendor/libopencm3 lib/gd32/f4xx
-    else
-    make -C vendor/libopencm3 lib/stm32/f2
-    fi
 fi
 make -C vendor/libsol
 

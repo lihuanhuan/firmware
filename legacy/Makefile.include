@@ -35,12 +35,13 @@ GDB      := $(PREFIX)gdb --nx -ex 'set remotetimeout unlimited' -ex 'set confirm
 
 OPTFLAGS ?= -Os
 DBGFLAGS ?= -g -DNDEBUG
-	ifneq ($(GD32F470),1) 
-	CPUFLAGS ?= -mcpu=cortex-m3 -mthumb
-	else
-	CPUFLAGS ?= -mcpu=cortex-m4 -mthumb
-	endif
+CPUFLAGS ?= -mcpu=cortex-m4 -mthumb
 FPUFLAGS ?= -msoft-float
+
+# select device target
+DEVICEFLAG ?= -D GD32F470
+CFLAGS += $(DEVICEFLAG)
+
 
 ifeq ($(MAC_OS), 1)
 CONFFLAG ?= -DCONFIDENTIAL='__attribute__((used)) __attribute__((section("__CONFIDENTIAL,__confidential")))'
@@ -80,7 +81,7 @@ CFLAGS   += $(OPTFLAGS) \
             $(CPUFLAGS) \
             $(FPUFLAGS) \
             $(CONFFLAG) \
-            -DSTM32F2 \
+            -DSTM32F4 \
             -DRAND_PLATFORM_INDEPENDENT=1 \
             -I$(TOOLCHAIN_DIR)/include \
             -I$(TOP_DIR) \
@@ -90,13 +91,10 @@ CFLAGS   += $(OPTFLAGS) \
             -I$(TOP_DIR)vendor/QR-Code-generator/c \
             -I$(TOP_DIR)vendor/trezor-storage \
             -I$(TOP_DIR)vendor/libsol/include \
-
-	ifeq ($(GD32F470),1) 
-	CFLAGS   += -I$(TOOLCHAIN_DIR)/lib/gd32/f4xx/CMSIS 
-	CFLAGS   += -I$(TOOLCHAIN_DIR)/lib/gd32/f4xx/CMSIS/GD/GD32F4xx/Include
-	CFLAGS   += -I$(TOOLCHAIN_DIR)/lib/gd32/f4xx/GD32F4xx_standard_peripheral/Include 
-	CFLAGS   +=  -ffunction-sections -fdata-sections
-	endif
+            -I$(TOOLCHAIN_DIR)/lib/gd32/f4xx/CMSIS \
+            -I$(TOOLCHAIN_DIR)/lib/gd32/f4xx/CMSIS/GD/GD32F4xx/Include \
+            -I$(TOOLCHAIN_DIR)/lib/gd32/f4xx/GD32F4xx_standard_peripheral/Include \
+            -ffunction-sections -fdata-sections
 
 LDFLAGS  += -L$(TOP_DIR) \
             $(DBGFLAGS) \
@@ -129,26 +127,12 @@ endif
 else
 ifdef APPVER
 	CFLAGS   += -DAPPVER=$(APPVER)
-	ifneq ($(GD32F470),1)
-	LDSCRIPT  = $(TOP_DIR)/memory_app_$(APPVER).ld
-	else
 	LDSCRIPT  = $(TOP_DIR)/gd32_hard/memory_app_$(APPVER)_gd32.ld
-	endif
 else
-	ifneq ($(GD32F470),1)
-	LDSCRIPT  = $(TOP_DIR)/memory.ld
-	else
 	LDSCRIPT  = $(TOP_DIR)/gd32_hard/memory_gd32.ld
-	endif
 endif
 
 CFLAGS   += -DEMULATOR=0
-
-	ifneq ($(GD32F470),1)
-	CFLAGS   += -DGD32F470=0
-	else
-	CFLAGS   += -DGD32F470=1
-	endif
 
 LDFLAGS  += --static \
             -Wl,--start-group \
@@ -165,13 +149,8 @@ LDFLAGS  += --static \
 LDLIBS   += -ltrezor
 LIBDEPS  += $(TOP_DIR)/libtrezor.a
 
-	ifneq ($(GD32F470),1)
-	LDLIBS   += -lopencm3_stm32f2
-	LIBDEPS  += $(TOOLCHAIN_DIR)/lib/libopencm3_stm32f2.a
-	else
-	LDLIBS   += -lopencm3_gd32f4xx
-	LIBDEPS  += $(TOOLCHAIN_DIR)/lib/libopencm3_gd32f4xx.a	
-	endif
+LDLIBS   += -lopencm3_gd32f4xx
+LIBDEPS  += $(TOOLCHAIN_DIR)/lib/libopencm3_gd32f4xx.a
 endif
 
 ifeq ($(BITCOIN_ONLY), 1)
@@ -208,12 +187,6 @@ ifeq ($(DEBUG_RTT), 1)
 CFLAGS += -DDEBUG_RTT=1
 else
 CFLAGS += -DDEBUG_RTT=0
-endif
-
-ifeq ($(USE_SE), 1)
-CFLAGS += -DUSE_SE=1
-else
-CFLAGS += -DUSE_SE=0
 endif
 
 all: $(NAME).bin
