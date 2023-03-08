@@ -100,8 +100,8 @@ struct CfgRecord {
 // Use uint32 as key. lower word for element offset, high word for element flags
 // flags: 31 bit for public or private
 // should we check `KEY` value ?
-#define MARK_PUBLIC_ID(ID) (0 | ID)
-#define MARK_PRIVATE_ID(ID) ((1 << 31) | ID)
+#define MARK_PUBLIC_ID(ID) ((uint32_t)0 | ID)
+#define MARK_PRIVATE_ID(ID) ((uint32_t)(1 << 31) | ID)
 
 #define field_size(TYPE, field) sizeof(((TYPE *)0)->field)
 

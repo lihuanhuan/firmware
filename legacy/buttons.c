@@ -203,7 +203,7 @@ bool waitButtonResponse(uint8_t btn, uint32_t time_out) {
 }
 #endif
 
-void buttonUpdate() {
+void buttonUpdate(void) {
   static uint16_t last_state =
       (BTN_PIN_YES | BTN_PIN_UP | BTN_PIN_DOWN) & (~BTN_PIN_NO);
 
