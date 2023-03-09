@@ -327,21 +327,7 @@ void getBleDevInformation(void) {
     delay_ms(5);
   }
 }
-void refreshNfcIcon(bool force_flag) {
-  static bool nfc_status_old = false;
 
-  if (sys_nfcState() == true) {
-    if (force_flag || false == nfc_status_old) {
-      nfc_status_old = true;
-      oledDrawBitmap(OLED_WIDTH - 3 * LOGO_WIDTH - 18, 0, &bmp_nfc);
-      layout_refresh = true;
-    }
-  } else if (true == nfc_status_old) {
-    nfc_status_old = false;
-    oledClearBitmap(OLED_WIDTH - 3 * LOGO_WIDTH - 18, 0, &bmp_nfc);
-    layout_refresh = true;
-  }
-}
 uint8_t refreshBleIcon(bool force_flag) {
   static bool ble_conn_status_old = false;
   static bool ble_icon_status_old = false;
@@ -507,8 +493,6 @@ uint8_t layoutStatusLogoEx(bool need_fresh, bool force_fresh) {
   uint8_t ret = 0;
 
   getBleDevInformation();
-
-  refreshNfcIcon(force_fresh);
 
   ret = refreshBleIcon(force_fresh);
 

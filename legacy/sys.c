@@ -13,12 +13,6 @@ uint8_t g_ucFlag = 0;
 uint8_t g_ucBatValue = 0;
 uint8_t battery_cap = 0xFF;
 
-bool sys_nfcState(void) {
-  if (get_nfc_state() == 0) {
-    return true;
-  }
-  return false;
-}
 bool sys_usbState(void) {
   if (get_usb_state()) {
     return true;
@@ -56,7 +50,7 @@ void sys_poweron(void) {
         break;
       }
     }
-    if (sys_nfcState() || sys_usbState()) break;
+    if (sys_usbState()) break;
   }
   stm32_power_on();
   ble_power_on();

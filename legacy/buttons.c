@@ -65,17 +65,11 @@ void buttonsIrqInit(void) {
   exti_set_trigger(BTN_PIN_NO, EXTI_TRIGGER_BOTH);
   exti_enable_request(BTN_PIN_NO);
 
-#if FEITIAN_PCB_V1_3 || FEITIAN_PCB_V1_4
   // set NVIC
   nvic_set_priority(NVIC_EXTI1_IRQ, 0);
   nvic_enable_irq(NVIC_EXTI1_IRQ);
-#else
-  // set NVIC
-  nvic_set_priority(NVIC_EXTI0_IRQ, 0);
-  nvic_enable_irq(NVIC_EXTI0_IRQ);
-#endif
 }
-#if FEITIAN_PCB_V1_3 || FEITIAN_PCB_V1_4
+
 void exti1_isr(void) {
   if (exti_get_flag_status(BTN_PIN_NO)) {
     SCB_SCR &= ~SCB_SCR_SLEEPONEXIT;  // exit sleep mode
@@ -92,18 +86,7 @@ void clear_button_irq(void) {
     exti_reset_request(BTN_PIN_NO);
   }
 }
-#else
-void exti0_isr(void) {
-  if (exti_get_flag_status(BTN_PIN_NO)) {
-    SCB_SCR &= ~SCB_SCR_SLEEPONEXIT;  // exit sleep mode
-    exti_reset_request(BTN_PIN_NO);
-    if (gpio_get(BTN_PORT_NO, BTN_PIN_NO)) {
-      button_timer_enable = 1;
-      button_timer_counter = 0;
-    }
-  }
-}
-#endif
+
 void buttonsTimer(void) {
   if (button_timer_enable) {
     button_timer_counter++;

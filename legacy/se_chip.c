@@ -615,41 +615,13 @@ bool st_restore_entory_from_se(uint16_t key, uint8_t *seed, uint8_t *seed_len) {
 }
 
 bool se_isInitialized(void) {
-#if FEITIAN_PCB_V1_4
   if (se_isLifecyComSta()) {
     return true;
   }
-#else
-  uint16_t len;
-  uint8_t initialized = 0;
-  uint8_t needs_backup = 0;
-  se_get_value(SE_NEEDSBACKUP, &needs_backup, 1, &len);
-  se_get_value(SE_INITIALIZED, &initialized, sizeof(initialized), &len);
-
-  if (initialized == 1) {
-    if (needs_backup == 0) {
-      return true;
-    } else {
-      se_reset_storage();
-    }
-  }
-#endif
   return false;
 }
 
-bool se_hasPin(void) {
-#if FEITIAN_PCB_V1_4
-  return se_isInitialized();
-#else
-  uint8_t has_pin = 1;
-  uint16_t len;
-  if (se_get_value(SE_PINFLAG, &has_pin, 1, &len)) {
-    if (has_pin == 0) return true;
-  }
-
-  return false;
-#endif
-}
+bool se_hasPin(void) { return se_isInitialized(); }
 
 bool se_setPin(uint32_t pin) { return se_set_value(SE_PIN, &pin, sizeof(pin)); }
 

@@ -210,7 +210,6 @@ void disBatteryLevel(uint8_t cur_level) {
 }
 
 uint8_t layoutStatusLogo(bool force_fresh) {
-  static bool nfc_status_bak = false;
   static bool ble_status_bak = false;
   static bool ble_adv_status_bak = false;
   static bool usb_status_bak = false;
@@ -232,17 +231,6 @@ uint8_t layoutStatusLogo(bool force_fresh) {
     delay_ms(5);
   }
 
-  if (sys_nfcState() == true) {
-    if (force_fresh || false == nfc_status_bak) {
-      nfc_status_bak = true;
-      oledDrawBitmap(OLED_WIDTH - 3 * LOGO_WIDTH - pad, 0, &bmp_nfc);
-      refresh = true;
-    }
-  } else if (true == nfc_status_bak) {
-    nfc_status_bak = false;
-    oledClearBitmap(OLED_WIDTH - 3 * LOGO_WIDTH - pad, 0, &bmp_nfc);
-    refresh = true;
-  }
   if (sys_bleState() == true) {
     if (force_fresh || false == ble_status_bak) {
       ble_status_bak = true;

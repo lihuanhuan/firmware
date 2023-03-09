@@ -100,8 +100,6 @@ void setup(void) {
   // set GPIO for usb_insert
   gpio_mode_setup(USB_INSERT_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE,
                   USB_INSERT_PIN);
-  // nfc showed
-  gpio_mode_setup(NFC_SHOW_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, NFC_SHOW_PIN);
   // stm32 power control
   gpio_mode_setup(STM32_POWER_CTRL_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN,
                   STM32_POWER_CTRL_PIN);
