@@ -18,7 +18,6 @@
  */
 
 #include <libopencm3/stm32/flash.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -26,12 +25,18 @@
 #include "ble.h"
 #include "common.h"
 #include "config.h"
+
 #include "font.h"
+#include "fsm.h"
+#include "gettext.h"
+#include "hmac.h"
+#include "layout2.h"
+#include "memory.h"
 #include "memzero.h"
 #include "mi2c.h"
-#include "rand.h"
+#include "protect.h"
+#include "rng.h"
 #include "se_chip.h"
-#include "secbool.h"
 #include "usb.h"
 #include "util.h"
 
@@ -178,23 +183,6 @@ char config_uuid_str[2 * UUID_SIZE + 1] = {0};
  * storage.u2f_counter + config_u2f_offset.
  * This corresponds to the number of cleared bits in the U2FAREA.
  */
-
-// Session management
-typedef struct {
-  uint8_t id[32];
-  uint32_t last_use;
-  uint8_t seed[64];
-  secbool seedCached;
-} Session;
-
-static void session_clearCache(Session *session);
-static uint8_t session_findLeastRecent(void);
-static uint8_t session_findSession(const uint8_t *sessionId);
-
-static CONFIDENTIAL Session sessionsCache[MAX_SESSIONS_COUNT];
-static Session *activeSessionCache;
-
-static uint32_t sessionUseCounter = 0;
 
 #if !EMULATOR
 #define autoLockDelayMsDefault (30 * 60 * 1000U)  // 30 minutes
@@ -368,26 +356,7 @@ void config_init(void) {
   }
   data2hex((const uint8_t *)config_uuid, sizeof(config_uuid), config_uuid_str);
 
-  session_clear(false);
-
   usbTiny(oldTiny);
-}
-
-void session_clear(bool lock) {
-  for (uint8_t i = 0; i < MAX_SESSIONS_COUNT; i++) {
-    session_clearCache(sessionsCache + i);
-  }
-  activeSessionCache = NULL;
-  if (lock) {
-    config_lockDevice();
-  }
-}
-
-void session_clearCache(Session *session) {
-  session->last_use = 0;
-  memzero(session->id, sizeof(session->id));
-  memzero(session->seed, sizeof(session->seed));
-  session->seedCached = false;
 }
 
 void config_lockDevice(void) { se_unlocked = secfalse; }
@@ -488,7 +457,6 @@ void config_loadDevice(const LoadDevice *msg) {
 #endif
 
 void config_loadDevice_ex(const BixinLoadDevice *msg) {
-  session_clear(false);
   config_set_bool(id_mnemonics_imported, true);
 
   config_setMnemonic(msg->mnemonics, true);
@@ -564,11 +532,57 @@ void config_setHomescreen(const uint8_t *data, uint32_t size) {
 /*   return ret; */
 /* } */
 
+// mode : SE_WRFLG_GENSEED or SE_WRFLG_GENMINISECRET;
+bool config_genSeed(uint8_t mode) {
+  char passphrase[MAX_PASSPHRASE_LEN + 1] = {0};
+
+  if (mode != SE_SESSION_SEED && mode != SE_SESSION_MINISECRET) return false;
+  if (!protectPassphrase(passphrase)) {
+    memzero(passphrase, sizeof(passphrase));
+    fsm_sendFailure(FailureType_Failure_ActionCancelled,
+                    _("Passphrase dismissed"));
+    return false;
+  }
+  // passphrase is used - confirm on the display
+  if (passphrase[0] != 0) {
+    layoutDialogSwipe(&bmp_icon_question, _("Cancel"), _("Confirm"), NULL,
+                      _("Access hidden wallet?"), NULL,
+                      _("Next screen will show"), _("the passphrase!"), NULL,
+                      NULL);
+    if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
+      memzero(passphrase, sizeof(passphrase));
+      fsm_sendFailure(FailureType_Failure_ActionCancelled,
+                      _("Passphrase dismissed"));
+      layoutHome();
+      return false;
+    }
+    layoutShowPassphrase(passphrase);
+    if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
+      memzero(passphrase, sizeof(passphrase));
+      fsm_sendFailure(FailureType_Failure_ActionCancelled,
+                      _("Passphrase dismissed"));
+      layoutHome();
+      return false;
+    }
+  }
+
+  char oldTiny = usbTiny(1);
+  uint8_t se_gen_mode =
+      (mode == SE_SESSION_SEED) ? SE_WRFLG_GENSEED : SE_WRFLG_GENMINISECRET;
+  // se gen session seed or minisecret
+  if (!se_sessionGens((uint8_t *)passphrase, sizeof(passphrase), se_gen_mode)) {
+    return false;
+  }
+  memzero(passphrase, sizeof(passphrase));
+  usbTiny(oldTiny);
+
+  return true;
+}
+
 bool config_getRootNode(HDNode *node, const char *curve) {
   // TODO change logic, use SE sign
   (void)node;
   (void)curve;
-
   return true;
 }
 
@@ -661,58 +675,28 @@ bool config_getPin(char *dest, uint16_t dest_size) {
 }
 #endif
 
-uint8_t session_findLeastRecent(void) {
-  uint8_t least_recent_index = MAX_SESSIONS_COUNT;
-  uint32_t least_recent_use = sessionUseCounter;
-  for (uint8_t i = 0; i < MAX_SESSIONS_COUNT; i++) {
-    if (sessionsCache[i].last_use == 0) {
-      return i;
-    }
-    if (sessionsCache[i].last_use <= least_recent_use) {
-      least_recent_use = sessionsCache[i].last_use;
-      least_recent_index = i;
-    }
-  }
-  ensure(sectrue * (least_recent_index < MAX_SESSIONS_COUNT), NULL);
-  return least_recent_index;
-}
-
-uint8_t session_findSession(const uint8_t *sessionId) {
-  for (uint8_t i = 0; i < MAX_SESSIONS_COUNT; i++) {
-    if (sessionsCache[i].last_use != 0) {
-      if (memcmp(sessionsCache[i].id, sessionId, 32) == 0) {  // session found
-        return i;
-      }
-    }
-  }
-  return MAX_SESSIONS_COUNT;
-}
-
+// TODO use se session logic
+uint8_t g_activeSession_id[32];
 uint8_t *session_startSession(const uint8_t *received_session_id) {
-  int session_index = MAX_SESSIONS_COUNT;
-
-  if (received_session_id != NULL) {
-    session_index = session_findSession(received_session_id);
+  if (received_session_id == NULL) {
+    // se create session
+    if (!se_sessionStart(g_activeSession_id)) {
+      memzero(g_activeSession_id, sizeof(g_activeSession_id));
+    }
+  } else {
+    // se open session
+    if (se_sessionOpen((uint8_t *)received_session_id)) {
+      memcpy(g_activeSession_id, received_session_id,
+             sizeof(g_activeSession_id));
+    }
   }
 
-  if (session_index == MAX_SESSIONS_COUNT) {
-    // Session not found in cache. Use an empty one or the least recently
-    // used.
-    session_index = session_findLeastRecent();
-    session_clearCache(sessionsCache + session_index);
-    random_buffer(sessionsCache[session_index].id, 32);
-  }
-
-  sessionUseCounter++;
-  sessionsCache[session_index].last_use = sessionUseCounter;
-  activeSessionCache = sessionsCache + session_index;
-  return activeSessionCache->id;
+  return g_activeSession_id;
 }
 
 void session_endCurrentSession(void) {
-  if (activeSessionCache == NULL) return;
-  session_clearCache(activeSessionCache);
-  activeSessionCache = NULL;
+  // se close session
+  se_sessionClose();
 }
 
 bool session_isUnlocked(void) {
@@ -846,10 +830,7 @@ void config_setSleepDelayMs(uint32_t auto_sleep_ms) {
 }
 
 void config_wipe(void) {
-  /* uint8_t session_key[16] = {0}; */
   se_reset_storage();
-  // TODO: change logic
-  // config_getSeSessionKey(session_key, sizeof(session_key));
   se_unlocked = secfalse;
   char oldTiny = usbTiny(1);
   usbTiny(oldTiny);

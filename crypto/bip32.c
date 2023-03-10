@@ -316,6 +316,147 @@ int hdnode_public_ckd_cp(const ecdsa_curve *curve, const curve_point *parent,
   }
 }
 
+/*
+ * hdnode_chaincode_ckd_by_polkadot_path: Calculate the chain code for both
+ * Polkdot & Kussama.
+ * param:
+ *        inout: It mainly reads curve
+ *        path: One layer of paths, including soft/hard derived tags
+ * out:
+ *      chain_code: The chain code calculated.
+ *      public_key: The chain code calculated with hard tag,
+ *                  whare public_key[0] is soft/hard derived tag,
+ *                                       0 for soft derived;
+ *                                       1 for hard derived.
+ *                        public_key[1..33]: The chain code calculated.
+ */
+// int hdnode_chaincode_ckd_by_polkadot_path(HDNode *inout, const char *path) {
+//   if (NULL == inout || NULL == path) {
+//     return 0;
+//   }
+//   if ('/' != path[0]) {
+//     return 0;
+//   }
+
+//   char chain_code[32] = {
+//       0x00,
+//   };
+
+//   char *is_harden = strstr(path, "//");
+//   int chain_code_len = strlen(path);
+//   if (is_harden) {
+//     chain_code_len = strlen(&path[2]);
+//     memcpy(chain_code, &path[2], chain_code_len);
+//   } else {
+//     chain_code_len = strlen(&path[1]);
+//     memcpy(chain_code, &path[1], chain_code_len);
+//   }
+
+//   if (!is_number(chain_code)) {
+//     // charaters to chain code
+//     char chaincode[32] = {0x00};
+//     memzero(chaincode, sizeof(chaincode) / sizeof(char));
+//     memcpy(chaincode, chain_code, chain_code_len);
+//     memcpy(&chain_code[1], chaincode, chain_code_len);
+//     chain_code[0] = chain_code_len * 4;
+//   } else {
+//     // number to chain code
+//     uint8_t *raw = NULL;
+//     uint64_t len = 0;
+
+//     uint8_t buffer[16];
+//     byteswriterInit(buffer);
+//     int x = atoi(chain_code);
+//     encode64LE(byteswriter8, x);
+//     byteswriterFinal(&raw, &len);
+
+//     if (0 < len) {
+//       memset(chain_code, 0x00, sizeof(inout->chain_code) / sizeof(uint8_t));
+//       memcpy(chain_code, raw, len);
+//     }
+//   }
+
+//   memcpy(inout->chain_code, chain_code,
+//          sizeof(inout->chain_code) / sizeof(uint8_t));
+//   memset(inout->public_key, 0x00, sizeof(inout->public_key) /
+//   sizeof(uint8_t)); inout->public_key[0] = ((NULL == is_harden) ? 0 : 1);
+//   memcpy(&inout->public_key[1], chain_code,
+//          sizeof(inout->chain_code) / sizeof(uint8_t));
+
+//   return 1;
+// }
+
+// int hdnode_private_ckd_by_polkadot_path(HDNode *inout, const char *path) {
+//   HDNode cc = *inout;
+//   if (0 == hdnode_chaincode_ckd_by_polkadot_path(&cc, path)) {
+//     return 0;
+//   }
+
+//   char chain_code[32] = {
+//       0x00,
+//   };
+//   memcpy(chain_code, cc.chain_code,
+//          sizeof(sr25519_chain_code) / sizeof(uint8_t));
+//   bool is_harden = (0 == cc.public_key[0]) ? false : true;
+
+//   if (0 == memcmp(inout->curve, &sr25519_info, sizeof(curve_info))) {
+//     sr25519_chain_code code = {
+//         0x00,
+//     };
+//     memcpy(code, chain_code, sizeof(sr25519_chain_code) / sizeof(uint8_t));
+
+//     sr25519_keypair keypair = {
+//         0x00,
+//     };
+//     if (0 == hdnode_get_keypair(inout, &keypair)) {
+//       return 0;
+//     }
+
+//     sr25519_keypair derived = {
+//         0x00,
+//     };
+//     if (is_harden) {
+//       sr25519_derive_keypair_hard(derived, keypair, code);
+//     } else {
+//       sr25519_derive_keypair_soft(derived, keypair, code);
+//     }
+//     if (0 == hdnode_from_keypair(derived, inout)) {
+//       return 0;
+//     }
+//   } else if (inout->curve == &ed25519_info) {
+//     //"Ed25519HDKD" is ed25519 fixed value
+//     char HDKDValue[] = "Ed25519HDKD";
+//     int HDKDValue_len = strlen(HDKDValue);
+//     int length = strlen(HDKDValue) << 2;
+
+//     uint8_t message[80] = {
+//         0x00,
+//     };
+//     uint32_t offset = 0;
+//     message[offset] = length;
+//     offset = offset + 1;
+//     memcpy(&message[offset], HDKDValue, HDKDValue_len);
+//     offset = offset + HDKDValue_len;
+//     memcpy(&message[offset], inout->private_key, sizeof(inout->chain_code));
+//     offset = offset + sizeof(inout->chain_code);
+//     memcpy(&message[offset], chain_code, sizeof(inout->chain_code));
+//     offset = offset + sizeof(inout->chain_code);
+
+//     // private_ckd
+//     if (0 != blake2b(message, offset, inout->private_key,
+//                      sizeof(inout->private_key))) {
+//       return 0;
+//     }
+
+//     memset(inout->public_key, 0x00,
+//            sizeof(inout->public_key) / sizeof(uint8_t));
+//     hdnode_fill_public_key(inout);
+//   } else {
+//     return 0;
+//   }
+//   return 1;
+// }
+
 int hdnode_public_ckd(HDNode *inout, uint32_t i) {
   curve_point parent = {0}, child = {0};
 

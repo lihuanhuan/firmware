@@ -37,6 +37,8 @@ typedef enum {
 #define HOMESCREEN_SIZE 1024
 #define UUID_SIZE 12
 #define SE_SESSION_KEY 16
+#define SE_SESSION_SEED 0x5a
+#define SE_SESSION_MINISECRET 0xfe
 #define BUILD_ID_MAX_LEN 64
 
 #if DEBUG_LINK
@@ -57,6 +59,7 @@ void config_loadDevice_ex(const BixinLoadDevice *msg);
 const uint8_t *config_getSeed(void);
 
 bool config_getU2FRoot(HDNode *node);
+// TODO
 bool config_getRootNode(HDNode *node, const char *curve);
 
 bool config_getLabel(char *dest, uint16_t dest_size);
@@ -74,17 +77,19 @@ void config_setHomescreen(const uint8_t *data, uint32_t size);
 uint8_t *session_startSession(const uint8_t *received_session_id);
 
 bool config_setMnemonic(const char *mnemonic, bool import);
-bool config_containsMnemonic(const char *mnemonic);
+// bool config_containsMnemonic(const char *mnemonic);
 bool config_hasMnemonic(void);
+
 bool config_getMnemonic(char *dest, uint16_t dest_size);
-bool config_getMnemonicBytes(uint8_t *dest, uint16_t dest_size,
-                             uint16_t *real_size);
+// bool config_getMnemonicBytes(uint8_t *dest, uint16_t dest_size,
+//  uint16_t *real_size);
 
+bool config_genSeed(uint8_t mode);
 bool config_setSeedsBytes(const uint8_t *seeds, uint8_t len);
-bool config_SeedsEncExportBytes(BixinOutMessageSE_outmessage_t *get_msg);
 
-bool config_stBackUpEntoryToSe(uint8_t *seed, uint8_t seed_len);
-bool config_stRestoreEntoryFromSe(uint8_t *seed, uint8_t *seed_len);
+// bool config_SeedsEncExportBytes(BixinOutMessageSE_outmessage_t *get_msg);
+// bool config_stBackUpEntoryToSe(uint8_t *seed, uint8_t seed_len);
+// bool config_stRestoreEntoryFromSe(uint8_t *seed, uint8_t *seed_len);
 
 #if DEBUG_LINK
 bool config_dumpNode(HDNodeType *node);
@@ -116,7 +121,7 @@ bool config_getUnfinishedBackup(bool *unfinished_backup);
 void config_setUnfinishedBackup(bool unfinished_backup);
 
 bool config_getNoBackup(bool *no_backup);
-void config_setNoBackup(void);
+// void config_setNoBackup(void);
 
 void config_applyFlags(uint32_t flags);
 bool config_getFlags(uint32_t *flags);

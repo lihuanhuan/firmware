@@ -131,6 +131,9 @@ void reset_init(bool display_random, uint32_t _strength,
 
 // TODO change/delete this function logic, because SE can't export seed
 void reset_entropy(const uint8_t *ext_entropy, uint32_t len) {
+  (void)ext_entropy;
+  (void)len;
+
   if (!awaiting_entropy) {
     fsm_sendFailure(FailureType_Failure_UnexpectedMessage,
                     _("Not in Reset mode"));
@@ -138,53 +141,53 @@ void reset_entropy(const uint8_t *ext_entropy, uint32_t len) {
   }
   awaiting_entropy = false;
 
-  /* if (g_bSelectSEFlag) { */
-  if (true) {
-    uint8_t seed[64];
+  // /* if (g_bSelectSEFlag) { */
+  // if (true) {
+  //   uint8_t seed[64];
 
-    if (!se_device_init(ExportType_MnemonicPlainExportType_YES, NULL)) {
-      fsm_sendFailure(FailureType_Failure_ProcessError,
-                      _("Device failed initialized"));
-      layoutHome();
-      return;
-    }
-    if (!se_export_seed(seed)) {
-      fsm_sendFailure(FailureType_Failure_ProcessError,
-                      _("Device failed initialized"));
-      layoutHome();
-      return;
-    }
-    se_setSeedStrength(strength);
-    se_setNeedsBackup(true);
-    memcpy(int_entropy, seed, 32);
-  } else {
-    SHA256_CTX ctx = {0};
-    sha256_Init(&ctx);
-    sha256_Update(&ctx, int_entropy, 32);
-    sha256_Update(&ctx, ext_entropy, len);
-    sha256_Final(&ctx, int_entropy);
-  }
+  //   if (!se_device_init(ExportType_MnemonicPlainExportType_YES, NULL)) {
+  //     fsm_sendFailure(FailureType_Failure_ProcessError,
+  //                     _("Device failed initialized"));
+  //     layoutHome();
+  //     return;
+  //   }
+  //   if (!se_export_seed(seed)) {
+  //     fsm_sendFailure(FailureType_Failure_ProcessError,
+  //                     _("Device failed initialized"));
+  //     layoutHome();
+  //     return;
+  //   }
+  //   se_setSeedStrength(strength);
+  //   se_setNeedsBackup(true);
+  //   memcpy(int_entropy, seed, 32);
+  // } else {
+  //   SHA256_CTX ctx = {0};
+  //   sha256_Init(&ctx);
+  //   sha256_Update(&ctx, int_entropy, 32);
+  //   sha256_Update(&ctx, ext_entropy, len);
+  //   sha256_Final(&ctx, int_entropy);
+  // }
 
-  const char *mnemonic = mnemonic_from_data(int_entropy, strength / 8);
-  memzero(int_entropy, 32);
+  // const char *mnemonic = mnemonic_from_data(int_entropy, strength / 8);
+  // memzero(int_entropy, 32);
 
-  if (skip_backup || no_backup) {
-    if (no_backup) {
-      config_setNoBackup();
-    } else {
-      config_setNeedsBackup(true);
-    }
-    if (config_setMnemonic(mnemonic, false)) {
-      fsm_sendSuccess(_("Device successfully initialized"));
-    } else {
-      fsm_sendFailure(FailureType_Failure_ProcessError,
-                      _("Failed to store mnemonic"));
-    }
-    layoutHome();
-  } else {
-    reset_backup(false, mnemonic);
-  }
-  mnemonic_clear();
+  // if (skip_backup || no_backup) {
+  //   if (no_backup) {
+  //     config_setNoBackup();
+  //   } else {
+  //     config_setNeedsBackup(true);
+  //   }
+  //   if (config_setMnemonic(mnemonic, false)) {
+  //     fsm_sendSuccess(_("Device successfully initialized"));
+  //   } else {
+  //     fsm_sendFailure(FailureType_Failure_ProcessError,
+  //                     _("Failed to store mnemonic"));
+  //   }
+  //   layoutHome();
+  // } else {
+  //   reset_backup(false, mnemonic);
+  // }
+  // mnemonic_clear();
 }
 
 static char current_word[10];
@@ -222,7 +225,7 @@ void reset_backup(bool separated, const char *mnemonic) {
       layoutResetWord(current_word, pass, word_pos, mnemonic[i] == 0);
       if (!protectButton(ButtonRequestType_ButtonRequest_ConfirmWord, false)) {
         if (!separated) {
-          session_clear(true);
+          // session_clear(true);
         }
         layoutHome();
         fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);

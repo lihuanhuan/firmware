@@ -1,9 +1,9 @@
-#include "se_chip.h"
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "se_chip.h"
 #include "mi2c.h"
-
+#include "curves.h"
 #include "aes/aes.h"
 #include "bip32.h"
 #include "mi2c.h"
@@ -33,18 +33,6 @@ uint8_t g_ucSessionKey[SESSION_KEYLEN];
 
 const char NIST256P1[] = "nist256p1";
 
-// const uint8_t SessionModeMode_ROMKEY[16] = {0x80, 0xBA, 0x15, 0x37, 0xD2,
-// 0x84,
-//                                             0x8D, 0x64, 0xA7, 0xB4, 0x58,
-//                                             0xF4, 0x58, 0xFE, 0xD8, 0x84};
-
-// const uint8_t ucDefaultSessionKey[16] = {0x97, 0x1e, 0xaa, 0x62, 0xbf, 0xb1,
-//                                          0xfe, 0xb6, 0x99, 0x88, 0x0a, 0xb2,
-//                                          0xdb, 0x59, 0x88, 0x59};
-
-extern void config_setSeSessionKey(const uint8_t *data, uint32_t size);
-extern bool config_getSeSessionKey(uint8_t *dest, uint16_t dest_size);
-
 bool randomBuf_SE(uint8_t *ucRandom, uint8_t ucLen) {
   uint8_t ucRandomCmd[5] = {0x00, 0x84, 0x00, 0x00, 0x00}, ucTempBuf[32];
   uint16_t usLen;
@@ -71,7 +59,6 @@ void random_buffer_ST(uint8_t *buf, size_t len) {
   }
 }
 
-// TODO
 static bool xor_cal(uint8_t *pucSrc1, uint8_t *pucSrc2, uint16_t usLen,
                     uint8_t *pucDest) {
   uint16_t i;
@@ -82,7 +69,6 @@ static bool xor_cal(uint8_t *pucSrc1, uint8_t *pucSrc2, uint16_t usLen,
   return true;
 }
 
-// extern uint32_t _g_sec_session_key_addr[];
 /*
  *master i2c synsessionkey
  */
@@ -95,7 +81,7 @@ void se_sync_session_key(void) {
   aes_encrypt_ctx en_ctxe;
   aes_decrypt_ctx de_ctxe;
 
-  pDefault_key = flash_read_bytes(DEFAULT_SECKEYADDR);  // DEFAULT_SECKEYADDR
+  pDefault_key = flash_read_bytes(DEFAULT_SECKEYADDR);
   // memzero(data_buf, sizeof(data_buf));
   // memcpy(data_buf, pDefault_key, 16);
   // get random from se
@@ -381,37 +367,136 @@ uint32_t se_transmit_plain(uint8_t *pucSendData, uint16_t usSendLen,
   return MI2C_OK;
 }
 
-// mode is export seed
-void se_get_seed(bool mode, const char *passphrase, uint8_t *seed) {
-  uint8_t cmd[1024];
-  uint16_t resplen;
-  int passphraselen = 0;
-  uint8_t salt[256] = {0};
-  if (passphrase) {
-    passphraselen = strnlen(passphrase, 256);
-    memcpy(salt, passphrase, passphraselen);
-  }
-
-  cmd[0] = mode;
-  // salt LV
-  cmd[1] = (passphraselen)&0xFF;
-  cmd[2] = (passphraselen >> 8) & 0xFF;
-  memcpy(cmd + 3, salt, passphraselen);
-  se_transmit(MI2C_CMD_WR_PIN, MNEMONIC_INDEX_TOSEED, cmd, passphraselen + 3,
-              seed, &resplen, MI2C_ENCRYPT, SET_SESTORE_DATA);
-  return;
-}
-
-bool se_ecdsa_get_pubkey(uint32_t *address, uint8_t count, uint8_t *pubkey) {
-  uint8_t resp[256];
-  uint16_t resp_len;
+static inline bool se_get_resp_by_ecdsa256(uint8_t mode, uint32_t *address,
+                                           uint8_t count, uint8_t *resp,
+                                           uint16_t *resp_len) {
+  if ((mode != SIGN_NIST256P1) && (mode != SIGN_SECP256K1) &&
+      (mode != SIGN_ED25519_SLIP10))
+    return false;
   if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, EDDSA_INDEX_CHILDKEY,
-                             (uint8_t *)address, count * 4, resp, &resp_len,
-                             MI2C_PLAIN, SET_SESTORE_DATA)) {
+                             (uint8_t *)address, count * 4, resp, resp_len,
+                             MI2C_PLAIN, mode)) {
     return false;
   }
-  memcpy(pubkey, resp + 1 + 4 + 32 + 33, 33);
+
   return true;
+}
+// TODO se_get_hnode_public
+bool se_derivate_keys(HDNode *out, const char *curve, const uint32_t *address_n,
+                      size_t address_n_count, uint32_t *fingerprint) {
+  uint8_t resp[256];
+  uint16_t resp_len;
+  uint8_t mode;
+
+  if (0 == strcmp(curve, NIST256P1_NAME)) {
+    mode = SIGN_NIST256P1;
+  } else if (0 == strcmp(curve, SECP256K1_NAME)) {
+    mode = SIGN_SECP256K1;
+  } else if (0 == strcmp(curve, ED25519_NAME)) {
+    mode = SIGN_ED25519_SLIP10;
+  } else {
+    return false;
+  }
+  // TODO se derivate key
+  if (!se_get_resp_by_ecdsa256(mode, (uint32_t *)address_n, address_n_count,
+                               resp, &resp_len)) {
+    return false;
+  }
+  // TODO for returned
+  switch (mode) {
+    case SIGN_NIST256P1:
+    case SIGN_SECP256K1:
+      out->depth = resp[0];
+      out->child_num = *(uint32_t *)(resp + 1);
+      out->curve = get_curve_by_name(curve);
+      memcpy(out->chain_code, resp + 1 + 4, 32);
+      HDNode parent = {0};
+      parent.curve = get_curve_by_name(curve);
+      memcpy(parent.public_key, resp + 1 + 4 + 32, 33);
+      if (fingerprint) {
+        *fingerprint = hdnode_fingerprint(&parent);
+      }
+      memcpy(out->public_key, resp + 1 + 4 + 32 + 33, 33);
+      break;
+    case SIGN_ED25519_SLIP10:
+      out->curve = get_curve_by_name(curve);
+      if (33 != resp_len) return false;
+      if (fingerprint) fingerprint = NULL;
+      memcpy(out->public_key, resp, resp_len);
+      break;
+  }
+
+  return true;
+}
+
+static inline bool se_get_pubkey_by_25519(uint8_t mode, uint8_t *chain_code,
+                                          uint16_t chain_len, uint8_t *pubkey) {
+  uint8_t resp[256];
+  uint16_t resp_len;
+
+  if ((mode != SIGN_ED25519_DONNA) && (mode != SIGN_SR25519)) return false;
+  if ((chain_code[0] != 0) && (chain_code[0] != 1)) return false;
+  if (0 != chain_len % 33) return false;
+
+  if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, EDDSA_INDEX_CHILDKEY,
+                             chain_code, chain_len, resp, &resp_len, MI2C_PLAIN,
+                             mode)) {
+    return false;
+  }
+  memcpy(pubkey, resp, 32);
+  return true;
+}
+
+// TODO it will add function in bip32.c
+bool se_get_hnode_public_by_polkadot_path(HDNode *out, const char *curve,
+                                          const char (*address_n)[130],
+                                          size_t address_n_count) {
+  uint8_t mode = SIGN_SR25519;
+
+  if (NULL == out || NULL == curve) {
+    return false;
+  }
+
+  if (0 == strcmp(curve, SR25519_NAME)) {
+    mode = SIGN_SR25519;
+  } else if (0 == strcmp(curve, ED25519_NAME)) {
+    mode = SIGN_ED25519_DONNA;
+  } else {
+    return false;
+  }
+
+  out->curve = get_curve_by_name(curve);
+  if (NULL == out->curve) {
+    return false;
+  }
+
+  if (!address_n
+      // no way how to compute parent fingerprint
+      || 0 == address_n_count) {
+    return false;
+  }
+
+  uint8_t chaincode_list[330];
+  memset(chaincode_list, 0x00, sizeof(chaincode_list) / sizeof(uint8_t));
+  size_t chaincode_list_len = 0;
+  // bool bSuccess = true;
+  // for (size_t k = 0; k < address_n_count; ++k) {
+  //   // for (size_t k = 1; k < address_n_count; ++k) {
+  //   HDNode cc = *out;
+  //   if (0 == hdnode_chaincode_ckd_by_polkadot_path(&cc, address_n[k])) {
+  //     bSuccess = false;
+  //     break;
+  //   }
+  //   memcpy(&chaincode_list[k * (sizeof(cc.public_key) / sizeof(uint8_t))],
+  //          cc.public_key, sizeof(cc.public_key) / sizeof(uint8_t));
+  //   chaincode_list_len += sizeof(cc.public_key) / sizeof(uint8_t);
+  // }
+  // if (!bSuccess) {
+  //   return bSuccess;
+  // }
+
+  return se_get_pubkey_by_25519(mode, chaincode_list, chaincode_list_len,
+                                &out->public_key[1]);
 }
 
 bool se_set_value(uint16_t key, const void *val_dest, uint16_t len) {
@@ -537,83 +622,6 @@ bool se_verify(void *message, uint16_t message_len, uint16_t max_len,
   return true;
 }
 
-bool se_backup(void *val_dest, uint16_t *len) {
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, 0x12, NULL, 0,
-                             (uint8_t *)val_dest, len, MI2C_PLAIN,
-                             GET_SESTORE_DATA)) {
-    return false;
-  }
-  return true;
-}
-bool se_restore(void *val_src, uint16_t src_len) {
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, 0x12, val_src, src_len, NULL,
-                             NULL, MI2C_PLAIN, DELETE_SESTORE_DATA)) {
-    return false;
-  }
-  return true;
-}
-
-bool se_device_init(uint8_t mode, const char *passphrase) {
-  uint8_t cmd[1024];
-  uint16_t passphraselen = 0;
-
-  if (NULL != passphrase) {
-    passphraselen = strnlen(passphrase, 256);
-  }
-  cmd[0] = mode;
-  // salt LV
-  cmd[1] = passphraselen & 0xFF;
-  cmd[2] = (passphraselen >> 8) & 0xFF;
-  memcpy(cmd + 3, passphrase, passphraselen);
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, 0x12, cmd, passphraselen + 3,
-                             NULL, NULL, MI2C_ENCRYPT, DEVICEINIT_DATA)) {
-    return false;
-  }
-  return true;
-}
-
-bool se_st_seed_en(uint16_t key, void *plain_data, uint16_t plain_len,
-                   void *cipher_data, uint16_t *cipher_len) {
-  uint8_t flag = key >> 8;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (key & 0xFF), plain_data,
-                             plain_len, cipher_data, cipher_len,
-                             (flag & MI2C_PLAIN), SET_SESTORE_DATA)) {
-    return false;
-  }
-  return true;
-}
-
-bool se_st_seed_de(uint16_t key, void *cipher_data, uint16_t cipher_len,
-                   void *plain_data, uint16_t *plain_len) {
-  uint8_t flag = key >> 8;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (key & 0xFF), cipher_data,
-                             cipher_len, plain_data, plain_len,
-                             (flag & MI2C_PLAIN), GET_SESTORE_DATA)) {
-    return false;
-  }
-  return true;
-}
-
-bool st_backup_entory_to_se(uint16_t key, uint8_t *seed, uint8_t seed_len) {
-  uint8_t flag = key >> 8;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (key & 0xFF), seed, seed_len,
-                             NULL, NULL, (flag & MI2C_PLAIN),
-                             SET_SESTORE_DATA)) {
-    return false;
-  }
-  return true;
-}
-
-bool st_restore_entory_from_se(uint16_t key, uint8_t *seed, uint8_t *seed_len) {
-  uint8_t flag = key >> 8;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (key & 0xFF), NULL, 0, seed,
-                             (uint16_t *)seed_len, (flag & MI2C_PLAIN),
-                             GET_SESTORE_DATA)) {
-    return false;
-  }
-  return true;
-}
-
 bool se_isInitialized(void) {
   if (se_isLifecyComSta()) {
     return true;
@@ -677,53 +685,6 @@ bool se_setMinisec(uint8_t *preCnts, uint8_t mode) {
   return true;
 }
 
-bool se_setSeedStrength(uint32_t strength) {
-  if (strength != 128 && strength != 192 && strength != 256) return false;
-  return se_set_value(SE_SEEDSTRENGTH, &strength, sizeof(strength));
-}
-
-bool se_getSeedStrength(uint32_t *strength) {
-  uint16_t len;
-  if (se_get_value(SE_SEEDSTRENGTH, strength, sizeof(uint32_t), &len)) {
-    if (*strength == 128 || *strength == 192 || *strength == 256) return true;
-  }
-  return false;
-}
-
-bool se_getNeedsBackup(bool *needs_backup) {
-  uint16_t len;
-  if (se_get_value(SE_NEEDSBACKUP, needs_backup, 1, &len)) {
-    return true;
-  }
-  return false;
-}
-
-bool se_setNeedsBackup(bool needs_backup) {
-  return se_set_value(SE_NEEDSBACKUP, &needs_backup, sizeof(needs_backup));
-}
-
-bool se_export_seed(uint8_t *seed) {
-  uint16_t seed_len = 0;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, SE_EXPORT_SEED, NULL, 0, seed,
-                             &seed_len, MI2C_ENCRYPT, GET_SESTORE_DATA)) {
-    return false;
-  }
-  if (seed_len != 64) return false;
-
-  return true;
-}
-
-bool se_importSeed(uint8_t *seed) {
-  uint8_t data[65];
-  data[0] = 2;
-  memcpy(data + 1, seed, 64);
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, 0x12, data, 65, NULL, NULL,
-                             MI2C_ENCRYPT, SET_SESTORE_DATA)) {
-    return false;
-  }
-  return true;
-}
-
 bool se_isFactoryMode(void) {
   uint8_t cmd[5] = {0x00, 0xf8, 0x04, 00, 0x01};
   uint8_t mode = 0;
@@ -765,7 +726,7 @@ bool se_isLifecyComSta(void) {
   return false;
 }
 
-bool se_sessionStart(uint8_t *session_id_bytes) {
+bool se_sessionStart(OUT uint8_t *session_id_bytes) {
   uint16_t recv_len = 0;  // 32 bytes session id
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x00, NULL, 0,
                              session_id_bytes, &recv_len, MI2C_ENCRYPT,
@@ -776,7 +737,7 @@ bool se_sessionStart(uint8_t *session_id_bytes) {
   return true;
 }
 
-bool se_sessionOpen(uint8_t *session_id_bytes) {
+bool se_sessionOpen(IN uint8_t *session_id_bytes) {
   uint16_t recv_len = 0;
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x01, session_id_bytes, 32,
                              NULL, &recv_len, MI2C_ENCRYPT, SET_SESTORE_DATA)) {
@@ -797,10 +758,10 @@ bool se_sessionGens(uint8_t *pass_phase, uint16_t len, uint8_t mode) {
   return true;
 }
 
-bool se_sessionClose(uint8_t *session_id_bytes) {
+bool se_sessionClose(void) {
   uint16_t recv_len = 0;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x02, session_id_bytes, 32,
-                             NULL, &recv_len, MI2C_ENCRYPT, GET_SESTORE_DATA)) {
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x02, NULL, 0, NULL,
+                             &recv_len, MI2C_ENCRYPT, GET_SESTORE_DATA)) {
     return false;
   }
   return true;

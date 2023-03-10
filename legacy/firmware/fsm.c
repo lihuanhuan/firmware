@@ -242,6 +242,9 @@ static const CoinInfo *fsm_getCoin(bool has_name, const char *name) {
   return coin;
 }
 
+extern bool se_derivate_keys(HDNode *out, const char *curve,
+                             const uint32_t *address_n, size_t address_n_count,
+                             uint32_t *fingerprint);
 static HDNode *fsm_getDerivedNode(const char *curve, const uint32_t *address_n,
                                   size_t address_n_count,
                                   uint32_t *fingerprint) {
@@ -249,7 +252,21 @@ static HDNode *fsm_getDerivedNode(const char *curve, const uint32_t *address_n,
   if (fingerprint) {
     *fingerprint = 0;
   }
-  if (!config_getRootNode(&node, curve)) {
+
+  // if (!config_getRootNode(&node, curve)) {
+  //   layoutHome();
+  //   return 0;
+  // }
+
+  // TODO curve will setup session mode
+  uint8_t session_mode = SE_SESSION_SEED;  // curve para
+
+  if (!config_genSeed(session_mode)) {
+    layoutHome();
+    return 0;
+  }
+  if (!se_derivate_keys(&node, curve, address_n, address_n_count,
+                        fingerprint)) {
     layoutHome();
     return 0;
   }

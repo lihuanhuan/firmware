@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define IN
+#define OUT
+
 #define SESSION_KEYLEN (16)
 #define DEFAULT_SECKEYADDR (0x0800F000UL)
 
@@ -55,6 +58,12 @@
 #define EDDSA_INDEX_CHILDKEY (0x06)
 #define EDDSA_INDEX_U2FKEY (0x07)
 
+#define SIGN_NIST256P1 (0x00)
+#define SIGN_SECP256K1 (0x01)
+#define SIGN_ED25519_DONNA (0x02)
+#define SIGN_SR25519 (0x03)
+#define SIGN_ED25519_SLIP10 (0x04)
+
 #define SE_EXPORT_SEED (0x24)
 #define SE_WRFLG_GENSEED 0                        // se generate seed
 #define SE_WRFLG_GENMINISECRET 1                  // se generate minisecret
@@ -92,49 +101,35 @@ char *se_get_version(void);
 bool se_verify(void *message, uint16_t message_len, uint16_t max_len,
                void *cert_val, uint16_t *cert_len, void *signature_val,
                uint16_t *signature_len);
-bool se_backup(void *val_dest, uint16_t *len);
-bool se_restore(void *val_src, uint16_t src_len);
-bool se_st_seed_en(uint16_t key, void *plain_data, uint16_t plain_len,
-                   void *cipher_data, uint16_t *cipher_len);
-bool se_st_seed_de(uint16_t key, void *cipher_data, uint16_t cipher_len,
-                   void *plain_data, uint16_t *plain_len);
-
 bool se_isInitialized(void);
 bool se_hasPin(void);
 bool se_setPin(uint32_t pin);
 bool se_verifyPin(uint32_t pin, uint8_t mode);
 bool se_changePin(uint32_t oldpin, uint32_t newpin);
 uint32_t se_pinFailedCounter(void);
-bool se_setSeedStrength(uint32_t strength);
-bool se_getSeedStrength(uint32_t *strength);
-bool se_getNeedsBackup(bool *needs_backup);
-bool se_setNeedsBackup(bool needs_backup);
-bool se_export_seed(uint8_t *seed);
-bool se_importSeed(uint8_t *seed);
 bool se_isFactoryMode(void);
 bool se_isLifecyComSta(void);
 bool se_set_u2f_counter(uint32_t u2fcounter);
 bool se_get_u2f_counter(uint32_t *u2fcounter);
+bool se_setSeed(uint8_t *preCnts, uint8_t mode);
 bool se_set_mnemonic(const void *mnemonic, uint16_t len);
+bool se_sessionStart(OUT uint8_t *session_id_bytes);
+bool se_sessionOpen(IN uint8_t *session_id_bytes);
+bool se_sessionGens(uint8_t *pass_phase, uint16_t len, uint8_t mode);
+bool se_sessionClose(void);
+bool se_get_entroy(uint8_t entroy[32]);
 bool se_set_public_region(uint16_t offset, const void *val_dest, uint16_t len);
 bool se_get_public_region(uint16_t offset, void *val_dest, uint16_t len);
 bool se_set_private_region(uint16_t offset, const void *val_dest, uint16_t len);
 bool se_get_private_region(uint16_t offset, void *val_dest, uint16_t len);
 
-bool se_get_entroy(uint8_t entroy[32]);
-
 #else
 #define se_transmit(...) 0
 #define se_get_sn(...) false
 #define se_get_version(...) "1.1.0.0"
-#define se_backup(...) false
 #define se_restore(...) false
 #define se_verify(...) false
-#define se_device_init(...) false
-#define se_st_seed_en(...) false
-#define se_st_seed_de(...) false
 #define se_set_value(...) false
-#define st_backup_entory_to_se(...) false
 #define st_restore_entory_from_se(...) false
 #define se_reset_storage(...)
 #define se_isInitialized(...) false
@@ -143,11 +138,6 @@ bool se_get_entroy(uint8_t entroy[32]);
 #define se_verifyPin(...) false
 #define se_changePin(...) false
 #define se_pinFailedCounter(...) 0
-#define se_setSeedStrength(...) false
-#define se_getSeedStrength(...) false
-#define se_getNeedsBackup(...) false
-#define se_setNeedsBackup(...) false
-#define se_export_seed(...) false
 #define se_importSeed(...) false
 #define se_isFactoryMode(...) false
 #define se_set_u2f_counter(...) false
