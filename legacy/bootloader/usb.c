@@ -20,6 +20,7 @@
 #include <libopencm3/stm32/flash.h>
 #include <libopencm3/usb/usbd.h>
 
+#include <stdint.h>
 #include <string.h>
 
 #include "ble.h"
@@ -98,6 +99,23 @@ static void flash_enter(void) {
 static void flash_exit(void) {
   flash_wait_for_last_operation();
   flash_lock();
+}
+
+static inline bool se_get_firmware_version(uint8_t *resp) {
+  uint8_t ucVerCmd[5] = {0x00, 0xf7, 0x00, 00, 0x02};
+  static uint8_t ver[2] = {0};
+  uint16_t ver_len = sizeof(ver);
+
+  if (false == bMI2CDRV_SendData(ucVerCmd, sizeof(ucVerCmd))) {
+    return false;
+  }
+
+  delay_ms(5);
+  if (false == bMI2CDRV_ReceiveData(resp, &ver_len)) {
+    return false;
+  }
+
+  return true;
 }
 
 //-------------------------------------------------
@@ -494,6 +512,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
   static int wi;
   static int old_was_signed;
   uint8_t *p_buf;
+  uint8_t se_version[2];
   uint8_t apduBuf[7 + 512];  // set se apdu data context
 
   p_buf = packet_buf;
@@ -829,6 +848,25 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
             //更新SE，获取HASH和签名，发给SE进行固件升级
             if (UPDATE_SE == update_mode) {
               delay_ms(100);
+              // check se version
+              uint16_t current_version, incoming_version;
+              if (false == se_get_firmware_version(se_version)) {
+                show_unplug("Update SE", "aborted.");
+                send_msg_failure(dev, 4);  // Failure_ActionCancelled
+                shutdown();
+                return;
+              }
+              current_version = PTYP_iBERamWord(se_version);
+              incoming_version = (uint16_t)((image_header *)FW_HEADER)->version;
+              if (current_version ==
+                  incoming_version) {  // doesn't update se firmware
+                flash_state = STATE_END;
+                show_unplug("Update SE", "aborted.");
+                send_msg_success(dev);
+                shutdown();
+                return;
+              }
+
               //更新SE确保SE在Boot状态
               if (false == bSE_GetState(apduBuf)) {
                 show_unplug("Update SE", "aborted.");
