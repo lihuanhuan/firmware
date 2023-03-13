@@ -17,7 +17,7 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <libopencm3/stm32/flash.h>
+#include "../flash.h"
 #include <libopencm3/usb/usbd.h>
 
 #include <stdint.h>
@@ -90,16 +90,10 @@ static uint32_t FW_CHUNK[FW_CHUNK_SIZE / sizeof(uint32_t)];
 static uint8_t update_mode = 0;
 static uint8_t version[2] = {0};
 static uint16_t usCerLen;
-static void flash_enter(void) {
-  flash_wait_for_last_operation();
-  flash_clear_status_flags();
-  flash_unlock();
-}
 
-static void flash_exit(void) {
-  flash_wait_for_last_operation();
-  flash_lock();
-}
+static void flash_enter(void) { return; }
+
+static void flash_exit(void) { return; }
 
 static inline bool se_get_firmware_version(uint8_t *resp) {
   uint8_t ucVerCmd[5] = {0x00, 0xf7, 0x00, 00, 0x02};
@@ -453,8 +447,8 @@ static bool bSE_GetCert(uint8_t *pucData) {
   const image_header *hdr = (const image_header *)FW_HEADER;
   // invalid chunk sent
   if (0 != memcmp(hash, hdr->hashes + chunk_idx * 32, 32)) {
-    // erase storage
-    erase_storage();
+    // erase storage // TODO
+    // erase_storage();
     flash_state = STATE_END;
     show_halt("Error installing", "firmware.");
     return;
@@ -638,7 +632,9 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       if (host_channel == CHANNEL_SLAVE) {
       } else {
         if (but) {
-          erase_storage_code_progress();
+          // TODO
+          erase_code_progress();
+          //
           flash_state = STATE_END;
           show_unplug("Device", "successfully wiped.");
           send_msg_success(dev);
@@ -683,10 +679,9 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
         } else {
           old_was_signed = SIG_FAIL;
         }
-        // add mode detect
-        if (update_mode == UPDATE_ST) {
-          erase_code_progress();
-        }
+        // TODO
+        (void)old_was_signed;
+        //
         send_msg_success(dev);
         flash_state = STATE_FLASHSTART;
         timer_out_set(timer_out_oper, timer1s * 5);
@@ -900,17 +895,21 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
                 shutdown();
                 return;
               }
+            } else if (UPDATE_ST == update_mode) {
+              // TODO erase mcu app firmware code
+              erase_code_progress();
+            } else if (UPDATE_BLE == update_mode) {
+              // TODO erase ble firmware storge addr
+              erase_ble_code_progress();
             }
           }
         } else {
           FW_CHUNK[(flash_pos % FW_CHUNK_SIZE) / 4] = w;
-          flash_pos += 4;
-          wi = 0;
           flash_enter();
           if (UPDATE_ST == update_mode) {
-            flash_program_word(FLASH_FWHEADER_START + flash_pos, w);
+            flash_write_word_item(FLASH_FWHEADER_START + flash_pos, w);
           } else if (UPDATE_BLE == update_mode) {
-            flash_program_word(FLASH_BLE_ADDR_START + flash_pos, w);
+            flash_write_word_item(FLASH_BLE_ADDR_START + flash_pos, w);
           } else if (UPDATE_SE == update_mode) {
             // SE每512字节进行一次更新
             if ((((flash_pos - FLASH_FWHEADER_LEN) % 512) == 0x00) &&
@@ -929,6 +928,9 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
             // do nothing
           }
           flash_exit();
+          // it will be offset
+          flash_pos += 4;
+          wi = 0;
         }
         if ((flash_pos - FLASH_FWHEADER_LEN) % FW_CHUNK_SIZE == 0) {
           //  add test 0220 skip check
@@ -1022,48 +1024,23 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       }
       layoutProgress("Programing ... Please wait", 1000);
 
-      // wipe storage if:
-      // 1) old firmware was unsigned or not present
-      // 2) signatures are not OK
-      // 3) hashes are not OK
-      if (SIG_OK != old_was_signed || SIG_OK != signatures_new_ok(hdr, NULL) ||
-          SIG_OK != check_firmware_hashes(hdr)) {
-        // erase storage
-        erase_storage();
-        // check erasure
-        uint8_t hash[32] = {0};
-        sha256_Raw(FLASH_PTR(FLASH_STORAGE_START), FLASH_STORAGE_LEN, hash);
-        if (memcmp(hash,
-                   "\x2d\x86\x4c\x0b\x78\x9a\x43\x21\x4e\xee\x85\x24\xd3"
-                   "\x18\x20"
-                   "\x75\x12\x5e\x5c\xa2\xcd\x52\x7f\x35\x82\xec\x87\xff"
-                   "\xd9\x40"
-                   "\x76\xbc",
-                   32) != 0) {
-          send_msg_failure(dev, 9);  // Failure_ProcessError
-          show_halt("Error installing", "firmware.");
-          return;
-        }
-      }
-
       flash_enter();
       // write firmware header only when hash was confirmed
       if (hash_check_ok) {
         for (size_t i = 0; i < FLASH_FWHEADER_LEN / sizeof(uint32_t); i++) {
-          flash_program_word(FLASH_FWHEADER_START + i * sizeof(uint32_t),
-                             FW_HEADER[i]);
+          flash_write_word_item(FLASH_FWHEADER_START + i * sizeof(uint32_t),
+                                FW_HEADER[i]);
         }
       } else {
         for (size_t i = 0; i < FLASH_FWHEADER_LEN / sizeof(uint32_t); i++) {
-          flash_program_word(FLASH_FWHEADER_START + i * sizeof(uint32_t), 0);
+          flash_write_word_item(FLASH_FWHEADER_START + i * sizeof(uint32_t), 0);
         }
       }
       flash_exit();
-
       flash_state = STATE_END;
       if (hash_check_ok) {
-        send_msg_success(dev);
         show_unplug("New firmware", "successfully installed.");
+        send_msg_success(dev);
         shutdown();
       } else {
         layoutDialog(&bmp_icon_warning, NULL, NULL, NULL,

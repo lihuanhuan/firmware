@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <stdint.h>
 #include <string.h>
 
 #include "common.h"
@@ -151,6 +152,26 @@ secbool flash_write_word(uint8_t sector, uint32_t offset, uint32_t data) {
   fmc_lock();
 
   if (*address != data) {
+    return secfalse;
+  }
+
+  return sectrue;
+}
+
+secbool flash_write_word_item(uint32_t offset, uint32_t data) {
+  if (offset % 4 != 0) {
+    return secfalse;
+  }
+
+  /* unlock the flash program erase controller */
+  fmc_unlock();
+  if (FMC_READY != fmc_word_program(offset, data)) {
+    return secfalse;
+  }
+  /* lock the flash program erase controller */
+  fmc_lock();
+
+  if (*(uint32_t *)offset != data) {
     return secfalse;
   }
 
