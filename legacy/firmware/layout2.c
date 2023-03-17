@@ -2213,8 +2213,8 @@ refresh_menu:
     case 3:
       oledDrawStringAdapter(0, y, _("SERIAL NUMBER:"), FONT_STANDARD);
       y += font->pixel + 1;
-
-      se_get_sn(&se_sn);
+      // TODO
+      se_get_sn(&se_sn, 0x10);
       oledDrawStringAdapter(0, y, se_sn, FONT_STANDARD);
       break;
     case 4:
@@ -2238,7 +2238,9 @@ refresh_menu:
       y += font->pixel + 1;
       oledDrawStringAdapter(0, y, uuid2, FONT_STANDARD);
       break;
-    case 5:
+
+    case 5:  // TODO it maybe generated errors BUILD_ID='"$(NAME)"' , after
+             // change makefile will be solve
       oledDrawStringAdapter(0, y, _("BUILD ID:"), FONT_STANDARD);
       y += font->pixel + 1;
 
@@ -2248,6 +2250,9 @@ refresh_menu:
 
       for (int i = 0; i < BUILD_ID_MAX_LEN; i++) {
         build_id1[i] = BUILD_ID[i];
+        if (i == BUILD_ID_MAX_LEN - 1) {
+          build_id1[i] = BUILD_ID[i];
+        }
         if (oledStringWidthAdapter(build_id1, FONT_STANDARD) > OLED_WIDTH) {
           build_id1[i] = 0;
           strcat(build_id2, BUILD_ID + i);
@@ -2259,6 +2264,7 @@ refresh_menu:
       y += font->pixel + 1;
       oledDrawStringAdapter(0, y, build_id2, FONT_STANDARD);
       break;
+
     case 6:
       oledDrawBitmap((OLED_WIDTH - bmp_Icon_fc.width) / 2, 4, &bmp_Icon_fc);
       oledDrawStringCenterAdapter(OLED_WIDTH / 2, 40, "FCC ID:2AV5MBIXINKEY1",

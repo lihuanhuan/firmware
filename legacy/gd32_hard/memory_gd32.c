@@ -22,25 +22,16 @@
 #include "sha2.h"
 #include "gd32f4xx.h"
 
-#define FLASH_OPTION_BYTES_1 (*(const uint64_t *)0x1FFFC000)
-#define FLASH_OPTION_BYTES_2 (*(const uint64_t *)0x1FFFC008)
-
-void memory_project(void) {
-#if MEMORY_PROTECT
-  if (RESET == ob_spc_get()) {
-    /* enable security protection */
-    ob_unlock();
-    fmc_unlock();
-    ob_start();
-    ob_security_protection_config(FMC_NSPC);  // FMC_LSPC FMC_HSPC
-    ob_lock();
-    fmc_lock();
-    /* reload option bytes and generate a system reset */
-    NVIC_SystemReset();
-  }
-  // bootloader's sectors are protected
-  ob_write_protection_enable(OB_WP_1 | OB_WP_2);
-#endif
+void memory_protect(void) {
+  /* enable security protection */
+  ob_unlock();
+  fmc_unlock();
+  ob_start();
+  ob_security_protection_config(FMC_HSPC);
+  ob_lock();
+  fmc_lock();
+  /* reload option bytes and generate a system reset */
+  NVIC_SystemReset();
 }
 
 // Remove write-protection on all flash sectors.
@@ -61,6 +52,8 @@ void memory_write_unlock(void) {
   ob_start();
   ob_lock();
   fmc_lock();
+  /* reload option bytes and generate a system reset */
+  NVIC_SystemReset();
 }
 
 int memory_bootloader_hash(uint8_t *hash) {
@@ -70,12 +63,18 @@ int memory_bootloader_hash(uint8_t *hash) {
 }
 
 void mpu_setup_gd32(uint8_t mode) {
-  if (mode == MPU_CONFIG_BOOT)
-    mpu_setup_boot_region();
-  else if (mode == MPU_CONFIG_FIRM)
-    mpu_setup_firm_region();
-  else if (mode == MPU_CONFIG_OFF)
-    mpu_disable();
-  else
-    return;
+  // TODO
+  switch (mode) {
+    case MPU_CONFIG_BOOT:
+      mpu_setup_boot_region();
+      break;
+    case MPU_CONFIG_FIRM:
+      mpu_setup_firm_region();
+      break;
+    case MPU_CONFIG_OFF:
+      mpu_disable();
+      break;
+    default:
+      break;
+  }
 }

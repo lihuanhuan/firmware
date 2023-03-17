@@ -19,9 +19,9 @@
 
 #define LITTLE_REVERSE32(w, x)                                       \
   {                                                                  \
-    uint32_t tmp = (w);                                              \
-    tmp = (tmp >> 16) | (tmp << 16);                                 \
-    (x) = ((tmp & 0xff00ff00UL) >> 8) | ((tmp & 0x00ff00ffUL) << 8); \
+    uint32_t ref = (w);                                              \
+    ref = (ref >> 16) | (ref << 16);                                 \
+    (x) = ((ref & 0xff00ff00UL) >> 8) | ((ref & 0x00ff00ffUL) << 8); \
   }
 
 #define MI2C_OK 0xAAAAAAAAU
@@ -36,10 +36,15 @@
 #define DEVICEINIT_DATA (0x03)
 
 #define CURVE_NIST256P1 (0x40)
+#define CURVE_SECP256K1 (0x00)
+
+#define AES_ECB (0x00)
+#define AES_CBC (0x01)
 
 #define MI2C_CMD_WR_PIN (0xE1)
 #define MI2C_CMD_AES (0xE2)
 #define MI2C_CMD_ECC_EDDSA (0xE3)
+#define MI2C_CMD_SCHNOOR (0xE4)
 #define MI2C_CMD_READ_SESTOR_REGION (0xE5)
 #define MI2C_CMD_WRITE_SESTOR_REGION (0xE6)
 #define MI2C_CMD_WR_SESSION (0xE7)
@@ -51,6 +56,7 @@
 // ecc ed2519 index
 #define ECC_INDEX_GITPUBKEY (0x00)
 #define ECC_INDEX_SIGN (0x01)
+#define SCHNOOR_INDEX_SIGN ECC_INDEX_SIGN
 #define ECC_INDEX_VERIFY (0x02)
 #define EDDSA_INDEX_GITPUBKEY (0x03)
 #define EDDSA_INDEX_SIGN (0x04)
@@ -64,9 +70,10 @@
 #define SIGN_SR25519 (0x03)
 #define SIGN_ED25519_SLIP10 (0x04)
 
-#define SE_EXPORT_SEED (0x24)
-#define SE_WRFLG_GENSEED 0                        // se generate seed
-#define SE_WRFLG_GENMINISECRET 1                  // se generate minisecret
+#define SE_WRFLG_GENSEED GET_SESTORE_DATA         // se generate seed
+#define SE_WRFLG_GENMINISECRET SET_SESTORE_DATA   // se generate minisecret
+#define SE_WRFLG_MNEMONIC SE_WRFLG_GENMINISECRET  // se set mnemonic
+#define SE_WRFLG_ENTROPY DELETE_SESTORE_DATA      // se set entropy
 #define SE_VERIFYPIN_FIRST 0xff                   // for first verify se pin
 #define SE_VERIFYPIN_OTHER 0x5a                   // for others
 #define SE_GENSEDMNISEC_FIRST SE_VERIFYPIN_FIRST  // for first generate
@@ -96,7 +103,7 @@ bool se_get_value(uint16_t key, void *val_dest, uint16_t max_len,
                   uint16_t *len);
 bool se_delete_key(uint16_t key);
 void se_reset_storage(void);
-bool se_get_sn(char **serial);
+bool se_get_sn(char **serial, uint16_t len);
 char *se_get_version(void);
 bool se_verify(void *message, uint16_t message_len, uint16_t max_len,
                void *cert_val, uint16_t *cert_len, void *signature_val,
@@ -112,17 +119,28 @@ bool se_isLifecyComSta(void);
 bool se_set_u2f_counter(uint32_t u2fcounter);
 bool se_get_u2f_counter(uint32_t *u2fcounter);
 bool se_setSeed(uint8_t *preCnts, uint8_t mode);
+bool se_get_entropy(uint8_t entroy[32]);
+bool se_set_entropy(const void *entropy);
 bool se_set_mnemonic(const void *mnemonic, uint16_t len);
 bool se_sessionStart(OUT uint8_t *session_id_bytes);
 bool se_sessionOpen(IN uint8_t *session_id_bytes);
 bool se_sessionGens(uint8_t *pass_phase, uint16_t len, uint8_t mode);
 bool se_sessionClose(void);
-bool se_get_entroy(uint8_t entroy[32]);
 bool se_set_public_region(uint16_t offset, const void *val_dest, uint16_t len);
 bool se_get_public_region(uint16_t offset, void *val_dest, uint16_t len);
 bool se_set_private_region(uint16_t offset, const void *val_dest, uint16_t len);
 bool se_get_private_region(uint16_t offset, void *val_dest, uint16_t len);
-
+bool se_ecdsa_sign_digest(uint8_t curve, uint32_t mode, uint8_t sec_genk,
+                          uint8_t *hash, uint16_t hash_len, uint8_t *sig,
+                          uint16_t max_len, uint16_t *len);
+bool se_25519_sign_diget(uint8_t mode, uint8_t *hash, uint16_t hash_len,
+                         uint8_t *sig, uint16_t max_len, uint16_t *len);
+bool se_schnoor_sign_plain(uint8_t *data, uint16_t data_len, uint8_t *sig,
+                           uint16_t max_len, uint16_t *len);
+bool se_aes_128_encrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
+                        uint16_t send_len, uint8_t *recv, uint16_t *recv_len);
+bool se_aes_128_decrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
+                        uint16_t send_len, uint8_t *recv, uint16_t *recv_len);
 #else
 #define se_transmit(...) 0
 #define se_get_sn(...) false

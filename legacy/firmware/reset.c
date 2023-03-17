@@ -539,17 +539,16 @@ select_mnemonic_count:
     goto_check(select_mnemonic_count);
   }
 
-  if (!se_get_entroy(int_entropy)) return false;
+  if (!se_get_entropy(int_entropy)) return false;
   const char *mnemonic = mnemonic_from_data(int_entropy, strength / 8);
-  memzero(int_entropy, 32);
 
   if (!writedown_mnemonic(mnemonic)) {
     goto_check(select_mnemonic_count);
   }
-  // TODO generate seed
-
+  // TODO generate seed loop and set entrpy
+  if (!se_set_entropy(int_entropy)) return false;
+  memzero(int_entropy, 32);
   mnemonic_clear();
-
   return true;
 }
 

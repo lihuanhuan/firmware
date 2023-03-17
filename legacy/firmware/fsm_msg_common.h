@@ -113,8 +113,8 @@ bool get_features(Features *resp) {
 
   resp->has_onekey_version = true;
   strlcpy(resp->onekey_version, ONEKEY_VERSION, sizeof(resp->onekey_version));
-
-  if (se_get_sn(&serial)) {
+  // TODO
+  if (se_get_sn(&serial, 0x10)) {
     if (serial[0] == 0xff && serial[1] == 0xff) {
       resp->has_onekey_serial = false;
     } else {

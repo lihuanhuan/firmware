@@ -48,8 +48,8 @@
 #include "u2f/u2f_hid.h"
 #include "u2f/u2f_keys.h"
 #include "u2f_knownapps.h"
-
 #include "se_chip.h"
+#include "memory.h"
 
 // About 1/2 Second according to values used in protect.c
 #define U2F_TIMEOUT (800000 / 2)
@@ -457,6 +457,13 @@ void u2fhid_msg(const APDU *a, uint32_t len) {
     case Buttton_Lcd_Test:
       vButton_Lcd_Test();
       break;
+    case MEMORY_LOCK:  // it would disable swd and system bootloader
+      memory_protect();
+      break;
+    case RETURN_BOOT:
+      sys_backtoboot();
+      break;
+
     default:
 #if !EMULATOR
       // MI2CDRV_Transmit
