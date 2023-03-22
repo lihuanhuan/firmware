@@ -425,8 +425,7 @@ static bool bSE_GetCert(uint8_t *pucData) {
 
 #include "usb_erase.h"
 
-// add test 0220
-/*static*/ void check_and_write_chunk(void) {
+static void check_and_write_chunk(void) {
   uint32_t offset = (chunk_idx == 0) ? FLASH_FWHEADER_LEN : 0;
   uint32_t chunk_pos = flash_pos % FW_CHUNK_SIZE;
   if (chunk_pos == 0) {
@@ -447,8 +446,6 @@ static bool bSE_GetCert(uint8_t *pucData) {
   const image_header *hdr = (const image_header *)FW_HEADER;
   // invalid chunk sent
   if (0 != memcmp(hash, hdr->hashes + chunk_idx * 32, 32)) {
-    // erase storage // TODO
-    // erase_storage();
     flash_state = STATE_END;
     show_halt("Error installing", "firmware.");
     return;
@@ -504,7 +501,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
   static uint16_t msg_id = 0xFFFF;
   static uint32_t w;
   static int wi;
-  static int old_was_signed;
+  // static int old_was_signed;
   uint8_t *p_buf;
   uint8_t se_version[2];
   uint8_t apduBuf[7 + 512];  // set se apdu data context
@@ -667,21 +664,17 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       }
       if (proceed) {
         // check whether the current firmware is signed (old or new method)
-        if (firmware_present_new()) {
-          // add test 0220 skip check
-          // const image_header *hdr =
-          //     (const image_header *)FLASH_PTR(FLASH_FWHEADER_START);
-          // old_was_signed =
-          //     signatures_new_ok(hdr, NULL) & check_firmware_hashes(hdr);
-          old_was_signed = SIG_OK;
-        } else if (firmware_present_old()) {
-          old_was_signed = signatures_old_ok();
-        } else {
-          old_was_signed = SIG_FAIL;
-        }
-        // TODO
-        (void)old_was_signed;
-        //
+        // if (firmware_present_new()) {
+        //   const image_header *hdr =
+        //       (const image_header *)FLASH_PTR(FLASH_FWHEADER_START);
+        //   old_was_signed =
+        //       signatures_new_ok(hdr, NULL) & check_firmware_hashes(hdr);
+        //   old_was_signed = SIG_OK;
+        // } else if (firmware_present_old()) {
+        //   old_was_signed = signatures_old_ok();
+        // } else {
+        //   old_was_signed = SIG_FAIL;
+        // }
         send_msg_success(dev);
         flash_state = STATE_FLASHSTART;
         timer_out_set(timer_out_oper, timer1s * 5);
@@ -932,9 +925,9 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
           flash_pos += 4;
           wi = 0;
         }
-        if ((flash_pos - FLASH_FWHEADER_LEN) % FW_CHUNK_SIZE == 0) {
-          //  add test 0220 skip check
-          // check_and_write_chunk();
+        // TODO check chunk
+        if (flash_pos % FW_CHUNK_SIZE == 0) {
+          check_and_write_chunk();
         }
       }
       p++;
@@ -943,8 +936,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
     if (flash_pos == flash_len) {
       // flush remaining data in the last chunk
       if (flash_pos % FW_CHUNK_SIZE > 0) {
-        //  add test 0220 skip check
-        // check_and_write_chunk();
+        check_and_write_chunk();
       }
       flash_state = STATE_CHECK;
       if (UPDATE_ST == update_mode) {
@@ -1022,7 +1014,13 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       } else {
         hash_check_ok = true;
       }
+
       layoutProgress("Programing ... Please wait", 1000);
+
+      // wipe storage if:
+      /*
+        TODO do nothing
+      */
 
       flash_enter();
       // write firmware header only when hash was confirmed

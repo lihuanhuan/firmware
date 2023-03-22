@@ -16,16 +16,17 @@
 
 #define APP (0x01 << 8)
 
-#define SE_NEEDSBACKUP (7 | APP)   // byte
-#define SE_INITIALIZED (14 | APP)  // byte
-#define SE_PIN (20 | APP)          // uint32
-#define SE_PINFLAG (21 | APP)      // uint32
-#define SE_VERIFYPIN (22 | APP)    // uint32
+#define SE_INITIALIZED (14 | APP)    // byte
+#define SE_PIN (20 | APP)            // uint32
+#define SE_PIN_VALIDTIME (21 | APP)  // byte
+#define SE_VERIFYPIN (22 | APP)      // uint32
 #define SE_RESET (27 | APP)
-#define SE_SEEDSTRENGTH (30 | APP)  // uint32
-#define SE_U2FCOUNTER (9 | APP)     // uint32
-#define SE_MNEMONIC (2 | APP)       // string(241)
-#define SE_ENTROPY SE_MNEMONIC      // bytes(64)
+#define SE_SEEDSTRENGTH (30 | APP)    // uint32
+#define SE_PIN_RETRYTIMES (37 | APP)  // byte
+#define SE_SECSTATUS (38 | APP)       // byte
+#define SE_U2FCOUNTER (9 | APP)       // uint32
+#define SE_MNEMONIC (2 | APP)         // string(241)
+#define SE_ENTROPY SE_MNEMONIC        // bytes(64)
 #define SE_PIN_RETRY_MAX 16
 
 static uint32_t se_pin_failed_counter = 0;
@@ -563,6 +564,61 @@ bool se_changePin(uint32_t oldpin, uint32_t newpin) {
 }
 
 uint32_t se_pinFailedCounter(void) { return se_pin_failed_counter; }
+
+bool se_getRetryTimes(uint8_t *ptimes) {
+  uint16_t recv_len = 0xff;
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN_RETRYTIMES & 0xFF), NULL,
+                             0, ptimes, &recv_len, MI2C_ENCRYPT,
+                             GET_SESTORE_DATA)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool se_clearSecsta(void) {
+  uint16_t recv_len = 0xff;
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_SECSTATUS & 0xFF), NULL, 0,
+                             NULL, &recv_len, MI2C_ENCRYPT, SET_SESTORE_DATA)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool se_getSecsta(void) {
+  uint8_t cur_secsta = 0xff;
+  uint16_t recv_len = 0xff;
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_SECSTATUS & 0xFF), NULL, 0,
+                             &cur_secsta, &recv_len, MI2C_ENCRYPT,
+                             GET_SESTORE_DATA)) {
+    return false;
+  }
+  // 0x55 is verified pin 0x00 is not verified pin
+  return cur_secsta == 0x55;
+}
+
+bool se_setPinValidtime(uint8_t minutes) {
+  uint16_t recv_len = 0xff;
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN_VALIDTIME & 0xFF),
+                             (uint8_t *)&minutes, sizeof(minutes), NULL,
+                             &recv_len, MI2C_ENCRYPT, SET_SESTORE_DATA)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool se_getPinValidtime(uint8_t *pminutes) {
+  uint16_t recv_len = 0xff;
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN_VALIDTIME & 0xFF), NULL,
+                             0, pminutes, &recv_len, MI2C_ENCRYPT,
+                             GET_SESTORE_DATA)) {
+    return false;
+  }
+
+  return true;
+}
 
 // first used it will return false and retry counter
 // last will return true
