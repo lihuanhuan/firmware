@@ -1,3 +1,5 @@
+#if !defined(EMULATOR) || !EMULATOR
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -34,6 +36,9 @@ static uint32_t se_pin_failed_counter = 0;
 uint8_t g_ucSessionKey[SESSION_KEYLEN];
 
 const char NIST256P1[] = "nist256p1";
+
+uint32_t se_transmit_plain(uint8_t *pucSendData, uint16_t usSendLen,
+                           uint8_t *pucRevData, uint16_t *pusRevLen);
 
 bool randomBuf_SE(uint8_t *ucRandom, uint8_t ucLen) {
   uint8_t ucRandomCmd[5] = {0x00, 0x84, 0x00, 0x00, 0x00}, ucTempBuf[32];
@@ -947,3 +952,5 @@ bool se_aes_128_decrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
   }
   return true;
 }
+
+#endif

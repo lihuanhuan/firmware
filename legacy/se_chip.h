@@ -88,16 +88,7 @@
 
 extern uint8_t g_ucSessionKey[SESSION_KEYLEN];
 
-#if !EMULATOR
-
 extern void se_sync_session_key(void);
-extern uint32_t se_transmit(uint8_t ucCmd, uint8_t ucIndex,
-                            uint8_t *pucSendData, uint16_t usSendLen,
-                            uint8_t *pucRevData, uint16_t *pusRevLen,
-                            uint8_t ucMode, uint8_t ucWRFlag);
-extern uint32_t se_transmit_plain(uint8_t *pucSendData, uint16_t usSendLen,
-                                  uint8_t *pucRevData, uint16_t *pusRevLen);
-
 bool se_device_init(uint8_t mode, const char *passphrase);
 bool se_ecdsa_get_pubkey(uint32_t *address, uint8_t count, uint8_t *pubkey);
 bool se_set_value(uint16_t key, const void *val_dest, uint16_t len);
@@ -149,28 +140,4 @@ bool se_aes_128_encrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
                         uint16_t send_len, uint8_t *recv, uint16_t *recv_len);
 bool se_aes_128_decrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
                         uint16_t send_len, uint8_t *recv, uint16_t *recv_len);
-#else
-#define se_transmit(...) 0
-#define se_get_sn(...) false
-#define se_get_version(...) "1.1.0.0"
-#define se_restore(...) false
-#define se_verify(...) false
-#define se_set_value(...) false
-#define st_restore_entory_from_se(...) false
-#define se_reset_storage(...)
-#define se_isInitialized(...) false
-#define se_hasPin(...) false
-#define se_setPin(...) false
-#define se_verifyPin(...) false
-#define se_changePin(...) false
-#define se_pinFailedCounter(...) 0
-#define se_importSeed(...) false
-#define se_isFactoryMode(...) false
-#define se_set_u2f_counter(...) false
-#define se_get_u2f_counter(...) false
-#define se_set_public_region(...) false
-#define se_get_public_region(...) false
-#define se_set_private_region(...) false
-#define se_get_private_region(...) false
-#endif
 #endif
