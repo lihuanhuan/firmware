@@ -84,6 +84,8 @@
 
 #define SE_CMD_GET_VERSION (0xE1)
 
+#define SE_GENERATE_SEED_MAX_STEPS 100  // [1, 100] // total 100 steps
+
 extern uint8_t g_ucSessionKey[SESSION_KEYLEN];
 
 #if !EMULATOR
@@ -124,6 +126,7 @@ bool se_isLifecyComSta(void);
 bool se_set_u2f_counter(uint32_t u2fcounter);
 bool se_get_u2f_counter(uint32_t *u2fcounter);
 bool se_setSeed(uint8_t *preCnts, uint8_t mode);
+bool se_setMinisec(uint8_t *preCnts, uint8_t mode);
 bool se_get_entropy(uint8_t entroy[32]);
 bool se_set_entropy(const void *entropy);
 bool se_set_mnemonic(const void *mnemonic, uint16_t len);

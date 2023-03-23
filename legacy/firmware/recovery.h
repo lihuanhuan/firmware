@@ -35,6 +35,5 @@ uint32_t recovery_get_word_pos(void);
 bool recovery_on_device(void);
 
 uint32_t get_mnemonic_number(char *mnemonic);
-bool verify_words(uint32_t count);
 
 #endif

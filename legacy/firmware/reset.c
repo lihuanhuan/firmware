@@ -18,6 +18,8 @@
  */
 
 #include "reset.h"
+#include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 #include "bip39.h"
 #include "buttons.h"
@@ -495,6 +497,36 @@ write_mnemonic:
   return false;
 }
 
+bool generate_seed_steps(void) {
+  // one thousandth precision, seed && mini secret
+  static int percentPerStep = 1000 / SE_GENERATE_SEED_MAX_STEPS / 2;
+
+  // generate seed
+  uint8_t step = 0;
+  for (int i = 1; i <= SE_GENERATE_SEED_MAX_STEPS; i++) {
+    bool ret = se_setSeed(
+        &step, i == 1 ? SE_GENSEDMNISEC_FIRST : SE_GENSEDMNISEC_OTHER);
+    // only latest call return true
+    if ((i == SE_GENERATE_SEED_MAX_STEPS) != ret) return false;
+    // [1...50]
+    int permil = i * percentPerStep;
+    layoutProgressAdapter(_("Generating seed ..."), permil);
+  }
+
+  // generate mini secret
+  for (int i = 1; i <= SE_GENERATE_SEED_MAX_STEPS; i++) {
+    bool ret = se_setMinisec(
+        &step, i == 1 ? SE_GENSEDMNISEC_FIRST : SE_GENSEDMNISEC_OTHER);
+    // only latest call return true
+    if ((i == SE_GENERATE_SEED_MAX_STEPS) != ret) return false;
+    // [51 ... 100]
+    int permil = 500 + i * percentPerStep;
+    layoutProgressAdapter(_("Generating seed ..."), permil);
+  }
+
+  return true;
+}
+
 bool reset_on_device(void) {
   char desc[64] = "";
   uint8_t key = KEY_NULL;
@@ -545,10 +577,11 @@ select_mnemonic_count:
   if (!writedown_mnemonic(mnemonic)) {
     goto_check(select_mnemonic_count);
   }
-  // TODO generate seed loop and set entrpy
   if (!se_set_entropy(int_entropy)) return false;
   memzero(int_entropy, 32);
   mnemonic_clear();
+  if (!generate_seed_steps()) return false;
+
   return true;
 }
 

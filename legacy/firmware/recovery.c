@@ -178,6 +178,8 @@ static void recovery_request(void) {
   msg_write(MessageType_MessageType_WordRequest, &resp);
 }
 
+extern bool generate_seed_steps(void);
+
 /* Called when the last word was entered.
  * Check mnemonic and send success/failure.
  */
@@ -190,6 +192,7 @@ static bool recovery_done(void) {
     strlcat(new_mnemonic, " ", sizeof(new_mnemonic));
     strlcat(new_mnemonic, words[i], sizeof(new_mnemonic));
   }
+
   if (!enforce_wordlist || mnemonic_check(new_mnemonic)) {
     // New mnemonic is valid.
     if (!dry_run) {
@@ -204,49 +207,30 @@ static bool recovery_done(void) {
         } else {
         }
         success = true;
+        if (!generate_seed_steps()) {
+          fsm_sendFailure(FailureType_Failure_ProcessError,
+                          _("Failed to store mnemonic"));
+        }
       } else {
         fsm_sendFailure(FailureType_Failure_ProcessError,
                         _("Failed to store mnemonic"));
       }
       memzero(new_mnemonic, sizeof(new_mnemonic));
     } else {
-      // Inform the user about new mnemonic correctness (as well as whether it
-      // is the same as the current one).
-      /* bool match = */
-      /*     (config_isInitialized() && config_containsMnemonic(new_mnemonic));
-       */
-      // TODO change this logic
-      bool match = (config_isInitialized());
+      // not support check mnemonic is existed in SE only check-mnemonic
       memzero(new_mnemonic, sizeof(new_mnemonic));
       if (recovery_byself) {
-        if (match) {
-          layoutDialogCenterAdapter(&bmp_icon_ok, NULL, NULL, &bmp_btn_confirm,
-                                    _("Okay"), NULL, NULL, NULL, NULL,
-                                    _("Check passed"), NULL, NULL);
-          protectWaitKey(0, 1);
-        } else {
-          layoutDialogCenterAdapter(&bmp_icon_error, NULL, NULL,
-                                    &bmp_btn_cancel, _("Quit"), NULL, NULL,
-                                    NULL, NULL, _("Check failed"), NULL, NULL);
-          protectWaitKey(0, 1);
-        }
+        layoutDialogCenterAdapter(&bmp_icon_ok, NULL, NULL, &bmp_btn_confirm,
+                                  _("Okay"), NULL, NULL, NULL, NULL,
+                                  _("Check passed"), NULL, NULL);
+        protectWaitKey(0, 1);
       } else {
-        if (match) {
-          layoutDialogAdapter(&bmp_icon_ok, NULL, _("Confirm"), NULL,
-                              _("The seed is valid"), _("and MATCHES"),
-                              _("the one in the device."), NULL, NULL, NULL);
-          protectButton(ButtonRequestType_ButtonRequest_Other, true);
-          fsm_sendSuccess(
-              _("The seed is valid and matches the one in the device"));
-        } else {
-          layoutDialogAdapter(&bmp_icon_error, NULL, _("Confirm"), NULL,
-                              _("The seed is valid"), _("but does NOT MATCH"),
-                              _("the one in the device."), NULL, NULL, NULL);
-          protectButton(ButtonRequestType_ButtonRequest_Other, true);
-          fsm_sendFailure(
-              FailureType_Failure_DataError,
-              _("The seed is valid but does not match the one in the device"));
-        }
+        layoutDialogAdapter(&bmp_icon_ok, NULL, _("Confirm"), NULL,
+                            _("The seed is valid"), _("and MATCHES"),
+                            _("the one in the device."), NULL, NULL, NULL);
+        protectButton(ButtonRequestType_ButtonRequest_Other, true);
+        fsm_sendSuccess(
+            _("The seed is valid and matches the one in the device"));
       }
     }
   } else {
@@ -881,21 +865,6 @@ uint32_t get_mnemonic_number(char *mnemonic) {
   }
   count++;
   return count;
-}
-
-bool verify_words(uint32_t count) {
-  word_count = count;
-  recovery_byself = true;
-  word_index = 0;
-  enforce_wordlist = true;
-  dry_run = true;
-
-  if (!input_words()) {
-    return false;
-  }
-  recovery_done();
-  recovery_byself = false;
-  return true;
 }
 
 #if DEBUG_LINK
