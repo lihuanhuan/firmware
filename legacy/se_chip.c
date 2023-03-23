@@ -16,6 +16,24 @@
 #include "flash.h"
 #include "memzero.h"
 
+#define LITTLE_REVERSE32(w, x)                                       \
+  {                                                                  \
+    uint32_t ref = (w);                                              \
+    ref = (ref >> 16) | (ref << 16);                                 \
+    (x) = ((ref & 0xff00ff00UL) >> 8) | ((ref & 0x00ff00ffUL) << 8); \
+  }
+
+#define MI2C_OK 0xAAAAAAAAU
+#define MI2C_ERROR 0x00000000U
+
+#define MI2C_ENCRYPT 0x00
+#define MI2C_PLAIN 0x80
+
+#define GET_SESTORE_DATA (0x00)
+#define SET_SESTORE_DATA (0x01)
+#define DELETE_SESTORE_DATA (0x02)
+#define DEVICEINIT_DATA (0x03)
+
 #define APP (0x01 << 8)
 
 #define SE_INITIALIZED (14 | APP)    // byte
@@ -30,6 +48,31 @@
 #define SE_MNEMONIC (2 | APP)         // string(241)
 #define SE_ENTROPY SE_MNEMONIC        // bytes(64)
 #define SE_PIN_RETRY_MAX 16
+
+#define MI2C_CMD_WR_PIN (0xE1)
+#define MI2C_CMD_AES (0xE2)
+#define MI2C_CMD_ECC_EDDSA (0xE3)
+#define MI2C_CMD_SCHNOOR (0xE4)
+#define MI2C_CMD_READ_SESTOR_REGION (0xE5)
+#define MI2C_CMD_WRITE_SESTOR_REGION (0xE6)
+#define MI2C_CMD_WR_SESSION (0xE7)
+
+// ecc ed2519 index
+#define ECC_INDEX_GITPUBKEY (0x00)
+#define ECC_INDEX_SIGN (0x01)
+#define SCHNOOR_INDEX_SIGN ECC_INDEX_SIGN
+#define ECC_INDEX_VERIFY (0x02)
+#define EDDSA_INDEX_GITPUBKEY (0x03)
+#define EDDSA_INDEX_SIGN (0x04)
+#define EDDSA_INDEX_VERIFY (0x05)
+#define EDDSA_INDEX_CHILDKEY (0x06)
+#define EDDSA_INDEX_U2FKEY (0x07)
+
+#define SIGN_NIST256P1 (0x00)
+#define SIGN_SECP256K1 (0x01)
+#define SIGN_ED25519_DONNA (0x02)
+#define SIGN_SR25519 (0x03)
+#define SIGN_ED25519_SLIP10 (0x04)
 
 static uint32_t se_pin_failed_counter = 0;
 
@@ -180,6 +223,12 @@ uint32_t se_transmit(uint8_t ucCmd, uint8_t ucIndex, uint8_t *pucSendData,
     }
 
     usSendLen += 7;
+    // TODO add le
+    if (MI2C_CMD_ECC_EDDSA == ucCmd) {
+      SH_CMDHEAD[usSendLen] = 0x00;
+      SH_CMDHEAD[usSendLen + 1] = 0x00;
+      usSendLen += 2;
+    }
   } else {
     P3 = usSendLen & 0xFF;
     if (MI2C_ENCRYPT == ucMode) {
@@ -188,6 +237,11 @@ uint32_t se_transmit(uint8_t ucCmd, uint8_t ucIndex, uint8_t *pucSendData,
       memcpy(SH_IOBUFFER, pucSendData, usSendLen);
     }
     usSendLen += 5;
+    // TODO add le
+    if (MI2C_CMD_ECC_EDDSA == ucCmd) {
+      SH_CMDHEAD[usSendLen] = 0x00;
+      usSendLen += 1;
+    }
   }
   if (false == bMI2CDRV_SendData(SH_CMDHEAD, usSendLen)) {
     return MI2C_ERROR;
@@ -564,8 +618,13 @@ bool se_verifyPin(uint32_t pin, uint8_t mode) {
 }
 
 bool se_changePin(uint32_t oldpin, uint32_t newpin) {
-  if (!se_verifyPin(oldpin, SE_VERIFYPIN_OTHER)) return false;
-  return se_setPin(newpin);
+  uint8_t pin_buff[10];
+  pin_buff[0] = 4;
+  memcpy(pin_buff + 1, (uint8_t *)&oldpin, sizeof(uint32_t));
+  pin_buff[5] = 4;
+  memcpy(pin_buff + 6, (uint8_t *)&newpin, sizeof(uint32_t));
+
+  return se_set_value(SE_PIN, pin_buff, sizeof(pin_buff));
 }
 
 uint32_t se_pinFailedCounter(void) { return se_pin_failed_counter; }
@@ -883,6 +942,7 @@ bool se_25519_sign_diget(uint8_t mode, uint8_t *hash, uint16_t hash_len,
   return true;
 }
 
+// TODO digest it will changed
 bool se_schnoor_sign_plain(uint8_t *data, uint16_t data_len, uint8_t *sig,
                            uint16_t max_len, uint16_t *len) {
   uint8_t resp[128];

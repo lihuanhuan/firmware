@@ -429,21 +429,6 @@ static struct menu settings_menu = {
     .previous = &main_menu,
 };
 
-void menu_check_specified_word(int index) {
-  (void)index;
-  uint32_t word_count = 0;
-
-  if (protectPinOnDevice(false, true)) {
-    char mnemonic[MAX_MNEMONIC_LEN + 1] = {0};
-    config_getMnemonic(mnemonic, sizeof(mnemonic));
-    word_count = get_mnemonic_number(mnemonic);
-
-    if (!verify_words(word_count)) {
-      return;
-    }
-  }
-}
-
 // static struct menu_item check_word_menu_items[] = {
 //     {"Verify All Words", NULL, true, menu_check_all_words, NULL, false},
 //     {"Verify Specified Word", NULL, true, menu_check_specified_word, NULL,

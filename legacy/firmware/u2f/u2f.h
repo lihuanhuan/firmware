@@ -65,11 +65,10 @@ typedef struct __attribute__((packed)) {
 //memory protest lock an unlock
 #define MEMORY_LOCK             0x32
 
-//return bootloader
-#define RETURN_BOOT             0x34
+//read presets default serial
+#define READ_PRESERIAL          0x33
 
 // U2F_CMD_REGISTER command defines
-
 #define U2F_REGISTER_ID         0x05    // Version 2 registration identifier
 #define U2F_REGISTER_HASH_ID    0x00    // Version 2 hash identintifier
 

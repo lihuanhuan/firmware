@@ -18,6 +18,7 @@
  */
 
 #include <ecdsa.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "bip32.h"
@@ -38,6 +39,7 @@
 #include "oled.h"
 #include "rng.h"
 #include "si2c.h"
+#include "flash.h"
 #include "sys.h"
 #include "trezor.h"
 #include "usb.h"
@@ -435,6 +437,15 @@ void st_version(void) {
   send_u2f_msg(ucBuf, 4);
 }
 
+void gd_getPreSerial(void) {
+  uint8_t ucBuf[SESSION_KEYLEN + 2];
+
+  memcpy(ucBuf, flash_read_bytes(DEFAULT_SECKEYADDR), SESSION_KEYLEN);
+  ucBuf[SESSION_KEYLEN] = U2F_SW_NO_ERROR >> 8 & 0xFF;
+  ucBuf[SESSION_KEYLEN + 1] = U2F_SW_NO_ERROR & 0xFF;
+  send_u2f_msg(ucBuf, sizeof(ucBuf));
+}
+
 void u2fhid_msg(const APDU *a, uint32_t len) {
   if (a->cla != 0) {
     send_u2f_error(U2F_SW_CLA_NOT_SUPPORTED);
@@ -460,10 +471,9 @@ void u2fhid_msg(const APDU *a, uint32_t len) {
     case MEMORY_LOCK:  // it would disable swd and system bootloader
       memory_protect();
       break;
-    case RETURN_BOOT:
-      sys_backtoboot();
+    case READ_PRESERIAL:  // read presets default serioal
+      gd_getPreSerial();
       break;
-
     default:
 #if !EMULATOR
       // MI2CDRV_Transmit

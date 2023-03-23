@@ -20,6 +20,7 @@
  */
 
 #include "ethereum.h"
+// #include <cstdint>
 #include "address.h"
 #include "crypto.h"
 #include "ecdsa.h"
@@ -36,6 +37,7 @@
 #include "sha3.h"
 #include "transaction.h"
 #include "util.h"
+#include "se_chip.h"
 #ifdef USE_SECP256K1_ZKP_ECDSA
 #include "zkp_ecdsa.h"
 #endif
@@ -278,13 +280,21 @@ static void send_signature(void) {
   }
 
   keccak_Final(&keccak_ctx, hash);
-  if (ecdsa_sign_digest(&secp256k1, privkey, hash, sig, &v,
-                        ethereum_is_canonic) != 0) {
+  // TODO change use logic
+  // if (ecdsa_sign_digest(&secp256k1, privkey, hash, sig, &v,
+  //                       ethereum_is_canonic) != 0) {
+  uint8_t sigrw[65];
+  uint16_t resp_len;
+  if (!se_ecdsa_sign_digest(CURVE_SECP256K1, ETH_ECDSA_SIGN, SEC_GENK_MODE,
+                            hash, sizeof(hash), sigrw, sizeof(sigrw),
+                            &resp_len)) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     ethereum_signing_abort();
     return;
   }
 
+  v = sigrw[0];
+  memcpy(sig, sigrw + 1, 64);
   memzero(privkey, sizeof(privkey));
 
   /* Send back the result */
@@ -931,11 +941,21 @@ void ethereum_message_sign(const EthereumSignMessage *msg, const HDNode *node,
   ethereum_message_hash(msg->message.bytes, msg->message.size, hash);
 
   uint8_t v = 0;
-  if (ecdsa_sign_digest(&secp256k1, node->private_key, hash,
-                        resp->signature.bytes, &v, ethereum_is_canonic) != 0) {
+  // TODO change use logic
+  // if (ecdsa_sign_digest(&secp256k1, node->private_key, hash,
+  //                       resp->signature.bytes, &v, ethereum_is_canonic) != 0)
+  //                       {
+  (void)node;
+  uint8_t sigrw[65];
+  uint16_t resp_len;
+  if (!se_ecdsa_sign_digest(CURVE_SECP256K1, ETH_ECDSA_SIGN, SEC_GENK_MODE,
+                            hash, sizeof(hash), sigrw, sizeof(sigrw),
+                            &resp_len)) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return;
   }
+  v = sigrw[0];
+  memcpy(resp->signature.bytes, sigrw + 1, 64);
 
   resp->signature.bytes[64] = 27 + v;
   resp->signature.size = 65;
@@ -965,12 +985,20 @@ void ethereum_message_sign_eip712(const EthereumSignMessageEIP712 *msg,
   keccak_Final(&ctx, hash);
 
   uint8_t v = 0;
-  if (ecdsa_sign_digest(&secp256k1, node->private_key, hash,
-                        resp->signature.bytes, &v, ethereum_is_canonic) != 0) {
+  // TODO change use logic
+  // if (ecdsa_sign_digest(&secp256k1, node->private_key, hash,
+  //                       resp->signature.bytes, &v, ethereum_is_canonic) != 0)
+  //                       {
+  uint8_t sigrw[65];
+  uint16_t resp_len;
+  if (!se_ecdsa_sign_digest(CURVE_SECP256K1, ETH_ECDSA_SIGN, SEC_GENK_MODE,
+                            hash, sizeof(hash), sigrw, sizeof(sigrw),
+                            &resp_len)) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return;
   }
-
+  v = sigrw[0];
+  memcpy(resp->signature.bytes, sigrw + 1, 64);
   resp->signature.bytes[64] = 27 + v;
   resp->signature.size = 65;
   msg_write(MessageType_MessageType_EthereumMessageSignature, resp);
@@ -1055,12 +1083,21 @@ void ethereum_typed_hash_sign(const EthereumSignTypedHash *msg,
                       msg->has_message_hash, hash);
 
   uint8_t v = 0;
-  if (ecdsa_sign_digest(&secp256k1, node->private_key, hash,
-                        resp->signature.bytes, &v, ethereum_is_canonic) != 0) {
+  // TODO change use logic
+  // if (ecdsa_sign_digest(&secp256k1, node->private_key, hash,
+  //                       resp->signature.bytes, &v, ethereum_is_canonic) != 0)
+  //                       {
+  (void)node;
+  uint8_t sigrw[65];
+  uint16_t resp_len;
+  if (!se_ecdsa_sign_digest(CURVE_SECP256K1, ETH_ECDSA_SIGN, SEC_GENK_MODE,
+                            hash, sizeof(hash), sigrw, sizeof(sigrw),
+                            &resp_len)) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return;
   }
-
+  v = sigrw[0];
+  memcpy(resp->signature.bytes, sigrw + 1, 64);
   resp->signature.bytes[64] = 27 + v;
   resp->signature.size = 65;
   msg_write(MessageType_MessageType_EthereumTypedDataSignature, resp);
