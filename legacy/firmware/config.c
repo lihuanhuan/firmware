@@ -18,6 +18,7 @@
  */
 
 #include <libopencm3/stm32/flash.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -178,6 +179,8 @@ _Static_assert(sizeof(config_language) == MAX_LANGUAGE_LEN,
                "config_language has wrong size");
 
 char config_uuid_str[2 * UUID_SIZE + 1] = {0};
+static uint8_t g_ucHomeScreen[HOMESCREEN_SIZE];
+volatile secbool g_bHomeGetFlg = secfalse;
 
 /* Current u2f offset, i.e. u2f counter is
  * storage.u2f_counter + config_u2f_offset.
@@ -330,10 +333,21 @@ inline static secbool config_set_uint32(const struct CfgRecord id,
   return config_set(id, &value, sizeof(value));
 }
 
+inline static secbool config_homeScreen(void) {
+  memzero(g_ucHomeScreen, sizeof(g_ucHomeScreen));
+  if (!config_get_bytes(id_homescreen, g_ucHomeScreen, NULL)) {
+    return secfalse;
+  }
+  return sectrue;
+}
+
 void config_init(void) {
   char oldTiny = usbTiny(1);
 
   memzero(HW_ENTROPY_DATA, sizeof(HW_ENTROPY_DATA));
+
+  // TODO: setup home screen
+  g_bHomeGetFlg = config_homeScreen();
 
   // TODO: check config_init
   config_getLanguage(config_language, sizeof(config_language));
@@ -612,8 +626,11 @@ bool config_getLanguage(char *dest, uint16_t dest_size) {
 }
 
 bool config_getHomescreen(uint8_t *dest, uint16_t dest_size) {
-  if (id_homescreen.size != dest_size) return secfalse;
-  return config_get_bytes(id_homescreen, dest, NULL);
+  if (id_homescreen.size != dest_size || secfalse == g_bHomeGetFlg)
+    return false;
+
+  memcpy(dest, g_ucHomeScreen, HOMESCREEN_SIZE);
+  return true;
 }
 
 bool config_setMnemonic(const char *mnemonic, bool import) {

@@ -926,17 +926,21 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
           wi = 0;
         }
         // TODO check chunk
-        if (flash_pos % FW_CHUNK_SIZE == 0) {
-          check_and_write_chunk();
+        if (UPDATE_ST == update_mode) {
+          if (flash_pos % FW_CHUNK_SIZE == 0) {
+            check_and_write_chunk();
+          }
         }
       }
       p++;
     }
     // flashing done
     if (flash_pos == flash_len) {
-      // flush remaining data in the last chunk
-      if (flash_pos % FW_CHUNK_SIZE > 0) {
-        check_and_write_chunk();
+      if (UPDATE_ST == update_mode) {
+        // flush remaining data in the last chunk
+        if (flash_pos % FW_CHUNK_SIZE > 0) {
+          check_and_write_chunk();
+        }
       }
       flash_state = STATE_CHECK;
       if (UPDATE_ST == update_mode) {

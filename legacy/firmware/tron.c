@@ -33,6 +33,7 @@
 #include "transaction.h"
 #include "tron.h"
 #include "util.h"
+#include "se_chip.h"
 
 #include <pb_decode.h>
 #include "tron_ui.h"
@@ -66,12 +67,18 @@ void tron_message_sign(TronSignMessage *msg, const HDNode *node,
   tron_message_hash(msg_hash, 32, hash);
 
   uint8_t v;
-  if (ecdsa_sign_digest(&secp256k1, node->private_key, hash,
-                        resp->signature.bytes, &v, ethereum_is_canonic) != 0) {
+  // TODO change use logic
+  (void)node;
+  uint8_t sigrw[65];
+  uint16_t resp_len;
+  if (!se_ecdsa_sign_digest(CURVE_SECP256K1, COM_ECDSA_SIGN, SEC_GENK_MODE,
+                            hash, sizeof(hash), sigrw, sizeof(sigrw),
+                            &resp_len)) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return;
   }
-
+  v = sigrw[0];
+  memcpy(resp->signature.bytes, sigrw + 1, 64);
   resp->signature.bytes[64] = 27 + v;
   resp->signature.size = 65;
   msg_write(MessageType_MessageType_TronMessageSignature, resp);
@@ -316,10 +323,10 @@ bool tron_sign_tx(TronSignTx *msg, const char *owner_address,
 
     // detect TRC-20 like token
     if (msg->contract.trigger_smart_contract.data.size == 68 &&
-        memcmp(
-            msg->contract.trigger_smart_contract.data.bytes,
-            "\xa9\x05\x9c\xbb\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            16) == 0) {
+        memcmp(msg->contract.trigger_smart_contract.data.bytes,
+               "\xa9\x05\x9c\xbb\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+               "\x00",
+               16) == 0) {
       token = get_tron_token_by_address(
           msg->contract.trigger_smart_contract.contract_address);
       if (tron_eth_2_trx_address(
@@ -373,13 +380,20 @@ bool tron_sign_tx(TronSignTx *msg, const char *owner_address,
 
   // sign tx hash
   uint8_t v;
-  if (ecdsa_sign_digest(&secp256k1, node->private_key, hash,
-                        resp->signature.bytes, &v, ethereum_is_canonic) != 0) {
+  // TODO change use logic
+  (void)node;
+  uint8_t sigrw[65];
+  uint16_t resp_len;
+  if (!se_ecdsa_sign_digest(CURVE_SECP256K1, COM_ECDSA_SIGN, SEC_GENK_MODE,
+                            hash, sizeof(hash), sigrw, sizeof(sigrw),
+                            &resp_len)) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return false;
   }
 
   // fill response
+  v = sigrw[0];
+  memcpy(resp->signature.bytes, sigrw + 1, 64);
   resp->signature.bytes[64] = 27 + v;
   resp->signature.size = 65;
   resp->has_serialized_tx = 1;

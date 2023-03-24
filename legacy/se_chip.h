@@ -15,6 +15,7 @@
 
 #define EOS_ECDSA_SIGN (60)
 #define ETH_ECDSA_SIGN (194)
+#define COM_ECDSA_SIGN (0)
 #define SEC_GENK_RFC6979 (0x43)
 #define SEC_GENK_RAND (0x65)
 #define SEC_GENK_MODE (SEC_GENK_RFC6979)

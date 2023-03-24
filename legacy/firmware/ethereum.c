@@ -281,8 +281,6 @@ static void send_signature(void) {
 
   keccak_Final(&keccak_ctx, hash);
   // TODO change use logic
-  // if (ecdsa_sign_digest(&secp256k1, privkey, hash, sig, &v,
-  //                       ethereum_is_canonic) != 0) {
   uint8_t sigrw[65];
   uint16_t resp_len;
   if (!se_ecdsa_sign_digest(CURVE_SECP256K1, ETH_ECDSA_SIGN, SEC_GENK_MODE,
@@ -942,9 +940,6 @@ void ethereum_message_sign(const EthereumSignMessage *msg, const HDNode *node,
 
   uint8_t v = 0;
   // TODO change use logic
-  // if (ecdsa_sign_digest(&secp256k1, node->private_key, hash,
-  //                       resp->signature.bytes, &v, ethereum_is_canonic) != 0)
-  //                       {
   (void)node;
   uint8_t sigrw[65];
   uint16_t resp_len;
@@ -986,9 +981,6 @@ void ethereum_message_sign_eip712(const EthereumSignMessageEIP712 *msg,
 
   uint8_t v = 0;
   // TODO change use logic
-  // if (ecdsa_sign_digest(&secp256k1, node->private_key, hash,
-  //                       resp->signature.bytes, &v, ethereum_is_canonic) != 0)
-  //                       {
   uint8_t sigrw[65];
   uint16_t resp_len;
   if (!se_ecdsa_sign_digest(CURVE_SECP256K1, ETH_ECDSA_SIGN, SEC_GENK_MODE,
@@ -1084,9 +1076,6 @@ void ethereum_typed_hash_sign(const EthereumSignTypedHash *msg,
 
   uint8_t v = 0;
   // TODO change use logic
-  // if (ecdsa_sign_digest(&secp256k1, node->private_key, hash,
-  //                       resp->signature.bytes, &v, ethereum_is_canonic) != 0)
-  //                       {
   (void)node;
   uint8_t sigrw[65];
   uint16_t resp_len;
