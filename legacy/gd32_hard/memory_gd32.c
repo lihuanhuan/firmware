@@ -22,6 +22,7 @@
 #include "sha2.h"
 #include "gd32f4xx.h"
 
+extern void sys_shutdown(void);
 void memory_protect(void) {
   /* enable security protection */
   ob_unlock();
@@ -32,8 +33,7 @@ void memory_protect(void) {
   ob_security_protection_config(FMC_HSPC);
   ob_lock();
   fmc_lock();
-  /* reload option bytes and generate a system reset */
-  NVIC_SystemReset();
+  sys_shutdown();
 }
 
 // Remove write-protection on all flash sectors.

@@ -469,9 +469,10 @@ void u2fhid_msg(const APDU *a, uint32_t len) {
       vButton_Lcd_Test();
       break;
     case MEMORY_LOCK:  // it would disable swd and system bootloader
+                       // it will reset system nothing to return pc
       memory_protect();
       break;
-    case READ_PRESERIAL:  // read presets default serioal
+    case READ_PRESERIAL:  // read presets default serial
       gd_getPreSerial();
       break;
     default:

@@ -31,8 +31,8 @@
 #define SE_WRFLG_GENMINISECRET (0x01)             // se generate minisecret
 #define SE_WRFLG_MNEMONIC SE_WRFLG_GENMINISECRET  // se set mnemonic
 #define SE_WRFLG_ENTROPY (0x02)                   // se set entropy
-#define SE_VERIFYPIN_FIRST 0xff                   // for first verify se pin
-#define SE_VERIFYPIN_OTHER 0x5a                   // for others
+#define SE_VERIFYPIN_FIRST (0xff)                 // for first verify se pin
+#define SE_VERIFYPIN_OTHER (0x01)                 // for others
 #define SE_GENSEDMNISEC_FIRST SE_VERIFYPIN_FIRST  // for first generate
 #define SE_GENSEDMNISEC_OTHER SE_VERIFYPIN_OTHER  // for others
 #define SE_GENERATE_SEED_MAX_STEPS 100            // [1, 100] // total 100 steps

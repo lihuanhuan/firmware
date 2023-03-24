@@ -601,15 +601,12 @@ bool se_hasPin(void) { return se_isInitialized(); }
 bool se_setPin(uint32_t pin) { return se_set_value(SE_PIN, &pin, sizeof(pin)); }
 
 bool se_verifyPin(uint32_t pin, uint8_t mode) {
-  uint8_t retry = 0, work_mode = 0;
+  uint8_t retry = 0;
   uint16_t len = sizeof(retry);
-  // mode : SE_VERIFYPIN_FIRST is first verify pin
-  work_mode =
-      (mode == SE_VERIFYPIN_FIRST) ? SE_VERIFYPIN_FIRST : SET_SESTORE_DATA;
 
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_VERIFYPIN & 0xFF),
                              (uint8_t *)&pin, sizeof(pin), &retry, &len,
-                             MI2C_ENCRYPT, work_mode)) {
+                             MI2C_ENCRYPT, mode)) {
     se_pin_failed_counter = SE_PIN_RETRY_MAX - retry;
     return false;
   }
@@ -942,7 +939,7 @@ bool se_25519_sign_diget(uint8_t mode, uint8_t *hash, uint16_t hash_len,
   return true;
 }
 
-// TODO digest it will changed
+// TODO it will sign digest
 bool se_schnoor_sign_plain(uint8_t *data, uint16_t data_len, uint8_t *sig,
                            uint16_t max_len, uint16_t *len) {
   uint8_t resp[128];
