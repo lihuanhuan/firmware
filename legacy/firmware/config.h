@@ -96,6 +96,8 @@ bool config_dumpNode(HDNodeType *node);
 bool config_getPin(char *dest, uint16_t dest_size);
 #endif
 
+bool config_setPin(const char *pin);
+bool config_unlockFirst(const char *pin);
 bool config_unlock(const char *pin);
 bool config_hasPin(void);
 bool config_changePin(const char *old_pin, const char *new_pin);

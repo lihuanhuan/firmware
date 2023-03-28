@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+// #include <cstdint>
 
 #include "bip32.h"
 #include "ble.h"
@@ -42,16 +43,20 @@
 #include "util.h"
 
 #define CONFIG_FIELD(TYPE, NAME) \
-  uint8_t has_##NAME;            \
-  TYPE NAME
+  struct {                       \
+    uint8_t has_##NAME;          \
+    TYPE NAME;                   \
+  } NAME
 
 #define CONFIG_BOOL(NAME) CONFIG_FIELD(bool, NAME)
 #define CONFIG_STRING(NAME, SIZE) char NAME[SIZE + 1]
 #define CONFIG_BYTES(NAME, SIZE) \
   struct {                       \
+    uint8_t has_##NAME;          \
     uint32_t size;               \
     uint8_t bytes[SIZE];         \
   } NAME
+
 #define CONFIG_UINT32(NAME) CONFIG_FIELD(uint32_t, NAME)
 #define CONFIG_UINT64(NAME) CONFIG_FIELD(uint64_t, NAME)
 
@@ -228,17 +233,18 @@ static uint32_t pin_to_int(const char *pin) {
     if (!(cond)) return secfalse; \
   } while (0)
 
-inline static secbool config_get(const struct CfgRecord rcd, void *v) {
+inline static secbool config_get(const struct CfgRecord rcd, void *v,
+                                 uint16_t l) {
   bool pri = rcd.id & (1 << 31);
   bool (*reader)(uint16_t, void *, uint16_t) =
       pri ? se_get_private_region : se_get_public_region;
 
   uint8_t has;
   // read has_xxx flag
-  CHECK_CONFIG_OP(reader(rcd.meta.offset - 1, &has, 1));
+  CHECK_CONFIG_OP(reader(rcd.meta.offset, &has, 1));
   if (has != TRUE_BYTE) return secfalse;
 
-  return reader(rcd.meta.offset, v, rcd.size);
+  return reader(rcd.meta.offset + 1, v, l);
 }
 
 inline static secbool config_set(const struct CfgRecord rcd, const void *v,
@@ -247,15 +253,15 @@ inline static secbool config_set(const struct CfgRecord rcd, const void *v,
   bool (*writer)(uint16_t, const void *, uint16_t) =
       pri ? se_set_private_region : se_set_public_region;
 
-  CHECK_CONFIG_OP(writer(rcd.meta.offset, v, l));
+  CHECK_CONFIG_OP(writer(rcd.meta.offset + 1, v, l));
   // set has_xxx flag
-  return writer(rcd.meta.offset - 1, &TRUE_BYTE, 1);
+  return writer(rcd.meta.offset, &TRUE_BYTE, 1);
 }
 
 inline static secbool config_get_bool(const struct CfgRecord id, bool *value) {
   uint8_t v;
   *value = false;
-  CHECK_CONFIG_OP(config_get(id, &v));
+  CHECK_CONFIG_OP(config_get(id, &v, sizeof(bool)));
   *value = v == TRUE_BYTE;
   return sectrue;
 }
@@ -271,12 +277,12 @@ inline static secbool config_get_bytes(const struct CfgRecord id, uint8_t *dest,
       pri ? se_get_private_region : se_get_public_region;
   uint8_t has;
   // read has_xxx flag
-  CHECK_CONFIG_OP(reader(id.meta.offset - 1, &has, 1));
+  CHECK_CONFIG_OP(reader(id.meta.offset, &has, 1));
   if (has != TRUE_BYTE) return secfalse;
   uint32_t size = 0;
   // size|bytes
-  CHECK_CONFIG_OP(reader(id.meta.offset, &size, sizeof(size)));
-  CHECK_CONFIG_OP(reader(id.meta.offset + sizeof(uint32_t), dest, size));
+  CHECK_CONFIG_OP(reader(id.meta.offset + 1, &size, sizeof(size)));
+  CHECK_CONFIG_OP(reader(id.meta.offset + 1 + sizeof(uint32_t), dest, size));
   if (real_size) *real_size = size;
   return sectrue;
 }
@@ -289,11 +295,11 @@ inline static secbool config_set_bytes(const struct CfgRecord id,
   bool (*writer)(uint16_t, const void *, uint16_t) =
       pri ? se_set_private_region : se_set_public_region;
   // set has_xxx flag
-  CHECK_CONFIG_OP(writer(id.meta.offset - 1, &TRUE_BYTE, 1));
+  CHECK_CONFIG_OP(writer(id.meta.offset, &TRUE_BYTE, 1));
   uint32_t size = len;
   // size|bytes
-  CHECK_CONFIG_OP(writer(id.meta.offset, &size, sizeof(size)));
-  CHECK_CONFIG_OP(writer(id.meta.offset + sizeof(uint32_t), bytes, len));
+  CHECK_CONFIG_OP(writer(id.meta.offset + 1, &size, sizeof(size)));
+  CHECK_CONFIG_OP(writer(id.meta.offset + 1 + sizeof(uint32_t), bytes, len));
   return sectrue;
 }
 
@@ -302,16 +308,16 @@ inline static secbool config_clear_bytes(const struct CfgRecord id) {
   bool (*writer)(uint16_t, const void *, uint16_t) =
       pri ? se_set_private_region : se_set_public_region;
   // clear has_xxx flag
-  CHECK_CONFIG_OP(writer(id.meta.offset - 1, &FALSE_BYTE, 1));
+  CHECK_CONFIG_OP(writer(id.meta.offset, &FALSE_BYTE, 1));
   uint8_t zero[id.size];
   memzero(zero, id.size);
-  return writer(id.meta.offset, zero, id.size);
+  return writer(id.meta.offset + 1, zero, id.size);
 }
 
 inline static secbool config_get_string(const struct CfgRecord id, char *dest,
                                         uint16_t *real_size) {
   if (real_size) *real_size = id.size;
-  return config_get(id, dest);
+  return config_get(id, dest, *real_size);
 }
 inline static secbool config_set_string(const struct CfgRecord id,
                                         const char *dest) {
@@ -325,7 +331,7 @@ inline static secbool config_set_string(const struct CfgRecord id,
 inline static secbool config_get_uint32(const struct CfgRecord id,
                                         uint32_t *value) {
   *value = 0;
-  CHECK_CONFIG_OP(config_get(id, value));
+  CHECK_CONFIG_OP(config_get(id, value, sizeof(uint32_t)));
   return sectrue;
 }
 inline static secbool config_set_uint32(const struct CfgRecord id,
@@ -361,7 +367,6 @@ void config_init(void) {
 #if !EMULATOR
   se_sync_session_key();
 #endif
-
   // If UUID is not set, then the config is uninitialized.
   if (sectrue != config_get_bytes(id_uuid, (uint8_t *)config_uuid, NULL)) {
     random_buffer((uint8_t *)config_uuid, sizeof(config_uuid));
@@ -370,105 +375,13 @@ void config_init(void) {
   }
   data2hex((const uint8_t *)config_uuid, sizeof(config_uuid), config_uuid_str);
 
+  // TODO. test wipe device
+  // config_wipe();
+
   usbTiny(oldTiny);
 }
 
 void config_lockDevice(void) { se_unlocked = secfalse; }
-
-/* static void get_u2froot_callback(uint32_t iter, uint32_t total) { */
-/*   layoutProgressAdapter(_("Updating"), 1000 * iter / total); */
-/* } */
-
-/* static void config_compute_u2froot(const char *mnemonic, */
-/*                                    StorageHDNode *u2froot) { */
-/*   static CONFIDENTIAL HDNode node; */
-/*   static CONFIDENTIAL uint8_t seed[64]; */
-/*   char oldTiny = usbTiny(1); */
-/*   mnemonic_to_seed(mnemonic, "", seed, */
-/*                    get_u2froot_callback);  // BIP-0039 */
-/*   usbTiny(oldTiny); */
-/*   hdnode_from_seed(seed, 64, NIST256P1_NAME, &node); */
-/*   hdnode_private_ckd(&node, U2F_KEY_PATH); */
-/*   u2froot->depth = node.depth; */
-/*   u2froot->child_num = U2F_KEY_PATH; */
-/*   u2froot->chain_code.size = sizeof(node.chain_code); */
-/*   memcpy(u2froot->chain_code.bytes, node.chain_code,
- * sizeof(node.chain_code)); */
-/*   u2froot->has_private_key = true; */
-/*   u2froot->private_key.size = sizeof(node.private_key); */
-/*   memcpy(u2froot->private_key.bytes, node.private_key, */
-/*          sizeof(node.private_key)); */
-/*   memzero(&node, sizeof(node)); */
-/*   memzero(&seed, sizeof(seed)); */
-/*   session_clear(false);  // invalidate seed cache */
-/* } */
-
-#if DEBUG_LINK
-
-bool config_dumpNode(HDNodeType *node) {
-  memzero(node, sizeof(HDNodeType));
-
-  StorageHDNode storageNode = {0};
-  uint16_t len = 0;
-  if (sectrue !=
-          storage_get(KEY_NODE, &storageNode, sizeof(storageNode), &len) ||
-      len != sizeof(StorageHDNode)) {
-    memzero(&storageNode, sizeof(storageNode));
-    return false;
-  }
-
-  node->depth = storageNode.depth;
-  node->fingerprint = storageNode.fingerprint;
-  node->child_num = storageNode.child_num;
-
-  node->chain_code.size = 32;
-  memcpy(node->chain_code.bytes, storageNode.chain_code.bytes, 32);
-
-  if (storageNode.has_private_key) {
-    node->has_private_key = true;
-    node->private_key.size = 32;
-    memcpy(node->private_key.bytes, storageNode.private_key.bytes, 32);
-  }
-
-  memzero(&storageNode, sizeof(storageNode));
-  return true;
-}
-
-void config_loadDevice(const LoadDevice *msg) {
-  session_clear(false);
-  config_set_bool(KEY_IMPORTED, true);
-  config_setPassphraseProtection(msg->has_passphrase_protection &&
-                                 msg->passphrase_protection);
-
-  if (msg->has_pin) {
-    config_changePin("", msg->pin);
-  }
-
-  if (msg->mnemonics_count) {
-    storage_delete(KEY_NODE);
-    config_setMnemonic(msg->mnemonics[0], true);
-  }
-
-  if (msg->has_language) {
-    config_setLanguage(msg->language);
-  }
-
-  config_setLabel(msg->has_label ? msg->label : "");
-
-  if (msg->has_u2f_counter) {
-    config_setU2FCounter(msg->u2f_counter);
-  }
-
-  if (msg->has_needs_backup) {
-    config_setNeedsBackup(msg->needs_backup);
-  }
-
-  if (msg->has_no_backup && msg->no_backup) {
-    config_setNoBackup();
-  }
-}
-
-#endif
 
 void config_loadDevice_ex(const BixinLoadDevice *msg) {
   config_set_bool(id_mnemonics_imported, true);
@@ -523,28 +436,6 @@ void config_setHomescreen(const uint8_t *data, uint32_t size) {
     config_clear_bytes(id_homescreen);
   }
 }
-
-/* static bool config_loadNode(const StorageHDNode *node, const char *curve, */
-/*                             HDNode *out) { */
-/*   return hdnode_from_xprv(node->depth, node->child_num,
- * node->chain_code.bytes, */
-/*                           node->private_key.bytes, curve, out); */
-/* } */
-
-// 存储在SE里，不支持导出
-/* bool config_getU2FRoot(HDNode *node) { */
-/*   StorageHDNode u2fNode = {0}; */
-/*   uint16_t len = 0; */
-/*   if (sectrue != storage_get(KEY_U2F_ROOT, &u2fNode, sizeof(u2fNode), &len)
- * || */
-/*       len != sizeof(StorageHDNode)) { */
-/*     memzero(&u2fNode, sizeof(u2fNode)); */
-/*     return false; */
-/*   } */
-/*   bool ret = config_loadNode(&u2fNode, NIST256P1_NAME, node); */
-/*   memzero(&u2fNode, sizeof(u2fNode)); */
-/*   return ret; */
-/* } */
 
 // mode : SE_WRFLG_GENSEED or SE_WRFLG_GENMINISECRET;
 bool config_genSeed(uint8_t mode) {
@@ -657,9 +548,15 @@ bool config_setSeedsBytes(const uint8_t *seeds, uint8_t len) {
   return true;
 }
 
+bool config_setPin(const char *pin) { return se_setPin(pin_to_int(pin)); }
+
 /* Check whether pin matches storage.  The pin must be
  * a null-terminated string with at most 9 characters.
  */
+bool config_unlockFirst(const char *pin) {
+  return se_verifyPin((pin_to_int(pin)), SE_VERIFYPIN_FIRST);
+}
+
 bool config_unlock(const char *pin) {
   if (se_verifyPin((pin_to_int(pin)), SE_VERIFYPIN_OTHER)) {
     se_unlocked = sectrue;

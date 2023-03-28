@@ -37,6 +37,7 @@
 #include "se_chip.h"
 #include "sha2.h"
 #include "sys.h"
+#include "timer.h"
 #include "util.h"
 
 static uint32_t strength;
@@ -502,10 +503,9 @@ bool generate_seed_steps(void) {
   static int percentPerStep = 1000 / SE_GENERATE_SEED_MAX_STEPS / 2;
 
   // generate seed
-  uint8_t step = 0;
   for (int i = 1; i <= SE_GENERATE_SEED_MAX_STEPS; i++) {
-    bool ret = se_setSeed(
-        &step, i == 1 ? SE_GENSEDMNISEC_FIRST : SE_GENSEDMNISEC_OTHER);
+    bool ret =
+        se_setSeed(i == 1 ? SE_GENSEDMNISEC_FIRST : SE_GENSEDMNISEC_OTHER);
     // only latest call return true
     if ((i == SE_GENERATE_SEED_MAX_STEPS) != ret) return false;
     // [1...50]
@@ -515,8 +515,8 @@ bool generate_seed_steps(void) {
 
   // generate mini secret
   for (int i = 1; i <= SE_GENERATE_SEED_MAX_STEPS; i++) {
-    bool ret = se_setMinisec(
-        &step, i == 1 ? SE_GENSEDMNISEC_FIRST : SE_GENSEDMNISEC_OTHER);
+    bool ret =
+        se_setMinisec(i == 1 ? SE_GENSEDMNISEC_FIRST : SE_GENSEDMNISEC_OTHER);
     // only latest call return true
     if ((i == SE_GENERATE_SEED_MAX_STEPS) != ret) return false;
     // [51 ... 100]
@@ -572,7 +572,11 @@ select_mnemonic_count:
   }
 
   if (!se_get_entropy(int_entropy)) return false;
-  const char *mnemonic = mnemonic_from_data(int_entropy, strength / 8);
+  // const char *mnemonic = mnemonic_from_data(int_entropy, strength / 8);
+  // TODO. test the same mnemonic
+  const char *mnemonic =
+      "random random random random random random random "
+      "random random random random random";
 
   if (!writedown_mnemonic(mnemonic)) {
     goto_check(select_mnemonic_count);
@@ -581,7 +585,9 @@ select_mnemonic_count:
   memzero(int_entropy, 32);
   mnemonic_clear();
   if (!generate_seed_steps()) return false;
-
+  // TODO. first verify pin process
+  delay_ms(500);
+  if (!protectPinFirst()) return false;
   return true;
 }
 

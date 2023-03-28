@@ -122,7 +122,7 @@ static bool xor_cal(uint8_t *pucSrc1, uint8_t *pucSrc2, uint16_t usLen,
 /*
  *master i2c synsessionkey
  */
-void se_sync_session_key(void) {
+bool se_sync_session_key(void) {
   uint8_t r1[16], r2[16], r3[32];
   uint8_t *pDefault_key;  // TODO need read from special flash addr
   uint8_t data_buf[64], hash_buf[32];
@@ -131,31 +131,33 @@ void se_sync_session_key(void) {
   aes_encrypt_ctx en_ctxe;
   aes_decrypt_ctx de_ctxe;
 
+  memzero(data_buf, sizeof(data_buf));
   pDefault_key = flash_read_bytes(DEFAULT_SECKEYADDR);
-  // memzero(data_buf, sizeof(data_buf));
-  // memcpy(data_buf, pDefault_key, 16);
   // get random from se
   randomBuf_SE(r1, 16);
   // get random itself
   random_buffer_ST(r2, 16);
-  // cal tmp sessionkey with x hash256
-  memzero(data_buf, sizeof(data_buf));
-  xor_cal(r1, r2, sizeof(r1), data_buf);
-  hasher_Raw(HASHER_SHA2, data_buf, 16, hash_buf);
-  // use session key organization data1
-  memcpy(g_ucSessionKey, hash_buf, 16);
-  aes_encrypt_key128(g_ucSessionKey, &en_ctxe);
-  aes_ecb_encrypt(r1, data_buf, sizeof(r1), &en_ctxe);
-  // organization data2
+  // organization data1
   memcpy(r3, r1, sizeof(r1));
   memcpy(r3 + sizeof(r1), r2, sizeof(r2));
   aes_encrypt_key128(pDefault_key, &en_ctxe);
-  aes_ecb_encrypt(r3, data_buf + 16, sizeof(r1) + sizeof(r2), &en_ctxe);
+  aes_ecb_encrypt(r3, data_buf, sizeof(r1) + sizeof(r2), &en_ctxe);
+
+  // cal tmp sessionkey with x hash256
+  memzero(r3, sizeof(r3));
+  xor_cal(r1, r2, sizeof(r1), r3);
+  memcpy(r3 + 16, pDefault_key, 16);
+  hasher_Raw(HASHER_SHA2, r3, 32, hash_buf);
+  // use session key organization data2
+  memcpy(g_ucSessionKey, hash_buf, 16);
+  aes_encrypt_key128(g_ucSessionKey, &en_ctxe);
+  aes_ecb_encrypt(r1, data_buf + 32, sizeof(r1), &en_ctxe);
   // send data1 + data2 to se and recv returned result
   memcpy(sync_cmd + 5, data_buf, 48);
   if (MI2C_OK !=
       se_transmit_plain(sync_cmd, sizeof(sync_cmd), data_buf, &recv_len)) {
     memset(g_ucSessionKey, 0x00, SESSION_KEYLEN);
+    return false;
   }
 
   // handle the returned data
@@ -163,7 +165,10 @@ void se_sync_session_key(void) {
   aes_ecb_decrypt(data_buf, r3, recv_len, &de_ctxe);
   if (memcmp(r2, r3, sizeof(r2)) != 0) {
     memset(g_ucSessionKey, 0x00, SESSION_KEYLEN);
+    return false;
   }
+
+  return true;
 }
 
 /*
@@ -178,7 +183,9 @@ uint32_t se_transmit(uint8_t ucCmd, uint8_t ucIndex, uint8_t *pucSendData,
   aes_decrypt_ctx ctxd;
   // se apdu
   if (MI2C_ENCRYPT == ucMode) {
-    if ((SET_SESTORE_DATA & ucWRFlag) || (DEVICEINIT_DATA & ucWRFlag)) {
+    if ((SET_SESTORE_DATA & ucWRFlag) || (DEVICEINIT_DATA & ucWRFlag) ||
+        (SE_WRFLG_SETPIN == ucWRFlag) ||
+        (SE_WRFLG_CHGPIN == ucWRFlag)) {  // TODO. pin process
       // data aes encrypt
       randomBuf_SE(ucRandom, sizeof(ucRandom));
       memset(&ctxe, 0, sizeof(aes_encrypt_ctx));
@@ -187,12 +194,12 @@ uint32_t se_transmit(uint8_t ucCmd, uint8_t ucIndex, uint8_t *pucSendData,
       memcpy(SH_IOBUFFER + sizeof(ucRandom), pucSendData, usSendLen);
       usSendLen += sizeof(ucRandom);
       // add pad
-      if (usSendLen % AES_BLOCK_SIZE) {
-        usPadLen = AES_BLOCK_SIZE - (usSendLen % AES_BLOCK_SIZE);
-        memset(SH_IOBUFFER + usSendLen, 0x00, usPadLen);
-        SH_IOBUFFER[usSendLen] = 0x80;
-        usSendLen += usPadLen;
-      }
+      // if (usSendLen % AES_BLOCK_SIZE) {
+      // }
+      usPadLen = AES_BLOCK_SIZE - (usSendLen % AES_BLOCK_SIZE);
+      memset(SH_IOBUFFER + usSendLen, 0x00, usPadLen);
+      SH_IOBUFFER[usSendLen] = 0x80;
+      usSendLen += usPadLen;
       aes_ecb_encrypt(SH_IOBUFFER, g_ucMI2cRevBuf, usSendLen, &ctxe);
     } else {
       // data add random
@@ -297,6 +304,129 @@ uint32_t se_transmit(uint8_t ucCmd, uint8_t ucIndex, uint8_t *pucSendData,
   return MI2C_OK;
 }
 
+inline static uint32_t se_transmit_ex(uint8_t ucCmd, uint8_t ucIndex,
+                                      uint8_t *pucSendData, uint16_t usSendLen,
+                                      uint8_t *pucRevData, uint16_t *pusRevLen,
+                                      uint8_t ucMode, uint8_t ucWRFlag,
+                                      bool bFirst) {
+  uint8_t ucRandom[16], i;
+  uint16_t usPadLen;
+  aes_encrypt_ctx ctxe;
+  aes_decrypt_ctx ctxd;
+  // se apdu
+  if (MI2C_ENCRYPT == ucMode) {  // TODO. set seed and minisecret process
+    if ((SET_SESTORE_DATA & ucWRFlag) || (DEVICEINIT_DATA & ucWRFlag) ||
+        (SE_WRFLG_GENSEED == ucWRFlag) ||
+        (SE_WRFLG_GENMINISECRET == ucWRFlag)) {
+      // data aes encrypt
+      randomBuf_SE(ucRandom, sizeof(ucRandom));
+      memset(&ctxe, 0, sizeof(aes_encrypt_ctx));
+      aes_encrypt_key128(g_ucSessionKey, &ctxe);
+      memcpy(SH_IOBUFFER, ucRandom, sizeof(ucRandom));
+      memcpy(SH_IOBUFFER + sizeof(ucRandom), pucSendData, usSendLen);
+      usSendLen += sizeof(ucRandom);
+      // add pad
+      // if ((usSendLen % AES_BLOCK_SIZE) || (usSendLen / AES_BLOCK_SIZE)) {
+      // }
+      usPadLen = AES_BLOCK_SIZE - (usSendLen % AES_BLOCK_SIZE);
+      memset(SH_IOBUFFER + usSendLen, 0x00, usPadLen);
+      SH_IOBUFFER[usSendLen] = 0x80;
+      usSendLen += usPadLen;
+      aes_ecb_encrypt(SH_IOBUFFER, g_ucMI2cRevBuf, usSendLen, &ctxe);
+    } else {
+      // data add random
+      random_buffer_ST(ucRandom, sizeof(ucRandom));
+      memcpy(g_ucMI2cRevBuf, ucRandom, sizeof(ucRandom));
+      if (usSendLen > 0) {
+        memcpy(g_ucMI2cRevBuf + sizeof(ucRandom), pucSendData, usSendLen);
+      }
+      usSendLen += sizeof(ucRandom);
+    }
+  }
+  if (bFirst)
+    CLA = 0x90;
+  else
+    CLA = 0x80;
+  INS = ucCmd;
+  P1 = ucIndex;
+  P2 = ucWRFlag | ucMode;
+  if (usSendLen > 255) {
+    P3 = 0x00;
+    SH_IOBUFFER[0] = (usSendLen >> 8) & 0xFF;
+    SH_IOBUFFER[1] = usSendLen & 0xFF;
+    if (usSendLen > (MI2C_BUF_MAX_LEN - 7)) {
+      return MI2C_ERROR;
+    }
+    if (MI2C_ENCRYPT == ucMode) {
+      memcpy(SH_IOBUFFER + 2, g_ucMI2cRevBuf, usSendLen);
+    } else {
+      memcpy(SH_IOBUFFER + 2, pucSendData, usSendLen);
+    }
+
+    usSendLen += 7;
+  } else {
+    P3 = usSendLen & 0xFF;
+    if (MI2C_ENCRYPT == ucMode) {
+      memcpy(SH_IOBUFFER, g_ucMI2cRevBuf, usSendLen);
+    } else {
+      memcpy(SH_IOBUFFER, pucSendData, usSendLen);
+    }
+    usSendLen += 5;
+  }
+  if (false == bMI2CDRV_SendData(SH_CMDHEAD, usSendLen)) {
+    return MI2C_ERROR;
+  }
+  g_usMI2cRevLen = sizeof(g_ucMI2cRevBuf);
+  if (false == bMI2CDRV_ReceiveData(g_ucMI2cRevBuf, &g_usMI2cRevLen)) {
+    if (g_usMI2cRevLen && pucRevData) {
+      *pusRevLen = *pusRevLen > g_usMI2cRevLen ? g_usMI2cRevLen : *pusRevLen;
+      memcpy(pucRevData, g_ucMI2cRevBuf, *pusRevLen);
+    }
+    return MI2C_ERROR;
+  }
+  if (MI2C_ENCRYPT == ucMode) {
+    // aes dencrypt data
+    if ((GET_SESTORE_DATA == ucWRFlag) && (g_usMI2cRevLen > 0) &&
+        ((g_usMI2cRevLen % 16 == 0x00))) {
+      memset(&ctxd, 0, sizeof(aes_decrypt_ctx));
+      aes_decrypt_key128(g_ucSessionKey, &ctxd);
+      aes_ecb_decrypt(g_ucMI2cRevBuf, SH_IOBUFFER, g_usMI2cRevLen, &ctxd);
+
+      if (memcmp(SH_IOBUFFER, ucRandom, sizeof(ucRandom)) != 0) {
+        return MI2C_ERROR;
+      }
+      // delete pad
+      for (i = 1; i < 0x11; i++) {
+        if (SH_IOBUFFER[g_usMI2cRevLen - i] == 0x80) {
+          for (usPadLen = 1; usPadLen < i; usPadLen++) {
+            if (SH_IOBUFFER[g_usMI2cRevLen - usPadLen] != 0x00) {
+              i = 0x11;
+              break;
+            }
+          }
+          break;
+        }
+      }
+
+      if (i != 0x11) {
+        g_usMI2cRevLen = g_usMI2cRevLen - i;
+      }
+      g_usMI2cRevLen -= sizeof(ucRandom);
+      if (pucRevData != NULL) {
+        memcpy(pucRevData, SH_IOBUFFER + sizeof(ucRandom), g_usMI2cRevLen);
+        *pusRevLen = g_usMI2cRevLen;
+        return MI2C_OK;
+      }
+    }
+  }
+  if (pucRevData != NULL) {
+    memcpy(pucRevData, g_ucMI2cRevBuf, g_usMI2cRevLen);
+    *pusRevLen = g_usMI2cRevLen;
+    ;
+  }
+  return MI2C_OK;
+}
+
 uint32_t se_transmit_plain(uint8_t *pucSendData, uint16_t usSendLen,
                            uint8_t *pucRevData, uint16_t *pusRevLen) {
   if (false == bMI2CDRV_SendData(pucSendData, usSendLen)) {
@@ -318,7 +448,7 @@ bool se_get_result_plain(uint8_t *pRecv, uint16_t *pRecv_len) {
   return true;
 }
 
-static inline bool se_get_resp_by_ecdsa256(uint8_t mode, uint32_t *address,
+inline static bool se_get_resp_by_ecdsa256(uint8_t mode, uint32_t *address,
                                            uint8_t count, uint8_t *resp,
                                            uint16_t *resp_len) {
   if ((mode != SIGN_NIST256P1) && (mode != SIGN_SECP256K1) &&
@@ -380,7 +510,7 @@ bool se_derivate_keys(HDNode *out, const char *curve, const uint32_t *address_n,
   return true;
 }
 
-static inline bool se_get_pubkey_by_25519(uint8_t mode, uint8_t *chain_code,
+inline static bool se_get_pubkey_by_25519(uint8_t mode, uint8_t *chain_code,
                                           uint16_t chain_len, uint8_t *pubkey) {
   uint8_t resp[256];
   uint16_t resp_len;
@@ -491,7 +621,7 @@ bool se_delete_key(uint16_t key) {
 
 void se_reset_storage(void) {
   se_transmit(MI2C_CMD_WR_PIN, (SE_RESET & 0xFF), NULL, 0, NULL, NULL,
-              MI2C_ENCRYPT, SET_SESTORE_DATA);
+              MI2C_ENCRYPT, SE_WRFLG_RESET);
 }
 
 bool se_get_sn(char **serial, uint16_t len) {
@@ -598,8 +728,6 @@ bool se_isInitialized(void) {
 
 bool se_hasPin(void) { return se_isInitialized(); }
 
-bool se_setPin(uint32_t pin) { return se_set_value(SE_PIN, &pin, sizeof(pin)); }
-
 bool se_verifyPin(uint32_t pin, uint8_t mode) {
   uint8_t retry = 0;
   uint16_t len = sizeof(retry);
@@ -614,14 +742,32 @@ bool se_verifyPin(uint32_t pin, uint8_t mode) {
   return true;
 }
 
+bool se_setPin(uint32_t pin) {
+  uint16_t recv_len = 0xff;
+
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN & 0xFF), (uint8_t *)&pin,
+                             sizeof(pin), NULL, &recv_len, MI2C_ENCRYPT,
+                             SE_WRFLG_SETPIN)) {
+    return false;
+  }
+  return true;
+}
+
 bool se_changePin(uint32_t oldpin, uint32_t newpin) {
   uint8_t pin_buff[10];
+  uint16_t recv_len = 0xff;
+
   pin_buff[0] = 4;
   memcpy(pin_buff + 1, (uint8_t *)&oldpin, sizeof(uint32_t));
   pin_buff[5] = 4;
   memcpy(pin_buff + 6, (uint8_t *)&newpin, sizeof(uint32_t));
 
-  return se_set_value(SE_PIN, pin_buff, sizeof(pin_buff));
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN & 0xFF),
+                             (uint8_t *)&pin_buff, sizeof(pin_buff), NULL,
+                             &recv_len, MI2C_ENCRYPT, SE_WRFLG_CHGPIN)) {
+    return false;
+  }
+  return true;
 }
 
 uint32_t se_pinFailedCounter(void) { return se_pin_failed_counter; }
@@ -685,23 +831,23 @@ bool se_getPinValidtime(uint8_t *pminutes) {
 // last will return true
 // note : first used mode = SE_GENSEDMNISEC_FIRST
 //        other mode =SE_GENSEDMNISEC_OTHER
-bool se_setSeed(uint8_t *preCnts, uint8_t mode) {
+// bool se_setSeed(uint8_t *preCnts, uint8_t mode) {
+bool se_setSeed(uint8_t mode) {
+  uint8_t cmd[5] = {0x80, 0xe1, 0x12, 0x00, 0x00};
+  uint8_t cur_cnts = 0xff;
   uint16_t recv_len = 0;
+
   // TODO
   if (SE_GENSEDMNISEC_FIRST != mode && SE_GENSEDMNISEC_OTHER != mode)
     return false;
   if (SE_GENSEDMNISEC_FIRST == mode) {
-    if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, 0x12, NULL, 0, preCnts,
-                               &recv_len, MI2C_ENCRYPT, SE_WRFLG_GENSEED)) {
-      if (recv_len != 1) {
-        *preCnts = 0xff;
-      }
+    if (MI2C_OK != se_transmit_ex(MI2C_CMD_WR_PIN, 0x12, NULL, 0, &cur_cnts,
+                                  &recv_len, MI2C_ENCRYPT, SE_WRFLG_GENSEED,
+                                  mode)) {
       return false;
     }
   } else {
-    if (false ==
-        se_get_result_plain(preCnts, &recv_len)) {  // last will return true
-
+    if (false == se_transmit_plain(cmd, sizeof(cmd), &cur_cnts, &recv_len)) {
       return false;
     }
   }
@@ -709,22 +855,22 @@ bool se_setSeed(uint8_t *preCnts, uint8_t mode) {
   return true;
 }
 
-bool se_setMinisec(uint8_t *preCnts, uint8_t mode) {
+// bool se_setMinisec(uint8_t *preCnts, uint8_t mode) {
+bool se_setMinisec(uint8_t mode) {
+  uint8_t cmd[5] = {0x80, 0xe1, 0x12, 0x01, 0x00};
+  uint8_t recv_buf[4];
   uint16_t recv_len = 0;
   // TODO
   if (SE_GENSEDMNISEC_FIRST != mode && SE_GENSEDMNISEC_OTHER != mode)
     return false;
   if (SE_GENSEDMNISEC_FIRST == mode) {
-    if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, 0x12, NULL, 0, preCnts,
-                               &recv_len, MI2C_ENCRYPT,
-                               SE_WRFLG_GENMINISECRET)) {
-      if (recv_len != 1) {
-        *preCnts = 0xff;
-      }
+    if (MI2C_OK != se_transmit_ex(MI2C_CMD_WR_PIN, 0x12, NULL, 0, recv_buf,
+                                  &recv_len, MI2C_ENCRYPT,
+                                  SE_WRFLG_GENMINISECRET, mode)) {
       return false;
     }
   } else {
-    if (!se_get_result_plain(preCnts, &recv_len)) {
+    if (false == se_transmit_plain(cmd, sizeof(cmd), recv_buf, &recv_len)) {
       return false;
     }
   }
@@ -835,7 +981,7 @@ bool se_set_public_region(const uint16_t offset, const void *val_dest,
   cmd[4] = len;
   memcpy(SH_CMDHEAD, cmd, 5);
   memcpy(SH_IOBUFFER, (uint8_t *)val_dest, len);
-  if (MI2C_OK != se_transmit_plain(cmd, 5 + len, recv_buf, &recv_len)) {
+  if (MI2C_OK != se_transmit_plain(SH_CMDHEAD, 5 + len, recv_buf, &recv_len)) {
     return false;
   }
   return true;

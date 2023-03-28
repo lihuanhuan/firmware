@@ -39,6 +39,7 @@ enum {
 bool protectButton(ButtonRequestType type, bool confirm_only);
 secbool protectPinUiCallback(uint32_t wait, uint32_t progress,
                              const char* message);
+bool protectPinFirst(void);
 bool protectPin(bool use_cached);
 bool protectButton_ex(ButtonRequestType type, bool confirm_only, bool requset,
                       uint32_t timeout_s);

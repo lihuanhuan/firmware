@@ -18,6 +18,7 @@
  */
 
 #include "protect.h"
+#include <sys/types.h>
 #include "buttons.h"
 #include "common.h"
 #include "config.h"
@@ -34,6 +35,7 @@
 #include "pinmatrix.h"
 #include "prompt.h"
 #include "rng.h"
+#include "se_chip.h"
 #include "si2c.h"
 #include "sys.h"
 #include "usb.h"
@@ -360,6 +362,24 @@ secbool protectPinUiCallback(uint32_t wait, uint32_t progress,
   return secfalse;
 }
 
+bool protectPinFirst(void) {
+  const char *pin = "";
+
+  pin = protectInputPin(_("Please enter current PIN"), MIN_PIN_LEN, MAX_PIN_LEN,
+                        true);
+  if (!pin) {
+    fsm_sendFailure(FailureType_Failure_PinCancelled, NULL);
+    return false;
+  }
+
+  bool ret = config_unlockFirst(pin);
+  if (!ret) {
+    fsm_sendFailure(FailureType_Failure_PinInvalid, NULL);
+    protectPinCheck(false);
+  }
+  return ret;
+}
+
 bool protectPin(bool use_cached) {
   const char *newpin = NULL;
   if (use_cached && session_isUnlocked()) {
@@ -520,7 +540,8 @@ bool protectChangeWipeCode(bool removal) {
   }
 
   if (!removal) {
-    input = requestPin(PinMatrixRequestType_PinMatrixRequestType_WipeCodeFirst,
+    input =
+  requestPin(PinMatrixRequestType_PinMatrixRequestType_WipeCodeFirst,
                        _("Enter new wipe code:"), &newpin);
     if (input == NULL) {
       memzero(pin, sizeof(pin));
@@ -536,7 +557,8 @@ bool protectChangeWipeCode(bool removal) {
     }
     strlcpy(wipe_code, input, sizeof(wipe_code));
 
-    input = requestPin(PinMatrixRequestType_PinMatrixRequestType_WipeCodeSecond,
+    input =
+  requestPin(PinMatrixRequestType_PinMatrixRequestType_WipeCodeSecond,
                        _("Re-enter new wipe code:"), &newpin);
     if (input == NULL) {
       memzero(pin, sizeof(pin));
@@ -887,7 +909,7 @@ bool protectChangePinOnDevice(bool is_prompt, bool set) {
   static CONFIDENTIAL char old_pin[MAX_PIN_LEN + 1] = "";
   static CONFIDENTIAL char new_pin[MAX_PIN_LEN + 1] = "";
   const char *pin = NULL;
-  bool is_change = false;
+  volatile bool is_change = false;
   uint8_t key;
 
 pin_set:
@@ -960,8 +982,14 @@ retry:
       }
     }
   }
+  // TODO. set pin and change pin would separated
+  bool ret = false;
+  if (!is_change) {
+    ret = config_setPin(new_pin);
+  } else {
+    ret = config_changePin(old_pin, new_pin);
+  }
 
-  bool ret = config_changePin(old_pin, new_pin);
   memzero(old_pin, sizeof(old_pin));
   memzero(new_pin, sizeof(new_pin));
   if (ret == false) {

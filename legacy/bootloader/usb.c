@@ -904,6 +904,9 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
           } else if (UPDATE_BLE == update_mode) {
             flash_write_word_item(FLASH_BLE_ADDR_START + flash_pos, w);
           } else if (UPDATE_SE == update_mode) {
+            // it will be offset
+            flash_pos += 4;
+            wi = 0;
             // SE每512字节进行一次更新
             if ((((flash_pos - FLASH_FWHEADER_LEN) % 512) == 0x00) &&
                 (flash_pos > FLASH_FWHEADER_LEN)) {
@@ -921,9 +924,11 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
             // do nothing
           }
           flash_exit();
-          // it will be offset
-          flash_pos += 4;
-          wi = 0;
+          if (UPDATE_SE != update_mode) {
+            // it will be offset
+            flash_pos += 4;
+            wi = 0;
+          }
         }
         // TODO check chunk
         if (UPDATE_ST == update_mode) {

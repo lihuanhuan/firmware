@@ -27,6 +27,9 @@
 #define PRIVATE_REGION_SIZE (0x200)  // 0.5KB
 #define SE_PRIVATE_REGION_BASE PUBLIC_REGION_SIZE
 
+#define SE_WRFLG_RESET (0x00)                     // se reset on device
+#define SE_WRFLG_SETPIN (0x00)                    // se set pin
+#define SE_WRFLG_CHGPIN (0x01)                    // se change pin
 #define SE_WRFLG_GENSEED (0x00)                   // se generate seed
 #define SE_WRFLG_GENMINISECRET (0x01)             // se generate minisecret
 #define SE_WRFLG_MNEMONIC SE_WRFLG_GENMINISECRET  // se set mnemonic
@@ -37,7 +40,7 @@
 #define SE_GENSEDMNISEC_OTHER SE_VERIFYPIN_OTHER  // for others
 #define SE_GENERATE_SEED_MAX_STEPS 100            // [1, 100] // total 100 steps
 
-void se_sync_session_key(void);
+bool se_sync_session_key(void);
 bool se_device_init(uint8_t mode, const char *passphrase);
 bool se_ecdsa_get_pubkey(uint32_t *address, uint8_t count, uint8_t *pubkey);
 bool se_set_value(uint16_t key, const void *val_dest, uint16_t len);
@@ -65,8 +68,8 @@ bool se_isFactoryMode(void);
 bool se_isLifecyComSta(void);
 bool se_set_u2f_counter(uint32_t u2fcounter);
 bool se_get_u2f_counter(uint32_t *u2fcounter);
-bool se_setSeed(uint8_t *preCnts, uint8_t mode);
-bool se_setMinisec(uint8_t *preCnts, uint8_t mode);
+bool se_setSeed(uint8_t mode);
+bool se_setMinisec(uint8_t mode);
 bool se_get_entropy(uint8_t entroy[32]);
 bool se_set_entropy(const void *entropy);
 bool se_set_mnemonic(const void *mnemonic, uint16_t len);
