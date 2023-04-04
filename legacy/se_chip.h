@@ -75,7 +75,8 @@ bool se_set_entropy(const void *entropy);
 bool se_set_mnemonic(const void *mnemonic, uint16_t len);
 bool se_sessionStart(OUT uint8_t *session_id_bytes);
 bool se_sessionOpen(IN uint8_t *session_id_bytes);
-bool se_sessionGens(uint8_t *pass_phase, uint16_t len, uint8_t mode);
+bool se_sessionGens(uint8_t *pass_phase, uint16_t len, uint8_t type,
+                    uint8_t mode);
 bool se_sessionClose(void);
 bool se_set_public_region(uint16_t offset, const void *val_dest, uint16_t len);
 bool se_get_public_region(uint16_t offset, void *val_dest, uint16_t len);

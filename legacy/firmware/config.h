@@ -84,7 +84,7 @@ bool config_getMnemonic(char *dest, uint16_t dest_size);
 // bool config_getMnemonicBytes(uint8_t *dest, uint16_t dest_size,
 //  uint16_t *real_size);
 
-bool config_genSeed(uint8_t mode);
+bool config_genSeed(void);
 bool config_setSeedsBytes(const uint8_t *seeds, uint8_t len);
 
 // bool config_SeedsEncExportBytes(BixinOutMessageSE_outmessage_t *get_msg);

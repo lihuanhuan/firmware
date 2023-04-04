@@ -21,10 +21,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/types.h>
 // #include <cstdint>
 
 #include "bip32.h"
 #include "ble.h"
+#include "buttons.h"
 #include "common.h"
 #include "config.h"
 
@@ -39,6 +41,7 @@
 #include "protect.h"
 #include "rng.h"
 #include "se_chip.h"
+#include "secbool.h"
 #include "usb.h"
 #include "util.h"
 
@@ -233,8 +236,8 @@ static uint32_t pin_to_int(const char *pin) {
     if (!(cond)) return secfalse; \
   } while (0)
 
-inline static secbool config_get(const struct CfgRecord rcd, void *v,
-                                 uint16_t l) {
+/*inline*/ static secbool config_get(const struct CfgRecord rcd, void *v,
+                                     uint16_t l) {
   bool pri = rcd.id & (1 << 31);
   bool (*reader)(uint16_t, void *, uint16_t) =
       pri ? se_get_private_region : se_get_public_region;
@@ -243,8 +246,8 @@ inline static secbool config_get(const struct CfgRecord rcd, void *v,
   // read has_xxx flag
   CHECK_CONFIG_OP(reader(rcd.meta.offset, &has, 1));
   if (has != TRUE_BYTE) return secfalse;
-
-  return reader(rcd.meta.offset + 1, v, l);
+  CHECK_CONFIG_OP(reader(rcd.meta.offset + 1, v, l));
+  return sectrue;
 }
 
 inline static secbool config_set(const struct CfgRecord rcd, const void *v,
@@ -255,7 +258,8 @@ inline static secbool config_set(const struct CfgRecord rcd, const void *v,
 
   CHECK_CONFIG_OP(writer(rcd.meta.offset + 1, v, l));
   // set has_xxx flag
-  return writer(rcd.meta.offset, &TRUE_BYTE, 1);
+  CHECK_CONFIG_OP(writer(rcd.meta.offset, &TRUE_BYTE, 1));
+  return sectrue;
 }
 
 inline static secbool config_get_bool(const struct CfgRecord id, bool *value) {
@@ -328,14 +332,14 @@ inline static secbool config_set_string(const struct CfgRecord id,
 
 #define config_clear_string(id) config_clear_bytes(id)
 
-inline static secbool config_get_uint32(const struct CfgRecord id,
-                                        uint32_t *value) {
+/*inline*/ static secbool config_get_uint32(const struct CfgRecord id,
+                                            uint32_t *value) {
   *value = 0;
   CHECK_CONFIG_OP(config_get(id, value, sizeof(uint32_t)));
   return sectrue;
 }
-inline static secbool config_set_uint32(const struct CfgRecord id,
-                                        uint32_t value) {
+/*inline*/ static secbool config_set_uint32(const struct CfgRecord id,
+                                            uint32_t value) {
   return config_set(id, &value, sizeof(value));
 }
 
@@ -367,6 +371,7 @@ void config_init(void) {
 #if !EMULATOR
   se_sync_session_key();
 #endif
+
   // If UUID is not set, then the config is uninitialized.
   if (sectrue != config_get_bytes(id_uuid, (uint8_t *)config_uuid, NULL)) {
     random_buffer((uint8_t *)config_uuid, sizeof(config_uuid));
@@ -375,9 +380,8 @@ void config_init(void) {
   }
   data2hex((const uint8_t *)config_uuid, sizeof(config_uuid), config_uuid_str);
 
-  // TODO. test wipe device
+  // TODO. it would wipe se device
   // config_wipe();
-
   usbTiny(oldTiny);
 }
 
@@ -437,17 +441,56 @@ void config_setHomescreen(const uint8_t *data, uint32_t size) {
   }
 }
 
+inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
+  // one thousandth precision, seed && mini secret
+  static int percentPerStep = 1000 / SE_GENERATE_SEED_MAX_STEPS / 2;
+
+  // generate seed
+  for (int i = 1; i <= SE_GENERATE_SEED_MAX_STEPS; i++) {
+    bool ret =
+        se_sessionGens(passphrase, len, SE_WRFLG_GENSEED,
+                       i == 1 ? SE_GENSEDMNISEC_FIRST : SE_GENSEDMNISEC_OTHER);
+    // only latest call return true
+    if ((i == SE_GENERATE_SEED_MAX_STEPS) != ret) return false;
+    // [1...50]
+    int permil = i * percentPerStep;
+    layoutProgressAdapter(_("Generating session seed ..."), permil);
+  }
+
+  // generate mini secret
+  for (int i = 1; i <= SE_GENERATE_SEED_MAX_STEPS; i++) {
+    bool ret =
+        se_sessionGens(passphrase, len, SE_WRFLG_GENMINISECRET,
+                       i == 1 ? SE_GENSEDMNISEC_FIRST : SE_GENSEDMNISEC_OTHER);
+    // only latest call return true
+    if ((i == SE_GENERATE_SEED_MAX_STEPS) != ret) return false;
+    // [51 ... 100]
+    int permil = 500 + i * percentPerStep;
+    layoutProgressAdapter(_("Generating session seed ..."), permil);
+  }
+
+  return true;
+}
+
 // mode : SE_WRFLG_GENSEED or SE_WRFLG_GENMINISECRET;
-bool config_genSeed(uint8_t mode) {
+// bool config_genSeed(uint8_t mode) {
+bool config_genSeed(void) {
   char passphrase[MAX_PASSPHRASE_LEN + 1] = {0};
 
-  if (mode != SE_SESSION_SEED && mode != SE_SESSION_MINISECRET) return false;
   if (!protectPassphrase(passphrase)) {
     memzero(passphrase, sizeof(passphrase));
     fsm_sendFailure(FailureType_Failure_ActionCancelled,
                     _("Passphrase dismissed"));
     return false;
   }
+  // TODO. if passphrase is null it would special choose
+  // if (passphrase[0] == 0) {
+  //   se use default seed and minisecret .
+  //
+  //   return true;
+  // }
+  //
+
   // passphrase is used - confirm on the display
   if (passphrase[0] != 0) {
     layoutDialogSwipe(&bmp_icon_question, _("Cancel"), _("Confirm"), NULL,
@@ -472,15 +515,12 @@ bool config_genSeed(uint8_t mode) {
   }
 
   char oldTiny = usbTiny(1);
-  uint8_t se_gen_mode =
-      (mode == SE_SESSION_SEED) ? SE_WRFLG_GENSEED : SE_WRFLG_GENMINISECRET;
-  // se gen session seed or minisecret
-  if (!se_sessionGens((uint8_t *)passphrase, sizeof(passphrase), se_gen_mode)) {
+  // se gen session seed or minisecret for session
+  if (!session_generate_steps((uint8_t *)passphrase, MAX_PASSPHRASE_LEN))
     return false;
-  }
+
   memzero(passphrase, sizeof(passphrase));
   usbTiny(oldTiny);
-
   return true;
 }
 
@@ -505,7 +545,7 @@ bool config_getLabel(char *dest, uint16_t dest_size) {
 
 bool config_getLanguage(char *dest, uint16_t dest_size) {
   (void)dest_size;
-  uint32_t lang_id;
+  uint32_t lang_id = 0xff;
   if (sectrue == config_get_uint32(id_language, &lang_id)) {
     ui_language = lang_id;
   } else {
@@ -592,16 +632,26 @@ bool config_getPin(char *dest, uint16_t dest_size) {
 // TODO use se session logic
 uint8_t g_activeSession_id[32];
 uint8_t *session_startSession(const uint8_t *received_session_id) {
+  bool ret = false;
   if (received_session_id == NULL) {
     // se create session
-    if (!se_sessionStart(g_activeSession_id)) {
+    ret = se_sessionStart(g_activeSession_id);
+    if (ret) {  // se open session
+      if (!se_sessionOpen(g_activeSession_id)) {
+        // session open failed
+        memzero(g_activeSession_id, sizeof(g_activeSession_id));
+      }
+    } else {
       memzero(g_activeSession_id, sizeof(g_activeSession_id));
     }
   } else {
     // se open session
-    if (se_sessionOpen((uint8_t *)received_session_id)) {
+    ret = se_sessionOpen((uint8_t *)received_session_id);
+    if (ret) {
       memcpy(g_activeSession_id, received_session_id,
              sizeof(g_activeSession_id));
+    } else {  // session open failed
+      memzero(g_activeSession_id, sizeof(g_activeSession_id));
     }
   }
 
@@ -737,7 +787,7 @@ uint32_t config_getSleepDelayMs(void) {
 void config_setSleepDelayMs(uint32_t auto_sleep_ms) {
   if (auto_sleep_ms != 0)
     auto_sleep_ms = MAX(auto_sleep_ms, MIN_AUTOLOCK_DELAY_MS);
-  if (sectrue == config_get_uint32(id_sleep_delay_ms, &auto_sleep_ms)) {
+  if (sectrue == config_set_uint32(id_sleep_delay_ms, auto_sleep_ms)) {
     autoSleepDelayMs = auto_sleep_ms;
     sleepDelayMsCached = sectrue;
   }

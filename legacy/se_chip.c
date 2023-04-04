@@ -130,7 +130,7 @@ bool se_sync_session_key(void) {
   uint16_t recv_len = 0xff;
   aes_encrypt_ctx en_ctxe;
   aes_decrypt_ctx de_ctxe;
-
+  // TODO
   memzero(data_buf, sizeof(data_buf));
   pDefault_key = flash_read_bytes(DEFAULT_SECKEYADDR);
   // get random from se
@@ -230,7 +230,7 @@ uint32_t se_transmit(uint8_t ucCmd, uint8_t ucIndex, uint8_t *pucSendData,
     }
 
     usSendLen += 7;
-    // TODO add le
+    // TODO. add le
     if (MI2C_CMD_ECC_EDDSA == ucCmd) {
       SH_CMDHEAD[usSendLen] = 0x00;
       SH_CMDHEAD[usSendLen + 1] = 0x00;
@@ -267,6 +267,8 @@ uint32_t se_transmit(uint8_t ucCmd, uint8_t ucIndex, uint8_t *pucSendData,
         ((g_usMI2cRevLen % 16 == 0x00))) {
       memset(&ctxd, 0, sizeof(aes_decrypt_ctx));
       aes_decrypt_key128(g_ucSessionKey, &ctxd);
+      // TODO
+      memzero(SH_IOBUFFER, g_usMI2cRevLen);
       aes_ecb_decrypt(g_ucMI2cRevBuf, SH_IOBUFFER, g_usMI2cRevLen, &ctxd);
 
       if (memcmp(SH_IOBUFFER, ucRandom, sizeof(ucRandom)) != 0) {
@@ -930,40 +932,67 @@ bool se_isLifecyComSta(void) {
 }
 
 bool se_sessionStart(OUT uint8_t *session_id_bytes) {
-  uint16_t recv_len = 0;  // 32 bytes session id
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x00, NULL, 0,
-                             session_id_bytes, &recv_len, MI2C_ENCRYPT,
-                             GET_SESTORE_DATA)) {
+  uint8_t cmd[5 + 16] = {0x80, 0xe7, 0x00, 0x00, 0x10};
+  uint8_t recv_buf[0x30], ref_buf[0x30], rand_buf[0x10];
+  uint16_t recv_len = 0xff;  // 32 bytes session id
+  aes_decrypt_ctx aes_dec_ctx;
+
+  // TODO. get se random 16 bytes
+  randomBuf_SE(rand_buf, 0x10);
+  memcpy(cmd + 5, rand_buf, sizeof(rand_buf));
+  if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), recv_buf, &recv_len)) {
     return false;
   }
-  if (recv_len != 32) return false;
+  // TODO. parse returned data
+  if (recv_len != 0x30) return false;
+  aes_decrypt_key128(g_ucSessionKey, &aes_dec_ctx);
+  aes_ecb_decrypt(recv_buf, ref_buf, recv_len, &aes_dec_ctx);
+  if (memcmp(ref_buf, rand_buf, sizeof(rand_buf)) != 0) return false;
+  memcpy(session_id_bytes, ref_buf + 16, 0x20);
   return true;
 }
 
 bool se_sessionOpen(IN uint8_t *session_id_bytes) {
   uint16_t recv_len = 0;
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x01, session_id_bytes, 32,
-                             NULL, &recv_len, MI2C_ENCRYPT, SET_SESTORE_DATA)) {
+                             NULL, &recv_len, MI2C_ENCRYPT, GET_SESTORE_DATA)) {
     return false;
   }
   return true;
 }
 
-bool se_sessionGens(uint8_t *pass_phase, uint16_t len, uint8_t mode) {
-  uint16_t recv_len = 0;
+// TODO. type is seed or minisecret
+bool se_sessionGens(uint8_t *pass_phase, uint16_t len, uint8_t type,
+                    uint8_t mode) {
+  uint8_t cmd[5] = {0x80, 0xe7, 0x02, 0x00, 0x00};
+  uint8_t cur_cnts = 0xff;
   uint8_t cur_wrflag = 0xff;  // seed and minisecret is different
   cur_wrflag =
-      (mode == SE_WRFLG_GENSEED) ? SE_WRFLG_GENSEED : SE_WRFLG_GENMINISECRET;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x02, pass_phase, len, NULL,
-                             &recv_len, MI2C_ENCRYPT, cur_wrflag)) {
+      (type == SE_WRFLG_GENSEED) ? SE_WRFLG_GENSEED : SE_WRFLG_GENMINISECRET;
+  uint16_t recv_len = 0;
+
+  // TODO
+  if (SE_GENSEDMNISEC_FIRST != mode && SE_GENSEDMNISEC_OTHER != mode)
     return false;
+  if (SE_GENSEDMNISEC_FIRST == mode) {
+    if (MI2C_OK != se_transmit_ex(MI2C_CMD_WR_SESSION, 0x02, pass_phase, len,
+                                  &cur_cnts, &recv_len, MI2C_ENCRYPT,
+                                  cur_wrflag, mode)) {
+      return false;
+    }
+  } else {
+    if (type == SE_WRFLG_GENMINISECRET) cmd[3] = 0x01;
+    if (false == se_transmit_plain(cmd, sizeof(cmd), &cur_cnts, &recv_len)) {
+      return false;
+    }
   }
+
   return true;
 }
 
 bool se_sessionClose(void) {
   uint16_t recv_len = 0;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x02, NULL, 0, NULL,
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x03, NULL, 0, NULL,
                              &recv_len, MI2C_ENCRYPT, GET_SESTORE_DATA)) {
     return false;
   }

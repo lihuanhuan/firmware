@@ -252,16 +252,8 @@ static HDNode *fsm_getDerivedNode(const char *curve, const uint32_t *address_n,
   if (fingerprint) {
     *fingerprint = 0;
   }
-
-  // if (!config_getRootNode(&node, curve)) {
-  //   layoutHome();
-  //   return 0;
-  // }
-
-  // TODO curve will setup session mode
-  uint8_t session_mode = SE_SESSION_SEED;  // curve para
-
-  if (!config_genSeed(session_mode)) {
+  // TODO. se generate session seed and minisecret
+  if (!config_genSeed()) {
     layoutHome();
     return 0;
   }

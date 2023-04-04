@@ -16,9 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "otp.h"
-#include <libopencm3/stm32/flash.h>
+#include <stdint.h>
+#include "gd32f4xx.h"
 
 #define FLASH_OTP_BASE 0x1FFF7800U
 #define FLASH_OTP_LOCK_BASE 0x1FFF7A00U
@@ -31,9 +31,17 @@ bool flash_otp_lock(uint8_t block) {
   if (block >= FLASH_OTP_NUM_BLOCKS) {
     return false;
   }
-  flash_unlock();
-  flash_program_byte(FLASH_OTP_LOCK_BASE + block, 0x00);
-  flash_lock();
+  /* unlock the flash program erase controller */
+  fmc_unlock();
+  /* clear pending flags */
+  fmc_flag_clear(FMC_FLAG_END | FMC_FLAG_OPERR | FMC_FLAG_WPERR |
+                 FMC_FLAG_PGMERR | FMC_FLAG_PGSERR);
+
+  if (FMC_READY != fmc_byte_program(FLASH_OTP_LOCK_BASE + block, 0x00)) {
+    return false;
+  }
+
+  fmc_lock();
   return true;
 }
 
@@ -56,12 +64,18 @@ bool flash_otp_write(uint8_t block, uint8_t offset, const uint8_t *data,
       offset + datalen > FLASH_OTP_BLOCK_SIZE) {
     return false;
   }
-  flash_unlock();
+  /* unlock the flash program erase controller */
+  fmc_unlock();
+  /* clear pending flags */
+  fmc_flag_clear(FMC_FLAG_END | FMC_FLAG_OPERR | FMC_FLAG_WPERR |
+                 FMC_FLAG_PGMERR | FMC_FLAG_PGSERR);
   for (uint8_t i = 0; i < datalen; i++) {
     uint32_t address =
         FLASH_OTP_BASE + block * FLASH_OTP_BLOCK_SIZE + offset + i;
-    flash_program_byte(address, data[i]);
+    if (FMC_READY != fmc_byte_program(address, data[i])) {
+      return false;
+    }
   }
-  flash_lock();
+  fmc_lock();
   return true;
 }
