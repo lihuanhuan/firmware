@@ -648,10 +648,12 @@ int hdnode_get_ethereum_pubkeyhash(const HDNode *node, uint8_t *pubkeyhash) {
   SHA3_CTX ctx = {0};
 
   /* get uncompressed public key */
-  if (ecdsa_get_public_key65(node->curve->params, node->private_key, buf) !=
-      0) {
-    return 0;
-  }
+  // if (ecdsa_get_public_key65(node->curve->params, node->private_key, buf) !=
+  //     0) {
+  //   return 0;
+  // }
+  // TODO. publickey is filled
+  ecdsa_uncompress_pubkey(node->curve->params, node->public_key, buf);
 
   /* compute sha3 of x and y coordinate without 04 prefix */
   sha3_256_Init(&ctx);

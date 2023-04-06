@@ -11,6 +11,9 @@
 #include "protect.h"
 #include "recovery.h"
 #include "reset.h"
+#include "supervise.h"
+#include "timer.h"
+#include "util.h"
 
 bool exitBlindSignByInitialize;
 

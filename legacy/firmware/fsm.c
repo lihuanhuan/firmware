@@ -265,13 +265,7 @@ static HDNode *fsm_getDerivedNode(const char *curve, const uint32_t *address_n,
   if (!address_n || address_n_count == 0) {
     return &node;
   }
-  if (hdnode_private_ckd_cached(&node, address_n, address_n_count,
-                                fingerprint) == 0) {
-    fsm_sendFailure(FailureType_Failure_ProcessError,
-                    _("Failed to derive private key"));
-    layoutHome();
-    return 0;
-  }
+
   return &node;
 }
 

@@ -507,6 +507,8 @@ bool se_derivate_keys(HDNode *out, const char *curve, const uint32_t *address_n,
       if (fingerprint) fingerprint = NULL;
       memcpy(out->public_key, resp, resp_len);
       break;
+    default:
+      break;
   }
 
   return true;
@@ -975,6 +977,12 @@ bool se_sessionGens(uint8_t *pass_phase, uint16_t len, uint8_t type,
   if (SE_GENSEDMNISEC_FIRST != mode && SE_GENSEDMNISEC_OTHER != mode)
     return false;
   if (SE_GENSEDMNISEC_FIRST == mode) {
+    if (pass_phase == NULL) {  // TODO. it would use default seed and
+                               // minisecret.
+      return MI2C_OK == se_transmit_ex(MI2C_CMD_WR_SESSION, 0x02, NULL, 0,
+                                       &cur_cnts, &recv_len, MI2C_ENCRYPT,
+                                       cur_wrflag, mode);
+    }
     if (MI2C_OK != se_transmit_ex(MI2C_CMD_WR_SESSION, 0x02, pass_phase, len,
                                   &cur_cnts, &recv_len, MI2C_ENCRYPT,
                                   cur_wrflag, mode)) {
@@ -1075,7 +1083,7 @@ bool se_ecdsa_sign_digest(uint8_t curve, uint32_t mode, uint8_t sec_genk,
   if ((CURVE_NIST256P1 != curve) && (CURVE_SECP256K1 != curve)) {
     return false;
   }
-  ucFlg = SET_SESTORE_DATA;
+  ucFlg = GET_SESTORE_DATA;
   ucFlg |= curve;
   memset(tmp, 0x00, sizeof(tmp));
   LITTLE_REVERSE32(mode, mode);

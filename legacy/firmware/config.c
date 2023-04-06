@@ -382,6 +382,7 @@ void config_init(void) {
 
   // TODO. it would wipe se device
   // config_wipe();
+
   usbTiny(oldTiny);
 }
 
@@ -445,6 +446,14 @@ inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
   // one thousandth precision, seed && mini secret
   static int percentPerStep = 1000 / SE_GENERATE_SEED_MAX_STEPS / 2;
 
+  if (passphrase == NULL) {  // TODO. it would use wallet seed.
+    bool ret = se_sessionGens(NULL, 0, SE_WRFLG_GENSEED, SE_GENSEDMNISEC_FIRST);
+    if (ret) {
+      ret = se_sessionGens(NULL, 0, SE_WRFLG_GENMINISECRET,
+                           SE_GENSEDMNISEC_FIRST);
+    }
+    return ret;
+  }
   // generate seed
   for (int i = 1; i <= SE_GENERATE_SEED_MAX_STEPS; i++) {
     bool ret =
@@ -484,15 +493,14 @@ bool config_genSeed(void) {
     return false;
   }
   // TODO. if passphrase is null it would special choose
-  // if (passphrase[0] == 0) {
-  //   se use default seed and minisecret .
-  //
-  //   return true;
-  // }
-  //
-
-  // passphrase is used - confirm on the display
-  if (passphrase[0] != 0) {
+  if (passphrase[0] == 0) {
+    // se use default seed and minisecret.
+    char oldTiny = usbTiny(1);
+    // se gen session seed or minisecret for session
+    if (!session_generate_steps(NULL, 0)) return false;
+    usbTiny(oldTiny);
+    return true;
+  } else {  // passphrase is used - confirm on the display
     layoutDialogSwipe(&bmp_icon_question, _("Cancel"), _("Confirm"), NULL,
                       _("Access hidden wallet?"), NULL,
                       _("Next screen will show"), _("the passphrase!"), NULL,
@@ -516,7 +524,7 @@ bool config_genSeed(void) {
 
   char oldTiny = usbTiny(1);
   // se gen session seed or minisecret for session
-  if (!session_generate_steps((uint8_t *)passphrase, MAX_PASSPHRASE_LEN))
+  if (!session_generate_steps((uint8_t *)passphrase, strlen(passphrase)))
     return false;
 
   memzero(passphrase, sizeof(passphrase));
