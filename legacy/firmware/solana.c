@@ -150,8 +150,8 @@ void solana_sign_tx(const SolanaSignTx *msg, const HDNode *node,
         }
       }
     }
-    ed25519_sign(msg->raw_tx.bytes, msg->raw_tx.size, node->private_key,
-                 &node->public_key[1], resp->signature.bytes);
+    hdnode_sign(node, msg->raw_tx.bytes, msg->raw_tx.size, 0,
+                resp->signature.bytes, NULL, NULL);
     resp->has_signature = true;
     resp->signature.size = 64;
   } else {

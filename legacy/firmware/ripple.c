@@ -333,8 +333,7 @@ bool ripple_sign_tx(const RippleSignTx *msg, HDNode *node,
   // sign tx hash
   uint8_t v;
   uint8_t sig[65] = {0};
-  if (ecdsa_sign_digest(&secp256k1, node->private_key, hash, sig, &v,
-                        ripple_is_canonic) != 0) {
+  if (hdnode_sign_digest(node, hash, sig, &v, ripple_is_canonic) != 0) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return false;
   }

@@ -40,8 +40,8 @@ void sui_sign_tx(const SuiSignTx *msg, const HDNode *node, SuiSignedTx *resp) {
     return;
   }
 
-  ed25519_sign(msg->raw_tx.bytes, msg->raw_tx.size, node->private_key,
-               node->public_key + 1, resp->signature.bytes);
+  hdnode_sign(node, msg->raw_tx.bytes, msg->raw_tx.size, 0,
+              resp->signature.bytes, NULL, NULL);
   memcpy(resp->public_key.bytes, node->public_key + 1, 32);
   resp->signature.size = 64;
   resp->public_key.size = 32;

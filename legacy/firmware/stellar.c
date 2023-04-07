@@ -1348,6 +1348,7 @@ bool stellar_allOperationsConfirmed() {
  * Calculates and sets the signature for the active transaction
  */
 void stellar_getSignatureForActiveTx(uint8_t *out_signature) {
+  // TODO change logic
   const HDNode *node = stellar_deriveNode(stellar_activeTx.address_n,
                                           stellar_activeTx.address_n_count);
   if (!node) {
@@ -1362,9 +1363,7 @@ void stellar_getSignatureForActiveTx(uint8_t *out_signature) {
   sha256_Final(&(stellar_activeTx.sha256_ctx), to_sign);
 
   uint8_t signature[64] = {0};
-  ed25519_sign(to_sign, sizeof(to_sign), node->private_key,
-               node->public_key + 1, signature);
-
+  hdnode_sign(node, to_sign, sizeof(to_sign), 0, signature, NULL, NULL);
   memcpy(out_signature, signature, sizeof(signature));
 }
 

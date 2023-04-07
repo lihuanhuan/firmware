@@ -363,7 +363,7 @@ secbool protectPinUiCallback(uint32_t wait, uint32_t progress,
   return secfalse;
 }
 
-bool protectPinFirst(void) {
+bool protectVerifyPinFirst(void) {
   const char *pin = "";
 
   pin = protectInputPin(_("Please enter current PIN"), MIN_PIN_LEN, MAX_PIN_LEN,

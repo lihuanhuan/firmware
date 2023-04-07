@@ -67,19 +67,12 @@ void tron_message_sign(TronSignMessage *msg, const HDNode *node,
   tron_message_hash(msg_hash, 32, hash);
 
   uint8_t v;
-  // TODO change use logic
-  (void)node;
-  uint8_t sigrw[65];
-  uint16_t resp_len;
-  if (!se_ecdsa_sign_digest(CURVE_SECP256K1, COM_ECDSA_SIGN, SEC_GENK_MODE,
-                            hash, sizeof(hash), sigrw, sizeof(sigrw),
-                            &resp_len)) {
+  if (hdnode_sign_digest(node, hash, resp->signature.bytes, &v,
+                         ethereum_is_canonic) != 0) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return;
   }
-  v = sigrw[0];
-  memcpy(resp->signature.bytes, sigrw + 1, 64);
-  resp->signature.bytes[64] = 27 + v;
+  resp->signature.bytes[64] = v;
   resp->signature.size = 65;
   msg_write(MessageType_MessageType_TronMessageSignature, resp);
 }
@@ -380,21 +373,12 @@ bool tron_sign_tx(TronSignTx *msg, const char *owner_address,
 
   // sign tx hash
   uint8_t v;
-  // TODO change use logic
-  (void)node;
-  uint8_t sigrw[65];
-  uint16_t resp_len;
-  if (!se_ecdsa_sign_digest(CURVE_SECP256K1, COM_ECDSA_SIGN, SEC_GENK_MODE,
-                            hash, sizeof(hash), sigrw, sizeof(sigrw),
-                            &resp_len)) {
+  if (hdnode_sign_digest(node, hash, resp->signature.bytes, &v,
+                         ethereum_is_canonic) != 0) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return false;
   }
-
-  // fill response
-  v = sigrw[0];
-  memcpy(resp->signature.bytes, sigrw + 1, 64);
-  resp->signature.bytes[64] = 27 + v;
+  resp->signature.bytes[64] = v;
   resp->signature.size = 65;
   resp->has_serialized_tx = 1;
   resp->serialized_tx.size = index;

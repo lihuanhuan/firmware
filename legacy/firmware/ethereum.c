@@ -20,9 +20,10 @@
  */
 
 #include "ethereum.h"
+#include <stdint.h>
+#include <string.h>
 // #include <cstdint>
 #include "address.h"
-#include "crypto.h"
 #include "ecdsa.h"
 #include "ethereum_networks.h"
 #include "ethereum_tokens.h"
@@ -35,12 +36,8 @@
 #include "protect.h"
 #include "secp256k1.h"
 #include "sha3.h"
-#include "transaction.h"
 #include "util.h"
 #include "se_chip.h"
-#ifdef USE_SECP256K1_ZKP_ECDSA
-#include "zkp_ecdsa.h"
-#endif
 
 /* Maximum chain_id which returns the full signature_v (which must fit into an
 uint32). chain_ids larger than this will only return one bit and the caller must
@@ -51,7 +48,7 @@ recalculate the full value: v = 2 * chain_id + 35 + v_bit */
 static bool ethereum_signing = false;
 static uint32_t data_total, data_left;
 static EthereumTxRequest msg_tx_request;
-static CONFIDENTIAL uint8_t privkey[32];
+static CONFIDENTIAL HDNode *_node = NULL;
 static uint64_t chain_id;
 static bool eip1559;
 struct SHA3_CTX keccak_ctx = {0};
@@ -280,20 +277,11 @@ static void send_signature(void) {
   }
 
   keccak_Final(&keccak_ctx, hash);
-  // TODO change use logic
-  uint8_t sigrw[65];
-  uint16_t resp_len;
-  if (!se_ecdsa_sign_digest(CURVE_SECP256K1, ETH_ECDSA_SIGN, SEC_GENK_MODE,
-                            hash, sizeof(hash), sigrw, sizeof(sigrw),
-                            &resp_len)) {
+  if (hdnode_sign_digest(_node, hash, sig, &v, ethereum_is_canonic) != 0) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     ethereum_signing_abort();
     return;
   }
-
-  v = sigrw[0];
-  memcpy(sig, sigrw + 1, 64);
-  memzero(privkey, sizeof(privkey));
 
   /* Send back the result */
   msg_tx_request.has_data_length = false;
@@ -718,7 +706,7 @@ void ethereum_signing_init(const EthereumSignTx *msg, const HDNode *node) {
   hash_data(params.data_initial_chunk_bytes, params.data_initial_chunk_size);
   data_left = data_total - params.data_initial_chunk_size;
 
-  memcpy(privkey, node->private_key, 32);
+  _node = (HDNode *)node;
 
   if (data_left > 0) {
     send_request_chunk();
@@ -836,8 +824,7 @@ void ethereum_signing_init_eip1559(const EthereumSignTxEIP1559 *msg,
   memcpy(signing_access_list, msg->access_list, sizeof(signing_access_list));
   signing_access_list_count = msg->access_list_count;
 
-  memcpy(privkey, node->private_key, 32);
-
+  _node = (HDNode *)node;
   if (data_left > 0) {
     send_request_chunk();
   } else {
@@ -879,7 +866,7 @@ void ethereum_signing_txack(const EthereumTxAck *tx) {
 
 void ethereum_signing_abort(void) {
   if (ethereum_signing) {
-    memzero(privkey, sizeof(privkey));
+    _node = NULL;
     layoutHome();
     ethereum_signing = false;
   }
@@ -939,19 +926,11 @@ void ethereum_message_sign(const EthereumSignMessage *msg, const HDNode *node,
   ethereum_message_hash(msg->message.bytes, msg->message.size, hash);
 
   uint8_t v = 0;
-  // TODO change use logic
-  (void)node;
-  uint8_t sigrw[65];
-  uint16_t resp_len;
-  if (!se_ecdsa_sign_digest(CURVE_SECP256K1, ETH_ECDSA_SIGN, SEC_GENK_MODE,
-                            hash, sizeof(hash), sigrw, sizeof(sigrw),
-                            &resp_len)) {
+  if (hdnode_sign_digest(node, hash, resp->signature.bytes, &v,
+                         ethereum_is_canonic) != 0) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return;
   }
-  v = sigrw[0];
-  memcpy(resp->signature.bytes, sigrw + 1, 64);
-
   resp->signature.bytes[64] = 27 + v;
   resp->signature.size = 65;
   msg_write(MessageType_MessageType_EthereumMessageSignature, resp);
@@ -980,17 +959,11 @@ void ethereum_message_sign_eip712(const EthereumSignMessageEIP712 *msg,
   keccak_Final(&ctx, hash);
 
   uint8_t v = 0;
-  // TODO change use logic
-  uint8_t sigrw[65];
-  uint16_t resp_len;
-  if (!se_ecdsa_sign_digest(CURVE_SECP256K1, ETH_ECDSA_SIGN, SEC_GENK_MODE,
-                            hash, sizeof(hash), sigrw, sizeof(sigrw),
-                            &resp_len)) {
+  if (hdnode_sign_digest(node, hash, resp->signature.bytes, &v,
+                         ethereum_is_canonic) != 0) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return;
   }
-  v = sigrw[0];
-  memcpy(resp->signature.bytes, sigrw + 1, 64);
   resp->signature.bytes[64] = 27 + v;
   resp->signature.size = 65;
   msg_write(MessageType_MessageType_EthereumMessageSignature, resp);
@@ -1026,13 +999,8 @@ int ethereum_message_verify(const EthereumVerifyMessage *msg) {
   }
 
   int ret = 0;
-#ifdef USE_SECP256K1_ZKP_ECDSA
-  ret = zkp_ecdsa_recover_pub_from_sig(&secp256k1, pubkey, msg->signature.bytes,
-                                       hash, v);
-#else
   ret = ecdsa_recover_pub_from_sig(&secp256k1, pubkey, msg->signature.bytes,
                                    hash, v);
-#endif
   if (ret != 0) {
     return 2;
   }
@@ -1075,18 +1043,11 @@ void ethereum_typed_hash_sign(const EthereumSignTypedHash *msg,
                       msg->has_message_hash, hash);
 
   uint8_t v = 0;
-  // TODO change use logic
-  (void)node;
-  uint8_t sigrw[65];
-  uint16_t resp_len;
-  if (!se_ecdsa_sign_digest(CURVE_SECP256K1, ETH_ECDSA_SIGN, SEC_GENK_MODE,
-                            hash, sizeof(hash), sigrw, sizeof(sigrw),
-                            &resp_len)) {
+  if (hdnode_sign_digest(node, hash, resp->signature.bytes, &v,
+                         ethereum_is_canonic) != 0) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return;
   }
-  v = sigrw[0];
-  memcpy(resp->signature.bytes, sigrw + 1, 64);
   resp->signature.bytes[64] = 27 + v;
   resp->signature.size = 65;
   msg_write(MessageType_MessageType_EthereumTypedDataSignature, resp);

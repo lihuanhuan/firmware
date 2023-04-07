@@ -775,7 +775,7 @@ int hdnode_nem_decrypt(const HDNode *node, const ed25519_public_key public_key,
 
 // msg is a data to be signed
 // msg_len is the message length
-int hdnode_sign(HDNode *node, const uint8_t *msg, uint32_t msg_len,
+int hdnode_sign(const HDNode *node, const uint8_t *msg, uint32_t msg_len,
                 HasherType hasher_sign, uint8_t *sig, uint8_t *pby,
                 int (*is_canonical)(uint8_t by, uint8_t sig[64])) {
   uint8_t hash_mode = 0;
@@ -787,21 +787,12 @@ int hdnode_sign(HDNode *node, const uint8_t *msg, uint32_t msg_len,
     return 1;  // signatures are not supported
   } else {
     if (node->curve == &ed25519_info) {
-      if (hdnode_fill_public_key(node) != 0) {
-        return 1;
-      }
       ed25519_sign(msg, msg_len, node->private_key, node->public_key + 1, sig);
     } else if (node->curve == &ed25519_sha3_info) {
-      if (hdnode_fill_public_key(node) != 0) {
-        return 1;
-      }
       ed25519_sign_sha3(msg, msg_len, node->private_key, node->public_key + 1,
                         sig);
 #if USE_KECCAK
     } else if (node->curve == &ed25519_keccak_info) {
-      if (hdnode_fill_public_key(node) != 0) {
-        return 1;
-      }
       ed25519_sign_keccak(msg, msg_len, node->private_key, node->public_key + 1,
                           sig);
 #endif
@@ -813,7 +804,7 @@ int hdnode_sign(HDNode *node, const uint8_t *msg, uint32_t msg_len,
   }
 }
 
-int hdnode_sign_digest(HDNode *node, const uint8_t *digest, uint8_t *sig,
+int hdnode_sign_digest(const HDNode *node, const uint8_t *digest, uint8_t *sig,
                        uint8_t *pby,
                        int (*is_canonical)(uint8_t by, uint8_t sig[64])) {
   if (node->curve->params) {

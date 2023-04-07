@@ -51,7 +51,7 @@
 static bool conflux_signing = false;
 static uint32_t data_total, data_left;
 static ConfluxTxRequest msg_tx_request;
-static CONFIDENTIAL uint8_t privkey[32];
+static CONFIDENTIAL HDNode *_node = NULL;
 static uint32_t chain_id;
 struct SHA3_CTX keccak_ctx_cfx = {0};
 
@@ -318,14 +318,11 @@ static void send_signature(void) {
   layoutProgressAdapter(_("Signing"), 1000);
 
   keccak_Final(&keccak_ctx_cfx, hash);
-  if (ecdsa_sign_digest(&secp256k1, privkey, hash, sig, &v,
-                        conflux_is_canonic) != 0) {
+  if (hdnode_sign_digest(_node, hash, sig, &v, conflux_is_canonic) != 0) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     conflux_signing_abort();
     return;
   }
-
-  memzero(privkey, sizeof(privkey));
 
   /* Send back the result */
   msg_tx_request.has_data_length = false;
@@ -712,8 +709,7 @@ void conflux_signing_init(ConfluxSignTx *msg, const HDNode *node) {
   hash_rlp_length(data_total, msg->data_initial_chunk.bytes[0]);
   hash_data(msg->data_initial_chunk.bytes, msg->data_initial_chunk.size);
   data_left = data_total - msg->data_initial_chunk.size;
-
-  memcpy(privkey, node->private_key, 32);
+  _node = (HDNode *)node;
 
   if (data_left > 0) {
     send_request_chunk();
@@ -756,7 +752,7 @@ void conflux_signing_txack(const ConfluxTxAck *tx) {
 
 void conflux_signing_abort(void) {
   if (conflux_signing) {
-    memzero(privkey, sizeof(privkey));
+    _node = NULL;
     layoutHome();
     conflux_signing = false;
   }
@@ -825,8 +821,8 @@ void conflux_message_sign(const ConfluxSignMessage *msg, const HDNode *node,
   conflux_message_hash(msg->message.bytes, msg->message.size, hash);
 
   uint8_t v = 0;
-  if (ecdsa_sign_digest(&secp256k1, node->private_key, hash,
-                        resp->signature.bytes, &v, conflux_is_canonic) != 0) {
+  if (hdnode_sign_digest(node, hash, resp->signature.bytes, &v,
+                         conflux_is_canonic)) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return;
   }
@@ -889,8 +885,8 @@ void conflux_message_sign_cip23(const ConfluxSignMessageCIP23 *msg,
   keccak_Final(&ctx, hash);
 
   uint8_t v = 0;
-  if (ecdsa_sign_digest(&secp256k1, node->private_key, hash,
-                        resp->signature.bytes, &v, conflux_is_canonic) != 0) {
+  if (hdnode_sign_digest(node, hash, resp->signature.bytes, &v,
+                         conflux_is_canonic) != 0) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return;
   }

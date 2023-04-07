@@ -200,7 +200,7 @@ static int borsh_read_buffer(const NearSignTx *msg, uint32_t *buffer_len,
   if (check_overflow(msg, *processed, *buffer_len)) {
     return -1;
   }
-  *buffer = (char*)&msg->raw_tx.bytes[*processed];
+  *buffer = (char *)&msg->raw_tx.bytes[*processed];
   *processed += *buffer_len;
   return 0;
 }
@@ -394,8 +394,7 @@ bool near_sign_tx(const NearSignTx *msg, const HDNode *node,
   sha256_Update(&ctx, msg->raw_tx.bytes, msg->raw_tx.size);
   sha256_Final(&ctx, hash);
 
-  ed25519_sign(hash, 32, node->private_key, &node->public_key[1],
-               resp->signature.bytes);
+  hdnode_sign(node, hash, 32, 0, resp->signature.bytes, NULL, NULL);
 
   resp->signature.size = 64;
   return true;

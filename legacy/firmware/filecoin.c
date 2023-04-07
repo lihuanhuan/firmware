@@ -333,8 +333,8 @@ bool filecoin_sign_tx(const FilecoinSignTx *msg, const HDNode *node,
   data2hexaddr(message_digest, 32, buf);
 
   uint8_t v;
-  if (ecdsa_sign_digest(&secp256k1, node->private_key, message_digest,
-                        resp->signature.bytes, &v, ethereum_is_canonic) != 0) {
+  if (hdnode_sign_digest(node, message_digest, resp->signature.bytes, &v,
+                         ethereum_is_canonic) != 0) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return false;
   }

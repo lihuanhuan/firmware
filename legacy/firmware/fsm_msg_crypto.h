@@ -306,7 +306,7 @@ void fsm_msgCosiSign(const CosiSign *msg) {
   generate_rfc6979(nonce, &rng);
 
   resp->signature.size = 32;
-
+  // TODO: what doing, should support ?
   ed25519_cosi_sign(msg->data.bytes, msg->data.size, node->private_key, nonce,
                     msg->global_commitment.bytes, msg->global_pubkey.bytes,
                     resp->signature.bytes);
