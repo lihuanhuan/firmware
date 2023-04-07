@@ -91,6 +91,7 @@ CFLAGS   += $(OPTFLAGS) \
             -I$(TOP_DIR)vendor/QR-Code-generator/c \
             -I$(TOP_DIR)vendor/trezor-storage \
             -I$(TOP_DIR)vendor/libsol/include \
+            -I$(TOP_DIR)vendor/libpresetdata/include \
             -I$(TOOLCHAIN_DIR)/lib/gd32/f4xx/CMSIS \
             -I$(TOOLCHAIN_DIR)/lib/gd32/f4xx/CMSIS/GD/GD32F4xx/Include \
             -I$(TOOLCHAIN_DIR)/lib/gd32/f4xx/GD32F4xx_standard_peripheral/Include \
@@ -103,6 +104,10 @@ LDFLAGS  += -L$(TOP_DIR) \
 
 LDFLAGS  += -L$(TOP_DIR)vendor/libsol
 LDLIBS   += -lsol
+
+LDFLAGS  += -L$(TOP_DIR)vendor/libpresetdata
+LDLIBS   += -lpresetdata
+LIBDEPS  += $(TOP_DIR)vendor/libpresetdata/libpresetdata.a
 
 ZKP_PATH = $(TOP_DIR)vendor/secp256k1-zkp
 
