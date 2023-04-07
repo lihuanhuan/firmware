@@ -52,6 +52,7 @@
 #include "u2f_knownapps.h"
 #include "se_chip.h"
 #include "memory.h"
+#include "hard_preset.h"
 
 // About 1/2 Second according to values used in protect.c
 #define U2F_TIMEOUT (800000 / 2)
@@ -437,13 +438,19 @@ void st_version(void) {
   send_u2f_msg(ucBuf, 4);
 }
 
-void gd_getPreSerial(void) {
-  uint8_t ucBuf[SESSION_KEYLEN + 2];
+void gd_setPresetData(const APDU *papdu) {
+  uint8_t ucBuf[2];
 
-  memcpy(ucBuf, flash_read_bytes(DEFAULT_SECKEYADDR), SESSION_KEYLEN);
-  ucBuf[SESSION_KEYLEN] = U2F_SW_NO_ERROR >> 8 & 0xFF;
-  ucBuf[SESSION_KEYLEN + 1] = U2F_SW_NO_ERROR & 0xFF;
-  send_u2f_msg(ucBuf, sizeof(ucBuf));
+  if (APDU_LEN(*papdu) != 0) {
+    debugLog(0, "", "u2f version - badlen");
+    send_u2f_error(U2F_SW_WRONG_LENGTH);
+    return;
+  }
+
+  bPresetDataWrite((uint8_t *)papdu->data);
+  ucBuf[0] = U2F_SW_NO_ERROR >> 8 & 0xFF;
+  ucBuf[1] = U2F_SW_NO_ERROR & 0xFF;
+  send_u2f_msg(ucBuf, 2);
 }
 
 void u2fhid_msg(const APDU *a, uint32_t len) {
@@ -468,13 +475,14 @@ void u2fhid_msg(const APDU *a, uint32_t len) {
     case Buttton_Lcd_Test:
       vButton_Lcd_Test();
       break;
+    case SET_PRESETDATA:  // set presets default data
+      gd_setPresetData(a);
+      break;
     case MEMORY_LOCK:  // it would disable swd and system bootloader
                        // it will reset system nothing to return pc
       memory_protect();
       break;
-    case READ_PRESERIAL:  // read presets default serial
-      gd_getPreSerial();
-      break;
+
     default:
 #if !EMULATOR
       // MI2CDRV_Transmit

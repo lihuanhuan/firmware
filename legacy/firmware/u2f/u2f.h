@@ -62,11 +62,11 @@ typedef struct __attribute__((packed)) {
 #define GET_ST_VERSION          0x31
 
 
-//memory protest lock an unlock
-#define MEMORY_LOCK             0x32
+//write presets default data
+#define SET_PRESETDATA          0x32
 
-//read presets default serial
-#define READ_PRESERIAL          0x33
+//memory protest lock an unlock
+#define MEMORY_LOCK             0x33
 
 // U2F_CMD_REGISTER command defines
 #define U2F_REGISTER_ID         0x05    // Version 2 registration identifier
