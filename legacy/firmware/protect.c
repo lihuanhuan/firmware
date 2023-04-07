@@ -373,7 +373,7 @@ bool protectVerifyPinFirst(void) {
     return false;
   }
 
-  bool ret = config_verifyPin(pin);
+  bool ret = config_firstVerifyPin(pin);
   if (!ret) {
     protectPinCheck(false);
   }

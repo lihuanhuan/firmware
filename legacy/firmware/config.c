@@ -579,6 +579,15 @@ bool config_verifyPin(const char *pin) {
     return false;
   }
 }
+bool config_firstVerifyPin(const char *pin) {
+  if (se_verifyPin((pin_to_int(pin)), SE_VERIFYPIN_FIRST)) {
+    se_unlocked = sectrue;
+    return true;
+  } else {
+    se_unlocked = secfalse;
+    return false;
+  }
+}
 bool config_hasPin(void) { return se_hasPin(); }
 
 bool config_changePin(const char *old_pin, const char *new_pin) {

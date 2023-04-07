@@ -92,6 +92,7 @@ bool config_setSeedsBytes(const uint8_t *seeds, uint8_t len);
 // bool config_stRestoreEntoryFromSe(uint8_t *seed, uint8_t *seed_len);
 
 bool config_setPin(const char *pin);
+bool config_firstVerifyPin(const char *pin);
 bool config_verifyPin(const char *pin);
 bool config_hasPin(void);
 bool config_changePin(const char *old_pin, const char *new_pin);
