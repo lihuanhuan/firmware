@@ -18,6 +18,7 @@
  */
 
 #include "protect.h"
+#include <stdint.h>
 #include <sys/types.h>
 #include "buttons.h"
 #include "common.h"
@@ -362,19 +363,16 @@ secbool protectPinUiCallback(uint32_t wait, uint32_t progress,
   return secfalse;
 }
 
-bool protectPinFirst(void) {
-  const char *pin = "";
-
-  pin = protectInputPin(_("Please enter current PIN"), MIN_PIN_LEN, MAX_PIN_LEN,
-                        true);
-  if (!pin) {
-    fsm_sendFailure(FailureType_Failure_PinCancelled, NULL);
-    return false;
-  }
-
+bool protectVerifyPinFirst(void) {
+  // const char *pin = "";
+  // pin = protectInputPin(_("Verify current PIN..."), MIN_PIN_LEN, MAX_PIN_LEN,
+  //                       true);
+  // if (!pin) {
+  //   return false;
+  // }
+  const char *pin = "\x33\x33\x33\x33";
   bool ret = config_unlockFirst(pin);
   if (!ret) {
-    fsm_sendFailure(FailureType_Failure_PinInvalid, NULL);
     protectPinCheck(false);
   }
   return ret;
@@ -882,17 +880,22 @@ bool protectPinOnDevice(bool use_cached, bool cancel_allowed) {
     return true;
   }
   //   if (input_pin) return true;
-  const char *pin = "";
+  // TODO.
+  // const char *pin = "";
+  (void)cancel_allowed;
+  const char *pin = "\x33\x33\x33\x33";
 input:
   if (config_hasPin()) {
-    // input_pin = true;
-    pin = protectInputPin(_("Please enter current PIN"), MIN_PIN_LEN,
-                          MAX_PIN_LEN, cancel_allowed);
-    // input_pin = false;
-    if (!pin) {
-      return false;
-    } else if (pin == PIN_CANCELED_BY_BUTTON)
-      return false;
+    // TODO. for test
+    //  // input_pin = true;
+
+    // pin = protectInputPin(_("Please enter current PIN"), MIN_PIN_LEN,
+    //                       MAX_PIN_LEN, cancel_allowed);
+    // // input_pin = false;
+    // if (!pin) {
+    //   return false;
+    // } else if (pin == PIN_CANCELED_BY_BUTTON)
+    //   return false;
   }
 
   bool ret = config_unlock(pin);
@@ -942,9 +945,12 @@ pin_set:
       return false;
     }
   }
-retry:
-  pin = protectInputPin(_("Please enter new PIN"), DEFAULT_PIN_LEN, MAX_PIN_LEN,
-                        true);
+  // retry:
+  // TODO.
+  // pin = protectInputPin(_("Please enter new PIN"), DEFAULT_PIN_LEN,
+  // MAX_PIN_LEN,
+  //                       true);
+  pin = "\x33\x33\x33\x33";
   if (pin == PIN_CANCELED_BY_BUTTON) {
     return false;
   } else if (pin == NULL || pin[0] == '\0') {
@@ -956,32 +962,32 @@ retry:
   }
   strlcpy(new_pin, pin, sizeof(new_pin));
 
-  pin = protectInputPin(_("Please re-enter new PIN"), DEFAULT_PIN_LEN,
-                        MAX_PIN_LEN, true);
-  if (pin == NULL) {
-    memzero(old_pin, sizeof(old_pin));
-    memzero(new_pin, sizeof(new_pin));
-    if (set) {
-      goto_check(retry);
-    }
-    return false;
-  } else if (pin == PIN_CANCELED_BY_BUTTON)
-    return false;
-  if (strncmp(new_pin, pin, sizeof(new_pin)) != 0) {
-    memzero(old_pin, sizeof(old_pin));
-    memzero(new_pin, sizeof(new_pin));
-    layoutDialogSwipeCenterAdapter(
-        &bmp_icon_error, NULL, NULL, &bmp_btn_retry, _("Retry"), NULL, NULL,
-        NULL, NULL, _("Inconsistent PIN code"), _("Please try again"), NULL);
-    while (1) {
-      key = protectWaitKey(0, 1);
-      if (key == KEY_CONFIRM) {
-        goto retry;
-      } else if (key == KEY_NULL) {
-        return false;
-      }
-    }
-  }
+  // pin = protectInputPin(_("Please re-enter new PIN"), DEFAULT_PIN_LEN,
+  //                       MAX_PIN_LEN, true);
+  // if (pin == NULL) {
+  //   memzero(old_pin, sizeof(old_pin));
+  //   memzero(new_pin, sizeof(new_pin));
+  //   if (set) {
+  //     goto_check(retry);
+  //   }
+  //   return false;
+  // } else if (pin == PIN_CANCELED_BY_BUTTON)
+  //   return false;
+  // if (strncmp(new_pin, pin, sizeof(new_pin)) != 0) {
+  //   memzero(old_pin, sizeof(old_pin));
+  //   memzero(new_pin, sizeof(new_pin));
+  //   layoutDialogSwipeCenterAdapter(
+  //       &bmp_icon_error, NULL, NULL, &bmp_btn_retry, _("Retry"), NULL, NULL,
+  //       NULL, NULL, _("Inconsistent PIN code"), _("Please try again"), NULL);
+  //   while (1) {
+  //     key = protectWaitKey(0, 1);
+  //     if (key == KEY_CONFIRM) {
+  //       goto retry;
+  //     } else if (key == KEY_NULL) {
+  //       return false;
+  //     }
+  //   }
+  // }
   // TODO. set pin and change pin would separated
   bool ret = false;
   if (!is_change) {

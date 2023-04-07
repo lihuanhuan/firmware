@@ -465,7 +465,8 @@ bool writedown_mnemonic(const char *mnemonic) {
   char desc[32] = "";
   strcat(desc, _("Check the written "));
   uint2str(words_count, desc + strlen(desc));
-write_mnemonic:
+  // TODO
+  //  write_mnemonic:
   if (scroll_mnemonic(_("Words"), mnemonic, 0)) {
     layoutDialogSwipeCenterAdapter(NULL, &bmp_btn_back, _("Back"),
                                    &bmp_btn_forward, _("Next"), NULL, NULL,
@@ -475,12 +476,13 @@ write_mnemonic:
       return false;
     }
   check_mnemonic:
-    if (!scroll_mnemonic(NULL, mnemonic, 1)) {
-      goto_check(write_mnemonic);
-    }
-    if (!verify_mnemonic(mnemonic)) {
-      goto_check(check_mnemonic);
-    }
+    // if (!scroll_mnemonic(NULL, mnemonic, 1)) {
+    //   goto_check(write_mnemonic);
+    // }
+    // TODO.
+    // if (!verify_mnemonic(mnemonic)) {
+    //   goto_check(check_mnemonic);
+    // }
     layoutDialogSwipeCenterAdapter(
         NULL, &bmp_btn_back, _("Back"), &bmp_btn_forward, _("Next"), NULL, NULL,
         _("The recovery phrase are"), _("the only way to recover"),
@@ -574,9 +576,13 @@ select_mnemonic_count:
   if (!se_get_entropy(int_entropy)) return false;
   // const char *mnemonic = mnemonic_from_data(int_entropy, strength / 8);
   // TODO. test the same mnemonic
+  // const char *mnemonic =
+  //     "random random random random random random random "
+  //     "random random random random random";
+
   const char *mnemonic =
-      "random random random random random random random "
-      "random random random random random";
+      "gauge hole clog property soccer idea cycle stadium utility slice hold "
+      "chief";
 
   if (!writedown_mnemonic(mnemonic)) {
     goto_check(select_mnemonic_count);
@@ -586,8 +592,8 @@ select_mnemonic_count:
   mnemonic_clear();
   if (!generate_seed_steps()) return false;
   // TODO. first verify pin process
-  delay_ms(500);
-  if (!protectPinFirst()) return false;
+  layoutSwipe();
+  if (!protectVerifyPinFirst()) return false;
   return true;
 }
 
