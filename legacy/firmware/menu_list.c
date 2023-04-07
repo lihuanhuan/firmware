@@ -432,20 +432,6 @@ static struct menu settings_menu = {
     .previous = &main_menu,
 };
 
-// static struct menu_item check_word_menu_items[] = {
-//     {"Verify All Words", NULL, true, menu_check_all_words, NULL, false},
-//     {"Verify Specified Word", NULL, true, menu_check_specified_word, NULL,
-//      false}};
-
-// static struct menu check_word_menu = {
-//     .start = 0,
-//     .current = 0,
-//     .counts = COUNT_OF(check_word_menu_items),
-//     .title = NULL,
-//     .items = check_word_menu_items,
-//     .previous = &security_set_menu,
-// };
-
 static struct menu_item security_set_menu_items[] = {
     {"Change PIN", NULL, true, menu_changePin, NULL, false},
     {"Blind Signing", NULL, true, menu_blindSign, NULL, false},

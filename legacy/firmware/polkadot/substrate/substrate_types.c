@@ -339,7 +339,7 @@ parser_error_t _substrate_toStringBalance(const pd_Balance_t* v, char* outValue,
 
   number_inplace_trimming(bufferUI, 1);
   number_inplace_trimming(bufferUI, 1);
-  if (z_str3join(bufferUI, sizeof(bufferUI), COIN_TICKER, "") != zxerr_ok) {
+  if (z_str3join(bufferUI, sizeof(bufferUI), COIN_TICKER, NULL) != zxerr_ok) {
     return parser_print_not_supported;
   }
 

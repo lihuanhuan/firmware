@@ -363,15 +363,17 @@ secbool protectPinUiCallback(uint32_t wait, uint32_t progress,
   return secfalse;
 }
 
-bool protectVerifyPinFirst(void) {
-  // const char *pin = "";
-  // pin = protectInputPin(_("Verify current PIN..."), MIN_PIN_LEN, MAX_PIN_LEN,
-  //                       true);
-  // if (!pin) {
-  //   return false;
-  // }
-  const char *pin = "\x33\x33\x33\x33";
-  bool ret = config_unlockFirst(pin);
+bool protectPinFirst(void) {
+  const char *pin = "";
+
+  pin = protectInputPin(_("Please enter current PIN"), MIN_PIN_LEN, MAX_PIN_LEN,
+                        true);
+  if (!pin) {
+    fsm_sendFailure(FailureType_Failure_PinCancelled, NULL);
+    return false;
+  }
+
+  bool ret = config_verifyPin(pin);
   if (!ret) {
     protectPinCheck(false);
   }
@@ -508,6 +510,7 @@ bool protectChangePin(bool removal) {
 bool protectChangeWipeCode(bool removal) {
   (void)removal;
 
+  // TODO. does has this function
   /*
   static CONFIDENTIAL char pin[MAX_PIN_LEN + 1] = "";
   static CONFIDENTIAL char wipe_code[MAX_PIN_LEN + 1] = "";
@@ -648,82 +651,6 @@ bool protectPassphrase(char *passphrase) {
   usbTiny(0);
   layoutHome();
   return result;
-}
-
-bool protectSeedPin(bool force_pin, bool setpin, bool update_pin) {
-  static CONFIDENTIAL char old_pin[MAX_PIN_LEN + 1] = "";
-  static CONFIDENTIAL char new_pin[MAX_PIN_LEN + 1] = "";
-  const char *pin = NULL;
-  const char *newpin = NULL;
-
-  if (update_pin) {
-    bool ret = config_changePin(old_pin, new_pin);
-    memzero(old_pin, sizeof(old_pin));
-    memzero(new_pin, sizeof(new_pin));
-    if (ret == false) {
-      i2c_set_wait(false);
-      fsm_sendFailure(FailureType_Failure_PinInvalid, NULL);
-      return false;
-    }
-  } else {
-    if (config_hasPin()) {
-      pin = requestPin(PinMatrixRequestType_PinMatrixRequestType_Current,
-                       _("Please enter current PIN"), &newpin);
-      if (!pin) {
-        fsm_sendFailure(FailureType_Failure_PinCancelled, NULL);
-        return false;
-      } else if (pin == PIN_CANCELED_BY_BUTTON)
-        return false;
-
-      bool ret = config_unlock(pin);
-      if (!ret) {
-        fsm_sendFailure(FailureType_Failure_PinInvalid, NULL);
-        protectPinCheck(false);
-        return false;
-      }
-    } else {
-      if (force_pin) {
-        pin = requestPin(PinMatrixRequestType_PinMatrixRequestType_NewFirst,
-                         _("Please enter new PIN"), &newpin);
-        if (pin == PIN_CANCELED_BY_BUTTON) {
-          return false;
-        } else if (pin == NULL || pin[0] == '\0') {
-          fsm_sendFailure(FailureType_Failure_PinCancelled, NULL);
-          return false;
-        }
-
-        layoutDialogSwipe(&bmp_icon_question, _("Cancel"), _("Confirm"), NULL,
-                          _("Please confirm PIN"), NULL, NULL, pin, NULL, NULL);
-
-        if (!protectButton(ButtonRequestType_ButtonRequest_ProtectCall,
-                           false)) {
-          i2c_set_wait(false);
-          fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);
-          layoutHome();
-          return false;
-        }
-        strlcpy(new_pin, pin, sizeof(new_pin));
-        if (setpin) {
-          bool ret = config_changePin(old_pin, new_pin);
-          memzero(old_pin, sizeof(old_pin));
-          memzero(new_pin, sizeof(new_pin));
-          if (ret == false) {
-            i2c_set_wait(false);
-            fsm_sendFailure(FailureType_Failure_PinInvalid, NULL);
-            return false;
-          }
-        }
-      } else {
-        pin = "";
-      }
-    }
-
-    if (!config_setSeedPin(pin)) {
-      fsm_sendFailure(FailureType_Failure_PinMismatch, NULL);
-      return false;
-    }
-  }
-  return true;
 }
 
 uint8_t blindsignWaitKey(void) {

@@ -91,16 +91,12 @@ bool config_setSeedsBytes(const uint8_t *seeds, uint8_t len);
 // bool config_stBackUpEntoryToSe(uint8_t *seed, uint8_t seed_len);
 // bool config_stRestoreEntoryFromSe(uint8_t *seed, uint8_t *seed_len);
 
-#if DEBUG_LINK
-bool config_dumpNode(HDNodeType *node);
-bool config_getPin(char *dest, uint16_t dest_size);
-#endif
-
 bool config_setPin(const char *pin);
-bool config_unlockFirst(const char *pin);
-bool config_unlock(const char *pin);
+bool config_verifyPin(const char *pin);
 bool config_hasPin(void);
 bool config_changePin(const char *old_pin, const char *new_pin);
+#define config_unlock(pin) config_verifyPin(pin)
+
 bool session_isUnlocked(void);
 
 bool config_hasWipeCode(void);

@@ -1,3 +1,4 @@
+#include <string.h>
 #if !defined(EMULATOR) || !EMULATOR
 
 #include <stdbool.h>
@@ -10,9 +11,6 @@
 #include "bip32.h"
 #include "mi2c.h"
 #include "rand.h"
-#include "secbool.h"
-#include "sys.h"
-#include "util.h"
 #include "flash.h"
 #include "memzero.h"
 
@@ -77,8 +75,6 @@
 static uint32_t se_pin_failed_counter = 0;
 
 uint8_t g_ucSessionKey[SESSION_KEYLEN];
-
-const char NIST256P1[] = "nist256p1";
 
 uint32_t se_transmit_plain(uint8_t *pucSendData, uint16_t usSendLen,
                            uint8_t *pucRevData, uint16_t *pusRevLen);
@@ -450,7 +446,8 @@ bool se_get_result_plain(uint8_t *pRecv, uint16_t *pRecv_len) {
   return true;
 }
 
-inline static bool se_get_resp_by_ecdsa256(uint8_t mode, uint32_t *address,
+inline static bool se_get_resp_by_ecdsa256(uint8_t mode,
+                                           const uint32_t *address,
                                            uint8_t count, uint8_t *resp,
                                            uint16_t *resp_len) {
   if ((mode != SIGN_NIST256P1) && (mode != SIGN_SECP256K1) &&
@@ -1192,5 +1189,4 @@ bool se_aes_128_decrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
   }
   return true;
 }
-
 #endif

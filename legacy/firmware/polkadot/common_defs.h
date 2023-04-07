@@ -282,8 +282,9 @@ __Z_INLINE uint8_t intstr_to_fpstr_inplace(char *number, size_t number_max_size,
 }
 
 __Z_INLINE size_t z_strlen(const char *buffer, size_t maxSize) {
+  (void)maxSize;
   if (buffer == NULL) return 0;
-  return strnlen(buffer, maxSize);
+  return strlen(buffer);
 }
 
 __Z_INLINE zxerr_t z_str3join(char *buffer, size_t bufferSize,

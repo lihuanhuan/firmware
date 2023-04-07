@@ -120,8 +120,8 @@ __Z_INLINE size_t z_strlen(const char *buffer, size_t maxSize) {
 __Z_INLINE zxerr_t z_str3join(char *buffer, size_t bufferSize,
                               const char *prefix, const char *suffix) {
   size_t messageSize = z_strlen(buffer, bufferSize);
-  const size_t prefixSize = z_strlen(prefix, bufferSize);
-  const size_t suffixSize = z_strlen(suffix, bufferSize);
+  const size_t prefixSize = z_strlen(prefix, 32);
+  const size_t suffixSize = z_strlen(suffix, 32);
 
   size_t requiredSize =
       1 /* termination */ + messageSize + prefixSize + suffixSize;

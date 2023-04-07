@@ -193,14 +193,14 @@ static int borsh_read_uint32(const NearSignTx *msg, uint32_t *processed,
 }
 
 static int borsh_read_buffer(const NearSignTx *msg, uint32_t *buffer_len,
-                             const uint8_t **buffer, uint32_t *processed) {
+                             char **buffer, uint32_t *processed) {
   if (borsh_read_uint32(msg, processed, buffer_len)) {
     return -1;
   }
   if (check_overflow(msg, *processed, *buffer_len)) {
     return -1;
   }
-  *buffer = &msg->raw_tx.bytes[*processed];
+  *buffer = (char*)&msg->raw_tx.bytes[*processed];
   *processed += *buffer_len;
   return 0;
 }
@@ -248,7 +248,7 @@ static int parse_transaction(const NearSignTx *msg, uint32_t *processed,
   uint32_t len = 0;
 
   // singer
-  if (borsh_read_buffer(msg, &len, (const uint8_t **)&var_name, processed)) {
+  if (borsh_read_buffer(msg, &len, &var_name, processed)) {
     return -1;
   }
   strcpy_ellipsis(sizeof(singer), singer, len, var_name);
@@ -262,7 +262,7 @@ static int parse_transaction(const NearSignTx *msg, uint32_t *processed,
     return -1;
   }
   // receiver
-  if (borsh_read_buffer(msg, &len, (const uint8_t **)&var_name, processed)) {
+  if (borsh_read_buffer(msg, &len, &var_name, processed)) {
     return -1;
   }
   strcpy_ellipsis(sizeof(singer), singer, len, var_name);

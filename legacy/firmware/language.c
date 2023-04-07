@@ -384,6 +384,8 @@ const char *languages[][2] = {
     {"From", "发送方"},
     // layout2.c
     {"GPG sign for:", ""},
+    // reset.c &&
+    {"Generating seed ...", "生成种子..."},
     // cosmos.c
     {"Granter", "授予人"},
     // layout2.c

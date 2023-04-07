@@ -77,7 +77,6 @@ typedef struct {
   CONFIG_BOOL(passphrase_protection);
   CONFIG_BYTES(homescreen, 1024);
   CONFIG_UINT32(auto_lock_delay_ms);
-  CONFIG_BOOL(initialized);
   CONFIG_BYTES(session_key, 16);
   CONFIG_BOOL(mnemonics_imported);
   CONFIG_UINT32(sleep_delay_ms);
@@ -95,8 +94,6 @@ typedef struct {
   CONFIG_UINT32(flags);
   CONFIG_UINT32(free_pay_times);
   CONFIG_UINT64(free_pay_limit);
-  CONFIG_UINT32(seed_passphrase);
-
 } PriConfig __attribute__((aligned(1)));
 
 // config object store information in SE
@@ -152,8 +149,6 @@ DEF_PUBLIC_ID(passphrase_protection);
 DEF_PUBLIC_ID(homescreen);
 // device auto lock delay by ms ///// shutdown
 DEF_PUBLIC_ID(auto_lock_delay_ms);
-// device has initialized
-DEF_PUBLIC_ID(initialized);
 // does mnemonic has imported
 DEF_PUBLIC_ID(mnemonics_imported);
 // device auto lock screen delay by ms
@@ -172,8 +167,6 @@ DEF_PRIVATE_ID(free_paypin_flag);
 DEF_PRIVATE_ID(free_pay_confirm_flag);
 DEF_PRIVATE_ID(flags);
 DEF_PRIVATE_ID(free_pay_times);
-/* DEF_PRIVATE_ID(free_pay_limit); */
-DEF_PRIVATE_ID(seed_passphrase);
 
 #define MAX_SESSIONS_COUNT 10
 
@@ -209,12 +202,12 @@ static uint32_t autoSleepDelayMs = sleepDelayMsDefault;
 
 static SafetyCheckLevel safetyCheckLevel = SafetyCheckLevel_Strict;
 
-static const uint32_t CONFIG_VERSION = 11;
+static const uint32_t CONFIG_VERSION = 0;
 
 static const uint8_t FALSE_BYTE = '\x00';
 static const uint8_t TRUE_BYTE = '\x01';
 
-static uint32_t pin_to_int(const char *pin) {
+inline static uint32_t pin_to_int(const char *pin) {
   uint32_t val = 1;
   size_t i = 0;
   for (i = 0; i < MAX_PIN_LEN && pin[i] != '\0'; ++i) {
@@ -356,17 +349,7 @@ void config_init(void) {
 
   memzero(HW_ENTROPY_DATA, sizeof(HW_ENTROPY_DATA));
 
-  // TODO: setup home screen
-  g_bHomeGetFlg = config_homeScreen();
-
-  // TODO: check config_init
   config_getLanguage(config_language, sizeof(config_language));
-
-  // imported xprv is not supported anymore so we set initialized to false
-  // if no mnemonic is present
-  if (config_isInitialized()) {
-    config_set_bool(id_initialized, true);
-  }
 
 #if !EMULATOR
   se_sync_session_key();
@@ -392,7 +375,6 @@ void config_loadDevice_ex(const BixinLoadDevice *msg) {
   config_set_bool(id_mnemonics_imported, true);
 
   config_setMnemonic(msg->mnemonics, true);
-  config_set_bool(id_initialized, true);
 
   if (msg->has_language) {
     config_setLanguage(msg->language);
@@ -580,32 +562,15 @@ bool config_setMnemonic(const char *mnemonic, bool import) {
   if (!se_set_mnemonic((void *)mnemonic, strnlen(mnemonic, MAX_MNEMONIC_LEN))) {
     return false;
   }
-  config_set_bool(id_initialized, true);
-  return true;
-}
-
-bool config_setSeedsBytes(const uint8_t *seeds, uint8_t len) {
-  if (seeds == NULL) {
-    return false;
-  }
-  (void)len;
-
-  // TODO:  use SE api set seed
-  config_set_bool(id_initialized, true);
-
   return true;
 }
 
 bool config_setPin(const char *pin) { return se_setPin(pin_to_int(pin)); }
 
-/* Check whether pin matches storage.  The pin must be
+/* Unlock device/verify PIN.  The pin must be
  * a null-terminated string with at most 9 characters.
  */
-bool config_unlockFirst(const char *pin) {
-  return se_verifyPin((pin_to_int(pin)), SE_VERIFYPIN_FIRST);
-}
-
-bool config_unlock(const char *pin) {
+bool config_verifyPin(const char *pin) {
   if (se_verifyPin((pin_to_int(pin)), SE_VERIFYPIN_OTHER)) {
     se_unlocked = sectrue;
     return true;
@@ -614,7 +579,6 @@ bool config_unlock(const char *pin) {
     return false;
   }
 }
-
 bool config_hasPin(void) { return se_hasPin(); }
 
 bool config_changePin(const char *old_pin, const char *new_pin) {
@@ -631,13 +595,6 @@ bool config_changePin(const char *old_pin, const char *new_pin) {
   }
 }
 
-#if DEBUG_LINK
-bool config_getPin(char *dest, uint16_t dest_size) {
-  return sectrue == config_get_string(KEY_DEBUG_LINK_PIN, dest, dest_size);
-}
-#endif
-
-// TODO use se session logic
 uint8_t g_activeSession_id[32];
 uint8_t *session_startSession(const uint8_t *received_session_id) {
   bool ret = false;
@@ -880,20 +837,7 @@ bool config_getMessageSE(BixinMessageSE_inputmessage_t *input_msg,
 
 void config_setIsBixinAPP(void) { g_bIsBixinAPP = true; }
 
-bool config_setSeedPin(const char *pin) {
-  uint32_t seedpin;
-  seedpin = pin_to_int(pin);
-  if (0x00 == seedpin) {
-    return false;
-  }
-  return config_set_uint32(id_seed_passphrase, seedpin);
-}
-
-uint32_t config_getPinFails(void) {
-  uint32_t count = 0;
-  count = se_pinFailedCounter();
-  return count;
-}
+uint32_t config_getPinFails(void) { return se_pinFailedCounter(); }
 
 bool config_getCoinSwitch(CoinSwitch loc) {
   uint32_t coin_switch = 0;

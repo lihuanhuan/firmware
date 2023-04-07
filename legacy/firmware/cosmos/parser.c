@@ -210,9 +210,7 @@ __Z_INLINE parser_error_t parser_formatAmountItem(uint16_t amountToken,
     }
   }
 
-  const size_t len = strlen(bufferUI);
-  if (bufferUI[len - 1] == '.') bufferUI[len - 1] = '\0';
-  z_str3join(bufferUI, sizeof(bufferUI), "", tmpDenom);
+  z_str3join(bufferUI, sizeof(bufferUI), NULL, tmpDenom);
   pageString(outVal, outValLen, bufferUI, pageIdx, pageCount);
 
   return parser_ok;
