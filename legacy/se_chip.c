@@ -1,4 +1,5 @@
 #include <string.h>
+#include "sys/_intsup.h"
 #if !defined(EMULATOR) || !EMULATOR
 
 #include <stdbool.h>
@@ -67,11 +68,26 @@
 #define EDDSA_INDEX_CHILDKEY (0x06)
 #define EDDSA_INDEX_U2FKEY (0x07)
 
-#define SIGN_NIST256P1 (0x00)
-#define SIGN_SECP256K1 (0x01)
-#define SIGN_ED25519_DONNA (0x02)
-#define SIGN_SR25519 (0x03)
-#define SIGN_ED25519_SLIP10 (0x04)
+#define DERIVE_NIST256P1 (0x00)
+#define DERIVE_SECP256K1 (0x01)
+#define DERIVE_ED25519_DONNA (0x02)
+#define DERIVE_SR25519 (0x03)
+#define DERIVE_ED25519_SLIP10 (0x04)
+
+#define CURVE_NIST256P1 (0x40)
+#define CURVE_SECP256K1 (0x00)
+#define CURVE_ED25519 (0x02)
+#define CURVE_SR25519 (0x03)
+
+#define EOS_ECDSA_SIGN (60)
+#define ETH_ECDSA_SIGN (194)
+#define COM_ECDSA_SIGN (0)
+#define SEC_GENK_RFC6979 (0x43)
+#define SEC_GENK_RAND (0x65)
+#define SEC_GENK_MODE (SEC_GENK_RFC6979)
+
+#define AES_ECB (0x00)
+#define AES_CBC (0x01)
 
 static uint32_t se_pin_failed_counter = 0;
 
@@ -457,9 +473,6 @@ inline static bool se_get_resp_by_ecdsa256(uint8_t mode,
                                            const uint32_t *address,
                                            uint8_t count, uint8_t *resp,
                                            uint16_t *resp_len) {
-  if ((mode != SIGN_NIST256P1) && (mode != SIGN_SECP256K1) &&
-      (mode != SIGN_ED25519_SLIP10))
-    return false;
   if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, EDDSA_INDEX_CHILDKEY,
                              (uint8_t *)address, count * 4, resp, resp_len,
                              MI2C_PLAIN, mode)) {
@@ -468,31 +481,45 @@ inline static bool se_get_resp_by_ecdsa256(uint8_t mode,
 
   return true;
 }
+
+inline static bool se_get_derive_mode_by_name(const char *curve,
+                                              uint8_t *mode) {
+  if (0 == strcmp(curve, NIST256P1_NAME)) {
+    *mode = DERIVE_NIST256P1;
+  } else if (0 == strcmp(curve, SECP256K1_NAME)) {
+    *mode = DERIVE_SECP256K1;
+  } else if (0 == strcmp(curve, ED25519_NAME)) {
+    *mode = DERIVE_ED25519_SLIP10;
+  } else if (0 == strcmp(curve, SR25519_NAME)) {
+    *mode = DERIVE_SR25519;
+    //
+    // } else if (0 == strcmp(curve, ED25519_KECCAK_NAME)) {
+    //   *mode = DERIVE_ED25519_DONNA;
+  } else {
+    return false;
+  }
+
+  return true;
+}
+
 // TODO se_get_hnode_public
-bool se_derivate_keys(HDNode *out, const char *curve, const uint32_t *address_n,
-                      size_t address_n_count, uint32_t *fingerprint) {
+bool se_derive_keys(HDNode *out, const char *curve, const uint32_t *address_n,
+                    size_t address_n_count, uint32_t *fingerprint) {
   uint8_t resp[256];
   uint16_t resp_len;
   uint8_t mode;
 
-  if (0 == strcmp(curve, NIST256P1_NAME)) {
-    mode = SIGN_NIST256P1;
-  } else if (0 == strcmp(curve, SECP256K1_NAME)) {
-    mode = SIGN_SECP256K1;
-  } else if (0 == strcmp(curve, ED25519_NAME)) {
-    mode = SIGN_ED25519_SLIP10;
-  } else {
+  if (!se_get_derive_mode_by_name(curve, &mode)) return false;
+
+  if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, EDDSA_INDEX_CHILDKEY,
+                             (uint8_t *)address_n, address_n_count * 4, resp,
+                             &resp_len, MI2C_PLAIN, mode)) {
     return false;
   }
-  // TODO se derivate key
-  if (!se_get_resp_by_ecdsa256(mode, (uint32_t *)address_n, address_n_count,
-                               resp, &resp_len)) {
-    return false;
-  }
-  // TODO for returned
+
   switch (mode) {
-    case SIGN_NIST256P1:
-    case SIGN_SECP256K1:
+    case DERIVE_NIST256P1:
+    case DERIVE_SECP256K1:
       out->depth = resp[0];
       out->child_num = *(uint32_t *)(resp + 1);
       out->curve = get_curve_by_name(curve);
@@ -505,14 +532,14 @@ bool se_derivate_keys(HDNode *out, const char *curve, const uint32_t *address_n,
       }
       memcpy(out->public_key, resp + 1 + 4 + 32 + 33, 33);
       break;
-    case SIGN_ED25519_SLIP10:
+    case DERIVE_ED25519_SLIP10:
       out->curve = get_curve_by_name(curve);
       if (33 != resp_len) return false;
       if (fingerprint) fingerprint = NULL;
       memcpy(out->public_key, resp, resp_len);
       break;
     default:
-      break;
+      return false;
   }
 
   return true;
@@ -523,7 +550,7 @@ inline static bool se_get_pubkey_by_25519(uint8_t mode, uint8_t *chain_code,
   uint8_t resp[256];
   uint16_t resp_len;
 
-  if ((mode != SIGN_ED25519_DONNA) && (mode != SIGN_SR25519)) return false;
+  if ((mode != DERIVE_ED25519_DONNA) && (mode != DERIVE_SR25519)) return false;
   if ((chain_code[0] != 0) && (chain_code[0] != 1)) return false;
   if (0 != chain_len % 33) return false;
 
@@ -540,16 +567,16 @@ inline static bool se_get_pubkey_by_25519(uint8_t mode, uint8_t *chain_code,
 bool se_get_hnode_public_by_polkadot_path(HDNode *out, const char *curve,
                                           const char (*address_n)[130],
                                           size_t address_n_count) {
-  uint8_t mode = SIGN_SR25519;
+  uint8_t mode = DERIVE_SR25519;
 
   if (NULL == out || NULL == curve) {
     return false;
   }
 
   if (0 == strcmp(curve, SR25519_NAME)) {
-    mode = SIGN_SR25519;
+    mode = DERIVE_SR25519;
   } else if (0 == strcmp(curve, ED25519_NAME)) {
-    mode = SIGN_ED25519_DONNA;
+    mode = DERIVE_ED25519_DONNA;
   } else {
     return false;
   }
@@ -1075,56 +1102,50 @@ bool se_get_private_region(uint16_t offset, void *val_dest, uint16_t len) {
   return true;
 }
 
-bool se_ecdsa_sign_digest(uint8_t curve, uint32_t mode, uint8_t sec_genk,
-                          uint8_t *hash, uint16_t hash_len, uint8_t *sig,
-                          uint16_t max_len, uint16_t *len) {
-  uint8_t resp[128], tmp[40], ucFlg;
+bool se_ecdsa_sign_digest(uint8_t curve, const uint8_t *hash, uint8_t *sig,
+                          uint8_t *v) {
+  uint8_t resp[128], tmp[40];
   uint16_t resp_len = 0x41;
-  if (0x20 != hash_len) {
-    return false;
-  }
+  uint32_t mode = ETH_ECDSA_SIGN;
 
-  if ((CURVE_NIST256P1 != curve) && (CURVE_SECP256K1 != curve)) {
-    return false;
-  }
-  ucFlg = GET_SESTORE_DATA;
-  ucFlg |= curve;
   memset(tmp, 0x00, sizeof(tmp));
   LITTLE_REVERSE32(mode, mode);
   memcpy(tmp, &mode, sizeof(uint32_t));
-  tmp[4] = sec_genk;
+  tmp[4] = SEC_GENK_RFC6979;
   memcpy(tmp + 5, hash, 32);  // for special sign add mode (4 bytes)+genk(1
                               // byte)+hash(32 byte),so total len is 37.
   if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, ECC_INDEX_SIGN, tmp,
                              (4 + 1 + 32), resp, &resp_len, MI2C_ENCRYPT,
-                             ucFlg)) {
+                             curve)) {
     return false;
   }
-  if (resp_len > max_len) {
-    return false;
-  }
-  memcpy(sig, resp, resp_len);
-  *len = resp_len;
+  memcpy(sig, resp + 1, 64);
+  *v = resp[0];
   return true;
 }
+#define se_secp256k1_sign_digest(hash, sig, v) \
+  se_ecdsa_sign_digest(CURVE_SECP256K1, hash, sig, v)
+#define se_nist256p1_sign_digest(hash, sig, v) \
+  se_ecdsa_sign_digest(CURVE_NIST256P1, hash, sig, v)
 
-bool se_25519_sign_diget(uint8_t mode, uint8_t *hash, uint16_t hash_len,
-                         uint8_t *sig, uint16_t max_len, uint16_t *len) {
+bool se_25519_sign(uint8_t curve, const uint8_t *msg, uint16_t msg_len,
+                   uint8_t *sig) {
   uint8_t resp[128];
   uint16_t resp_len;
-
-  if ((mode != SIGN_ED25519_DONNA) && (mode != SIGN_SR25519)) return false;
-  if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, EDDSA_INDEX_SIGN, hash,
-                             hash_len, resp, &resp_len, MI2C_ENCRYPT, mode)) {
-    return false;
-  }
-  if (resp_len > max_len) {
+  if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, EDDSA_INDEX_SIGN,
+                             (uint8_t *)msg, msg_len, resp, &resp_len,
+                             MI2C_ENCRYPT, curve)) {
     return false;
   }
   memcpy(sig, resp, resp_len);
-  if (len) *len = resp_len;
   return true;
 }
+
+#define se_ed25519_sign(msg, msg_len, sig) \
+  se_25519_sign(CURVE_ED25519, msg, msg_len, sig)
+
+#define se_sr25519_sign(msg, msg_len, sig) \
+  se_25519_sign(CURVE_SR25519, msg, msg_len, sig)
 
 // TODO it will sign digest
 bool se_schnoor_sign_plain(uint8_t *data, uint16_t data_len, uint8_t *sig,
@@ -1196,4 +1217,53 @@ bool se_aes_128_decrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
   }
   return true;
 }
+
+/// hdnode api
+
+int hdnode_private_ckd_cached(HDNode *inout, const uint32_t *address_n,
+                              size_t address_n_count, uint32_t *fingerprint) {
+  // just tell se derive keys, DO NOT cache anything
+  se_derive_keys(inout, inout->curve->curve_name, address_n, address_n_count,
+                 fingerprint);
+  return 1;
+}
+
+int hdnode_sign_digest(const HDNode *node, const uint8_t *digest, uint8_t *sig,
+                       uint8_t *pby, int (*is_canonical)(uint8_t, uint8_t *)) {
+  const char *curve = node->curve->curve_name;
+  if (strcmp(curve, SECP256K1_NAME) == 0) {
+    if (!se_secp256k1_sign_digest(digest, sig, pby)) return -1;
+    if (is_canonical && is_canonical(*pby, sig)) return -1;
+    return 0;
+  } else if (strcmp(curve, NIST256P1_NAME) == 0) {
+    if (!se_nist256p1_sign_digest(digest, sig, pby)) return -1;
+    if (is_canonical && is_canonical(*pby, sig)) return -1;
+    return 0;
+  }
+  return -1;
+}
+
+int hdnode_sign(const HDNode *node, const uint8_t *msg, uint32_t msg_len,
+                HasherType hasher_sign, uint8_t *sig, uint8_t *pby,
+                int (*is_canonical)(uint8_t, uint8_t *)) {
+  if (node->curve->params) {
+    uint8_t hash[32] = {0};
+    hasher_Raw(hasher_sign, msg, msg_len, hash);
+    return hdnode_sign_digest(node, hash, sig, pby, is_canonical);
+  } else {
+    const char *curve = node->curve->curve_name;
+    if (strcmp(curve, ED25519_NAME) == 0) {
+      if (!se_ed25519_sign(msg, msg_len, sig)) return -1;
+      return 0;
+
+    } else if (strcmp(curve, SR25519_NAME) == 0) {
+      if (!se_sr25519_sign(msg, msg_len, sig)) return -1;
+      return 0;
+    }
+  }
+  return -1;
+}
+
+int hdnode_private_ckd(HDNode *inout, uint32_t i) {}
+
 #endif

@@ -40,6 +40,7 @@
 #define CARDANO_MAX_NODE_DEPTH 1048576
 
 const curve_info ed25519_cardano_info = {
+    .curve_name = ED25519_NAME,
     .bip32_name = ED25519_CARDANO_NAME,
     .params = NULL,
     .hasher_base58 = HASHER_SHA2D,

@@ -242,9 +242,9 @@ static const CoinInfo *fsm_getCoin(bool has_name, const char *name) {
   return coin;
 }
 
-extern bool se_derivate_keys(HDNode *out, const char *curve,
-                             const uint32_t *address_n, size_t address_n_count,
-                             uint32_t *fingerprint);
+extern bool se_derive_keys(HDNode *out, const char *curve,
+                           const uint32_t *address_n, size_t address_n_count,
+                           uint32_t *fingerprint);
 static HDNode *fsm_getDerivedNode(const char *curve, const uint32_t *address_n,
                                   size_t address_n_count,
                                   uint32_t *fingerprint) {
@@ -257,8 +257,7 @@ static HDNode *fsm_getDerivedNode(const char *curve, const uint32_t *address_n,
     layoutHome();
     return 0;
   }
-  if (!se_derivate_keys(&node, curve, address_n, address_n_count,
-                        fingerprint)) {
+  if (!se_derive_keys(&node, curve, address_n, address_n_count, fingerprint)) {
     layoutHome();
     return 0;
   }

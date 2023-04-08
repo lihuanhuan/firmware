@@ -10,19 +10,6 @@
 #define SESSION_KEYLEN (16)
 #define DEFAULT_SECKEYADDR (0x0800F000UL)
 
-#define CURVE_NIST256P1 (0x40)
-#define CURVE_SECP256K1 (0x00)
-
-#define EOS_ECDSA_SIGN (60)
-#define ETH_ECDSA_SIGN (194)
-#define COM_ECDSA_SIGN (0)
-#define SEC_GENK_RFC6979 (0x43)
-#define SEC_GENK_RAND (0x65)
-#define SEC_GENK_MODE (SEC_GENK_RFC6979)
-
-#define AES_ECB (0x00)
-#define AES_CBC (0x01)
-
 #define PUBLIC_REGION_SIZE (0x600)   // 1.5KB
 #define PRIVATE_REGION_SIZE (0x200)  // 0.5KB
 #define SE_PRIVATE_REGION_BASE PUBLIC_REGION_SIZE
@@ -82,11 +69,6 @@ bool se_set_public_region(uint16_t offset, const void *val_dest, uint16_t len);
 bool se_get_public_region(uint16_t offset, void *val_dest, uint16_t len);
 bool se_set_private_region(uint16_t offset, const void *val_dest, uint16_t len);
 bool se_get_private_region(uint16_t offset, void *val_dest, uint16_t len);
-bool se_ecdsa_sign_digest(uint8_t curve, uint32_t mode, uint8_t sec_genk,
-                          uint8_t *hash, uint16_t hash_len, uint8_t *sig,
-                          uint16_t max_len, uint16_t *len);
-bool se_25519_sign_diget(uint8_t mode, uint8_t *hash, uint16_t hash_len,
-                         uint8_t *sig, uint16_t max_len, uint16_t *len);
 bool se_schnoor_sign_plain(uint8_t *data, uint16_t data_len, uint8_t *sig,
                            uint16_t max_len, uint16_t *len);
 bool se_aes_128_encrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
