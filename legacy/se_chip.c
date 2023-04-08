@@ -1233,11 +1233,11 @@ int hdnode_sign_digest(const HDNode *node, const uint8_t *digest, uint8_t *sig,
   const char *curve = node->curve->curve_name;
   if (strcmp(curve, SECP256K1_NAME) == 0) {
     if (!se_secp256k1_sign_digest(digest, sig, pby)) return -1;
-    if (is_canonical && is_canonical(*pby, sig)) return -1;
+    if (is_canonical && !is_canonical(*pby, sig)) return -1;
     return 0;
   } else if (strcmp(curve, NIST256P1_NAME) == 0) {
     if (!se_nist256p1_sign_digest(digest, sig, pby)) return -1;
-    if (is_canonical && is_canonical(*pby, sig)) return -1;
+    if (is_canonical && !is_canonical(*pby, sig)) return -1;
     return 0;
   }
   return -1;
@@ -1263,7 +1263,5 @@ int hdnode_sign(const HDNode *node, const uint8_t *msg, uint32_t msg_len,
   }
   return -1;
 }
-
-int hdnode_private_ckd(HDNode *inout, uint32_t i) {}
 
 #endif
