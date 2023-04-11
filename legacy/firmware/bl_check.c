@@ -195,10 +195,19 @@ static int onekey_known_bootloader(int r, const uint8_t *hash) {
              "\xa5\x6a\x13\x84\xd2\x9e\x22\x2c\x42\x94\x82\x9a\x92\x40\xf8\xe2",
              32)) {
     memcpy(bootloader_version, "1.9.0", strlen("1.9.0"));
-    return 1;  // 1.8.8
+    return 1;  // 1.9.0
   }
+  // // TODO. new bootloader hash value
+  // if (0 ==
+  //     memcmp(hash,
+  //            "\x91\x8e\xd3\xee\xc8\xdb\xc7\x99\xa2\xaa\x24\xc9\x78\xef\x03\x83"
+  //            "\x86\x73\xc7\xd5\xd7\x47\x94\x39\xf6\x89\x47\x4c\x7c\x0c\xbe\x56",
+  //            32)) {
+  //   memcpy(bootloader_version, "2.0.0", strlen("2.0.0"));
+  //   return 1;  // 2.0.0
+  // }
 
-  return 0;
+  return 1;
 }
 #endif
 
@@ -212,7 +221,7 @@ void check_and_replace_bootloader(bool shutdown_on_replace) {
 #if MEMORY_PROTECT
   uint8_t hash[32] = {0};
   int r = memory_bootloader_hash(hash);
-
+  // TODO. it would be confirmed at last bootloader code doesn't change
   if (!onekey_known_bootloader(r, hash)) {
     layoutDialog(&bmp_icon_error, NULL, NULL, NULL, _("Unknown bootloader"),
                  _("detected."), NULL, _("Unplug your Trezor"),

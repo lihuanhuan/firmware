@@ -3,9 +3,6 @@ MEMORY
 {		
 	rom (rx) : ORIGIN = 0x08000000, LENGTH = 3072K
 	ram (rwx) : ORIGIN = 0x20000000, LENGTH = 192K
-	/*
-	ram1 (rwx) : ORIGIN = 0x10000000, LENGTH = 64K
-	*/
 }
 
 SECTIONS
@@ -26,3 +23,4 @@ __stack_chk_guard = _ram_end - 8;
 system_millis = _ram_end - 4;
 
 _data_size = SIZEOF(.data);
+
