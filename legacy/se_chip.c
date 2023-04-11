@@ -137,8 +137,10 @@ static bool xor_cal(uint8_t *pucSrc1, uint8_t *pucSrc2, uint16_t usLen,
  */
 bool se_sync_session_key(void) {
   uint8_t r1[16], r2[16], r3[32];
-  uint8_t default_key[16],
-      *pDefault_key;  // TODO need read from special flash addr
+  uint8_t default_key[16] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                             0xff, 0xff, 0xff, 0xff, 0xff};  // TODO need read
+                                                             // from special
+                                                             // flash addr
   uint8_t data_buf[64], hash_buf[32];
   uint8_t sync_cmd[5 + 48] = {0x00, 0xfa, 0x00, 0x00, 0x30};
   uint16_t recv_len = 0xff;
@@ -146,11 +148,7 @@ bool se_sync_session_key(void) {
   aes_decrypt_ctx de_ctxe;
   // TODO
   memzero(data_buf, sizeof(data_buf));
-  pDefault_key = flash_read_bytes(DEFAULT_SECKEYADDR);
-
-  (void)default_key;
   // if (!bPresetDataRead(default_key)) return false;
-  // pDefault_key = default_key;
 
   // get random from se
   randomBuf_SE(r1, 16);
@@ -159,13 +157,13 @@ bool se_sync_session_key(void) {
   // organization data1
   memcpy(r3, r1, sizeof(r1));
   memcpy(r3 + sizeof(r1), r2, sizeof(r2));
-  aes_encrypt_key128(pDefault_key, &en_ctxe);
+  aes_encrypt_key128(default_key, &en_ctxe);
   aes_ecb_encrypt(r3, data_buf, sizeof(r1) + sizeof(r2), &en_ctxe);
 
   // cal tmp sessionkey with x hash256
   memzero(r3, sizeof(r3));
   xor_cal(r1, r2, sizeof(r1), r3);
-  memcpy(r3 + 16, pDefault_key, 16);
+  memcpy(r3 + 16, default_key, 16);
   hasher_Raw(HASHER_SHA2, r3, 32, hash_buf);
   // use session key organization data2
   memcpy(g_ucSessionKey, hash_buf, 16);
@@ -851,6 +849,7 @@ bool se_setPinValidtime(uint8_t minutes) {
   return true;
 }
 
+// TODO. 1byte valid time + 2bytes remained valid time
 bool se_getPinValidtime(uint8_t *pminutes) {
   uint16_t recv_len = 0xff;
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN_VALIDTIME & 0xFF), NULL,

@@ -4,9 +4,7 @@ MEMORY
 {
 	rom (rx) : ORIGIN = 0x08010000, LENGTH = 3072K - 320K
 	ram (rwx) : ORIGIN = 0x20000000, LENGTH = 192K
-	/*
 	ram1 (rwx) : ORIGIN = 0x10000000, LENGTH = 64K
-	*/
 }
 SECTIONS
 {
@@ -14,6 +12,15 @@ SECTIONS
 		*(confidential)
 		ASSERT ((SIZEOF(.confidential) <= 32K), "Error: Confidential section too big!");
 	} >ram
+	
+	/* C++ Static constructors/destructors, also used for __attribute__
+	 * ((constructor)) and the likes */
+	.messages_segment (NOLOAD) : {
+		__messages_segment_array_start = .;
+		KEEP (*(.secMessageSection))
+		KEEP (*(.secMessageSection*))
+		__messages_segment_array_end = .;
+	}>ram1
 
 	.header : ALIGN(4) {
 		KEEP(*(.header));
