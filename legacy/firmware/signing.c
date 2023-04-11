@@ -18,6 +18,7 @@
  */
 
 #include "signing.h"
+#include <stdint.h>
 #include "common.h"
 #include "config.h"
 #include "crypto.h"
@@ -29,16 +30,15 @@
 #include "messages.h"
 #include "messages.pb.h"
 #include "protect.h"
-#include "secp256k1.h"
 #include "timer.h"
 #include "transaction.h"
-#include "zkp_bip340.h"
 
 static uint32_t change_count;
 static const CoinInfo *coin;
 static AmountUnit amount_unit;
 static CONFIDENTIAL HDNode root;
 static CONFIDENTIAL HDNode node;
+
 static bool signing = false;
 enum {
   STAGE_REQUEST_1_INPUT,
@@ -267,7 +267,6 @@ foreach I (idx1):  // input to sign
             Request I                                         STAGE_REQUEST_4_INPUT
             If idx1 == idx2
                 Fill scriptsig
-                Remember key for signing
             Add I to StreamTransactionSign
             Add I to TransactionChecksum
         foreach O (idx2):
@@ -2131,15 +2130,15 @@ static void signing_hash_decred(const TxInputType *txinput,
 }
 #endif
 
-static bool signing_sign_ecdsa(TxInputType *txinput, const HDNode *_node,
-                               const uint8_t *hash) {
+static bool signing_sign_ecdsa(TxInputType *txinput, const uint8_t *hash) {
   resp.serialized.has_signature_index = true;
   resp.serialized.signature_index = idx1;
   resp.serialized.has_signature = true;
   resp.serialized.has_serialized_tx = true;
 
   int ret = 0;
-  ret = hdnode_sign_digest(_node, hash, sig, NULL, NULL);
+  if (!derive_node(txinput)) return false;
+  ret = hdnode_sign_digest(&node, hash, sig, NULL, NULL);
   if (ret != 0) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     signing_abort();
@@ -2152,8 +2151,8 @@ static bool signing_sign_ecdsa(TxInputType *txinput, const HDNode *_node,
   uint8_t sighash = signing_hash_type(txinput) & 0xff;
   if (txinput->has_multisig) {
     // fill in the signature
-    int pubkey_idx = cryptoMultisigPubkeyIndex(coin, &(txinput->multisig),
-                                               _node->public_key);
+    int pubkey_idx =
+        cryptoMultisigPubkeyIndex(coin, &(txinput->multisig), node.public_key);
     if (pubkey_idx < 0) {
       fsm_sendFailure(FailureType_Failure_DataError,
                       _("Pubkey not found in multisig script"));
@@ -2175,7 +2174,7 @@ static bool signing_sign_ecdsa(TxInputType *txinput, const HDNode *_node,
   } else {  // SPENDADDRESS
     txinput->script_sig.size = serialize_script_sig(
         resp.serialized.signature.bytes, resp.serialized.signature.size,
-        _node->public_key, 33, sighash, txinput->script_sig.bytes);
+        node.public_key, 33, sighash, txinput->script_sig.bytes);
   }
   return true;
 }
@@ -2214,7 +2213,7 @@ static bool signing_sign_legacy_input(void) {
   hasher_Update(&ti.hasher, (const uint8_t *)&hash_type, 4);
   tx_hash_final(&ti, hash, false);
   resp.has_serialized = true;
-  if (!signing_sign_ecdsa(&input, &node, hash)) return false;
+  if (!signing_sign_ecdsa(&input, hash)) return false;
   resp.serialized.serialized_tx.size =
       tx_serialize_input(&to, &input, resp.serialized.serialized_tx.bytes);
   return true;
@@ -2263,7 +2262,7 @@ static bool signing_sign_segwit_input(TxInputType *txinput) {
     signing_hash_bip143(&info, txinput, hash);
 
     resp.has_serialized = true;
-    if (!signing_sign_ecdsa(txinput, &node, hash)) return false;
+    if (!signing_sign_ecdsa(txinput, hash)) return false;
 
     uint8_t sighash = signing_hash_type(txinput) & 0xff;
     if (txinput->has_multisig) {
@@ -2325,7 +2324,7 @@ static bool signing_sign_decred_input(TxInputType *txinput) {
   tx_hash_final(&ti, hash_witness, false);
   signing_hash_decred(txinput, hash_witness, hash);
   resp.has_serialized = true;
-  if (!signing_sign_ecdsa(txinput, &node, hash)) return false;
+  if (!signing_sign_ecdsa(txinput, hash)) return false;
   resp.serialized.serialized_tx.size = tx_serialize_decred_witness(
       &to, txinput, resp.serialized.serialized_tx.bytes);
   return true;
@@ -2865,7 +2864,7 @@ void signing_txack(TransactionType *tx) {
         {
           signing_hash_bip143(&info, &tx->inputs[0], hash);
         }
-        if (!signing_sign_ecdsa(&tx->inputs[0], &node, hash)) return;
+        if (!signing_sign_ecdsa(&tx->inputs[0], hash)) return;
         // since this took a longer time, update progress
         signatures++;
         progress = 500 + ((signatures * progress_step) >> PROGRESS_PRECISION);

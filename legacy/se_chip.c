@@ -137,10 +137,10 @@ static bool xor_cal(uint8_t *pucSrc1, uint8_t *pucSrc2, uint16_t usLen,
  */
 bool se_sync_session_key(void) {
   uint8_t r1[16], r2[16], r3[32];
-  uint8_t default_key[16] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                             0xff, 0xff, 0xff, 0xff, 0xff};  // TODO need read
-                                                             // from special
-                                                             // flash addr
+  uint8_t default_key[16];  // TODO need read
+  memset(default_key, 0xff, 16);
+  // from special
+  // flash addr
   uint8_t data_buf[64], hash_buf[32];
   uint8_t sync_cmd[5 + 48] = {0x00, 0xfa, 0x00, 0x00, 0x30};
   uint16_t recv_len = 0xff;
