@@ -830,6 +830,11 @@ int hdnode_private_ckd_bip32(HDNode *inout, uint32_t i) {
 }
 
 int hdnode_private_ckd(HDNode *inout, uint32_t i) {
+  // TODO
+  // 目前只u2f在用此函数，其他加密货币在派生时使用的`hdnode_private_ckd_cached`函数
+  // 且u2f的密钥是外部的密钥
+  // 如果决定u2f也用cos内部生成的密钥，则此函数扔需要在模拟器和硬件中分别实现
+  // 分别使用se提供的功能进行实现
 #if USE_CARDANO
   if (inout->curve == &ed25519_cardano_info) {
     return hdnode_private_ckd_cardano(inout, i);

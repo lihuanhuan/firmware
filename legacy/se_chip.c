@@ -1119,7 +1119,7 @@ bool se_ecdsa_sign_digest(uint8_t curve, const uint8_t *hash, uint8_t *sig,
     return false;
   }
   memcpy(sig, resp + 1, 64);
-  *v = resp[0];
+  if (v) *v = resp[0];
   return true;
 }
 #define se_secp256k1_sign_digest(hash, sig, v) \
