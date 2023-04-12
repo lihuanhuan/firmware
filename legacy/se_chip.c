@@ -36,10 +36,11 @@
 
 #define APP (0x01 << 8)
 
-#define SE_INITIALIZED (14 | APP)    // byte
-#define SE_PIN (20 | APP)            // uint32
-#define SE_PIN_VALIDTIME (21 | APP)  // byte
-#define SE_VERIFYPIN (22 | APP)      // uint32
+#define SE_INITIALIZED (14 | APP)         // byte
+#define SE_PIN (20 | APP)                 // uint32
+#define SE_PIN_VALIDTIME (21 | APP)       // byte
+#define SE_APPLY_PINVALIDTIME (39 | APP)  // byte
+#define SE_VERIFYPIN (22 | APP)           // uint32
 #define SE_RESET (27 | APP)
 #define SE_SEEDSTRENGTH (30 | APP)    // uint32
 #define SE_PIN_RETRYTIMES (37 | APP)  // byte
@@ -137,10 +138,10 @@ static bool xor_cal(uint8_t *pucSrc1, uint8_t *pucSrc2, uint16_t usLen,
  */
 bool se_sync_session_key(void) {
   uint8_t r1[16], r2[16], r3[32];
-  uint8_t default_key[16];  // TODO need read
+  uint8_t default_key[16] = {0xff};  // TODO need read
+                                     // from special
+                                     // flash addr
   memset(default_key, 0xff, 16);
-  // from special
-  // flash addr
   uint8_t data_buf[64], hash_buf[32];
   uint8_t sync_cmd[5 + 48] = {0x00, 0xfa, 0x00, 0x00, 0x30};
   uint16_t recv_len = 0xff;
@@ -838,22 +839,44 @@ bool se_getSecsta(void) {
   return cur_secsta == 0x55;
 }
 
-bool se_setPinValidtime(uint8_t minutes) {
+bool se_setPinValidtime(uint8_t data) {
   uint16_t recv_len = 0xff;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN_VALIDTIME & 0xFF),
-                             (uint8_t *)&minutes, sizeof(minutes), NULL,
-                             &recv_len, MI2C_ENCRYPT, SET_SESTORE_DATA)) {
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN_VALIDTIME & 0xFF), &data,
+                             1, NULL, &recv_len, MI2C_ENCRYPT,
+                             SET_SESTORE_DATA)) {
     return false;
   }
 
   return true;
 }
 
-// TODO. 1byte valid time + 2bytes remained valid time
-bool se_getPinValidtime(uint8_t *pminutes) {
+bool se_getPinValidtime(uint8_t *data_buf) {
+  uint8_t cmd[5 + 16] = {0x80, 0xe1, 0x15, 0x00, 0x10};
+  uint8_t recv_buf[0x20], ref_buf[0x20], rand_buf[0x10];
+  uint16_t recv_len = 0xff;  // 32 bytes session id
+  aes_decrypt_ctx aes_dec_ctx;
+
+  // TODO. get se random 16 bytes
+  random_buffer_ST(rand_buf, 0x10);
+  memcpy(cmd + 5, rand_buf, sizeof(rand_buf));
+  if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), recv_buf, &recv_len)) {
+    return false;
+  }
+  // TODO. parse returned data
+  if (recv_len != 0x20) return false;
+  aes_decrypt_key128(g_ucSessionKey, &aes_dec_ctx);
+  aes_ecb_decrypt(recv_buf, ref_buf, recv_len, &aes_dec_ctx);
+  if (memcmp(ref_buf, rand_buf, sizeof(rand_buf)) != 0) return false;
+
+  // TODO. setted valid time and remained valid time
+  memcpy(data_buf, ref_buf + sizeof(rand_buf), 3);
+  return true;
+}
+
+bool se_applyPinValidtime(void) {
   uint16_t recv_len = 0xff;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN_VALIDTIME & 0xFF), NULL,
-                             0, pminutes, &recv_len, MI2C_ENCRYPT,
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_APPLY_PINVALIDTIME & 0xFF),
+                             NULL, 0, NULL, &recv_len, MI2C_ENCRYPT,
                              GET_SESTORE_DATA)) {
     return false;
   }
@@ -970,7 +993,7 @@ bool se_sessionStart(OUT uint8_t *session_id_bytes) {
   aes_decrypt_ctx aes_dec_ctx;
 
   // TODO. get se random 16 bytes
-  randomBuf_SE(rand_buf, 0x10);
+  random_buffer_ST(rand_buf, 0x10);
   memcpy(cmd + 5, rand_buf, sizeof(rand_buf));
   if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), recv_buf, &recv_len)) {
     return false;

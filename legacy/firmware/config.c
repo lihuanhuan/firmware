@@ -152,7 +152,7 @@ DEF_PUBLIC_ID(auto_lock_delay_ms);
 // does mnemonic has imported
 DEF_PUBLIC_ID(mnemonics_imported);
 // device auto lock screen delay by ms
-DEF_PUBLIC_ID(sleep_delay_ms);
+// DEF_PUBLIC_ID(sleep_delay_ms);
 // switch coin function, ETH SOLANA
 DEF_PUBLIC_ID(coin_function_switch);
 
@@ -362,9 +362,6 @@ void config_init(void) {
     config_set_uint32(id_version, CONFIG_VERSION);
   }
   data2hex((const uint8_t *)config_uuid, sizeof(config_uuid), config_uuid_str);
-
-  // TODO. it would wipe se device
-  // config_wipe();
 
   usbTiny(oldTiny);
 }
@@ -606,10 +603,26 @@ bool config_changePin(const char *old_pin, const char *new_pin) {
 
 uint8_t g_activeSession_id[32];
 uint8_t *session_startSession(const uint8_t *received_session_id) {
-  bool ret = false;
+  // TODO. if se has pin auth
+  uint8_t recv_buf[3] = {0x00};
+  uint16_t left_seconds = 0;
+  if (se_getPinValidtime(recv_buf)) {
+    left_seconds = recv_buf[1] * 256 + recv_buf[2];
+    if (left_seconds <= 60) {
+      // TODO. se apply delay
+      if (!se_applyPinValidtime()) {
+        // please verify pin
+        if (!protectPin(true)) {
+          layoutHome();
+          memzero(g_activeSession_id, sizeof(g_activeSession_id));
+          return g_activeSession_id;
+        }
+      }
+    }
+  }
   if (received_session_id == NULL) {
     // se create session
-    ret = se_sessionStart(g_activeSession_id);
+    bool ret = se_sessionStart(g_activeSession_id);
     if (ret) {  // se open session
       if (!se_sessionOpen(g_activeSession_id)) {
         // session open failed
@@ -620,7 +633,7 @@ uint8_t *session_startSession(const uint8_t *received_session_id) {
     }
   } else {
     // se open session
-    ret = se_sessionOpen((uint8_t *)received_session_id);
+    bool ret = se_sessionOpen((uint8_t *)received_session_id);
     if (ret) {
       memcpy(g_activeSession_id, received_session_id,
              sizeof(g_activeSession_id));
@@ -638,11 +651,27 @@ void session_endCurrentSession(void) {
 }
 
 bool session_isUnlocked(void) {
-  if (se_hasPin()) {
-    return sectrue == se_unlocked;
-  } else {
+  // TODO. if se has pin auth
+  uint8_t recv_buf[3] = {0x00};
+  uint16_t left_seconds = 0;
+  if (se_getPinValidtime(recv_buf)) {
+    left_seconds = recv_buf[1] * 256 + recv_buf[2];
+    if (left_seconds <= 60) {
+      // TODO. se apply delay
+      if (!se_applyPinValidtime()) {
+        return false;
+      }
+    }
     return true;
   }
+
+  return false;
+  // if (!se_getSecsta()) {  // if no pin auth
+  //   // return sectrue == se_unlocked;
+  //   return false;
+  // } else {
+  //   return true;
+  // }
 }
 
 bool config_isInitialized(void) {
@@ -750,10 +779,12 @@ uint32_t config_getSleepDelayMs(void) {
   if (sectrue == sleepDelayMsCached) {
     return autoSleepDelayMs;
   }
-
-  if (sectrue != config_get_uint32(id_sleep_delay_ms, &autoSleepDelayMs)) {
+  // TODO. use se pin valid time logic
+  uint8_t recv_buf[3];
+  if (!se_getPinValidtime(recv_buf)) {
     autoSleepDelayMs = sleepDelayMsDefault;
   }
+  autoSleepDelayMs = recv_buf[0] * 60 * 1000;
   sleepDelayMsCached = sectrue;
   return autoSleepDelayMs;
 }
@@ -761,7 +792,8 @@ uint32_t config_getSleepDelayMs(void) {
 void config_setSleepDelayMs(uint32_t auto_sleep_ms) {
   if (auto_sleep_ms != 0)
     auto_sleep_ms = MAX(auto_sleep_ms, MIN_AUTOLOCK_DELAY_MS);
-  if (sectrue == config_set_uint32(id_sleep_delay_ms, auto_sleep_ms)) {
+  // TODO. use se pin valid time logic
+  if (se_setPinValidtime(auto_sleep_ms / (60 * 1000))) {
     autoSleepDelayMs = auto_sleep_ms;
     sleepDelayMsCached = sectrue;
   }

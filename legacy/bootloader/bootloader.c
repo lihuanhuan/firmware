@@ -17,6 +17,7 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdint.h>
 #include <string.h>
 
 #include <libopencm3/cm3/scb.h>
@@ -26,6 +27,7 @@
 #include "bootloader.h"
 #include "buttons.h"
 #include "compiler_traits.h"
+#include "flash.h"
 #include "layout.h"
 #include "layout_boot.h"
 #include "memory.h"
@@ -68,7 +70,7 @@ void show_unplug(const char *line1, const char *line2) {
   delay_ms(1000);
 }
 
-static void show_unofficial_warning(const uint8_t *hash) {
+/*static */ void show_unofficial_warning(const uint8_t *hash) {
   layoutDialog(&bmp_icon_warning, "Abort", "I'll take the risk", NULL,
                "WARNING!", NULL, "Unofficial firmware", "detected.", NULL,
                NULL);
@@ -98,26 +100,9 @@ static void __attribute__((noreturn)) load_app(int signed_firmware) {
 
 static void bootloader_loop(void) { usbLoop(); }
 
-extern void SystemInit(void);
-
+// TODO main loop
 int main(void) {
-  SystemInit();
-  setup();
-
-  setupApp();
-
-  oledInit();
-
-  // mpu_config_bootloader();
-
-  // load_app(SIG_OK);
-  bootloader_loop();
-  return 0;
-}
-
-int main_ref(void) {
   static bool force_boot = false;
-  SystemInit();
   if (memcmp((uint8_t *)(ST_RAM_END - 4), "boot", 4) == 0) {
     force_boot = true;
   }
@@ -137,7 +122,6 @@ int main_ref(void) {
     __stack_chk_guard = random32();  // this supports compiler provided
                                      // unpredictable stack protection checks
 #ifndef APPVER
-    // memory_protect(); // disable swd
     oledInit();
     sys_poweron();
     buttonsIrqInit();
@@ -146,26 +130,26 @@ int main_ref(void) {
 #endif
     mpu_config_bootloader();
 #ifndef APPVER
-    bool left_pressed = (buttonRead() & BTN_PIN_DOWN) == 0;
+    bool down_pressed = (buttonRead() & BTN_PIN_DOWN) == 0;
 
-    if (firmware_present_new() && !left_pressed && !force_boot) {
+    if (firmware_present_new() && !down_pressed && !force_boot) {
       oledClear();
       oledDrawBitmap(52, 20, &bmp_boot_icon);
       oledRefresh();
-      const image_header *hdr =
-          (const image_header *)FLASH_PTR(FLASH_FWHEADER_START);
+      //   const image_header *hdr =
+      //       (const image_header *)FLASH_PTR(FLASH_FWHEADER_START);
 
-      uint8_t fingerprint[32] = {0};
-      int signed_firmware = signatures_new_ok(hdr, fingerprint);
-      if (SIG_OK != signed_firmware) {
-        show_unofficial_warning(fingerprint);
-      }
+      //   uint8_t fingerprint[32] = {0};
+      //   int signed_firmware = signatures_new_ok(hdr, fingerprint);
+      //   if (SIG_OK != signed_firmware) {
+      //     show_unofficial_warning(fingerprint);
+      //   }
 
-      if (SIG_OK != check_firmware_hashes(hdr)) {
-        show_halt("Broken firmware", "detected.");
-      }
-      mpu_config_off();
-      load_app(signed_firmware);
+      //   if (SIG_OK != check_firmware_hashes(hdr)) {
+      //     show_halt("Broken firmware", "detected.");
+      //   }
+      //   load_app(signed_firmware);
+      load_app(SIG_OK);
     }
 #endif
   }

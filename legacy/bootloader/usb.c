@@ -1096,6 +1096,8 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
     } else {
       send_msg_success(dev);
       show_unplug("se firmware", "successfully installed.");
+      delay_ms(500);
+      shutdown();
     }
   }
 }

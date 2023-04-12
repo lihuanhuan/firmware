@@ -18,6 +18,7 @@
  */
 
 #include "trezor.h"
+#include <stdint.h>
 #include "bitmaps.h"
 #include "bl_check.h"
 #include "buttons.h"
@@ -145,7 +146,8 @@ int main(void) {
                                    // unpredictable stack protection checks
   oledInit();
 #else
-  // check_and_replace_bootloader(true);
+  // TODO. setup bootloader hash value
+  check_and_replace_bootloader(true);
   setupApp();
   ble_reset();
 #if !EMULATOR
