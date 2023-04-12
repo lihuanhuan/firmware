@@ -808,21 +808,20 @@ bool protectPinOnDevice(bool use_cached, bool cancel_allowed) {
   }
   //   if (input_pin) return true;
   // TODO.
-  // const char *pin = "";
+  const char *pin = "";
   (void)cancel_allowed;
-  const char *pin = "\x33\x33\x33\x33";
 input:
   if (config_hasPin()) {
     // TODO. for test
     //  // input_pin = true;
 
-    // pin = protectInputPin(_("Please enter current PIN"), MIN_PIN_LEN,
-    //                       MAX_PIN_LEN, cancel_allowed);
-    // // input_pin = false;
-    // if (!pin) {
-    //   return false;
-    // } else if (pin == PIN_CANCELED_BY_BUTTON)
-    //   return false;
+    pin = protectInputPin(_("Please enter current PIN"), MIN_PIN_LEN,
+                          MAX_PIN_LEN, cancel_allowed);
+    // input_pin = false;
+    if (!pin) {
+      return false;
+    } else if (pin == PIN_CANCELED_BY_BUTTON)
+      return false;
   }
 
   bool ret = config_unlock(pin);

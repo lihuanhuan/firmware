@@ -603,23 +603,6 @@ bool config_changePin(const char *old_pin, const char *new_pin) {
 
 uint8_t g_activeSession_id[32];
 uint8_t *session_startSession(const uint8_t *received_session_id) {
-  // TODO. if se has pin auth
-  uint8_t recv_buf[3] = {0x00};
-  uint16_t left_seconds = 0;
-  if (se_getPinValidtime(recv_buf)) {
-    left_seconds = recv_buf[1] * 256 + recv_buf[2];
-    if (left_seconds <= 60) {
-      // TODO. se apply delay
-      if (!se_applyPinValidtime()) {
-        // please verify pin
-        if (!protectPin(true)) {
-          layoutHome();
-          memzero(g_activeSession_id, sizeof(g_activeSession_id));
-          return g_activeSession_id;
-        }
-      }
-    }
-  }
   if (received_session_id == NULL) {
     // se create session
     bool ret = se_sessionStart(g_activeSession_id);
