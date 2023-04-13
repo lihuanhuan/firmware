@@ -536,6 +536,8 @@ bool se_derive_keys(HDNode *out, const char *curve, const uint32_t *address_n,
       if (33 != resp_len) return false;
       if (fingerprint) fingerprint = NULL;
       memcpy(out->public_key, resp, resp_len);
+      // keep same `hdnode_fill_public_key` in bip32.c
+      out->public_key[0] = 1;
       break;
     default:
       return false;
