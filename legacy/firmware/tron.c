@@ -72,6 +72,7 @@ void tron_message_sign(TronSignMessage *msg, const HDNode *node,
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return;
   }
+  //TODO: tron do not need add 27
   resp->signature.bytes[64] = v;
   resp->signature.size = 65;
   msg_write(MessageType_MessageType_TronMessageSignature, resp);

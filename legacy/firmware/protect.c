@@ -838,7 +838,7 @@ bool protectChangePinOnDevice(bool is_prompt, bool set) {
   static CONFIDENTIAL char old_pin[MAX_PIN_LEN + 1] = "";
   static CONFIDENTIAL char new_pin[MAX_PIN_LEN + 1] = "";
   const char *pin = NULL;
-  volatile bool is_change = false;
+  bool is_change = false;
   uint8_t key;
 
 pin_set:
@@ -871,12 +871,9 @@ pin_set:
       return false;
     }
   }
-  // retry:
-  // TODO.
-  // pin = protectInputPin(_("Please enter new PIN"), DEFAULT_PIN_LEN,
-  // MAX_PIN_LEN,
-  //                       true);
-  pin = "\x33\x33\x33\x33";
+retry:
+  pin = protectInputPin(_("Please enter new PIN"), DEFAULT_PIN_LEN, MAX_PIN_LEN,
+                        true);
   if (pin == PIN_CANCELED_BY_BUTTON) {
     return false;
   } else if (pin == NULL || pin[0] == '\0') {
@@ -888,40 +885,34 @@ pin_set:
   }
   strlcpy(new_pin, pin, sizeof(new_pin));
 
-  // pin = protectInputPin(_("Please re-enter new PIN"), DEFAULT_PIN_LEN,
-  //                       MAX_PIN_LEN, true);
-  // if (pin == NULL) {
-  //   memzero(old_pin, sizeof(old_pin));
-  //   memzero(new_pin, sizeof(new_pin));
-  //   if (set) {
-  //     goto_check(retry);
-  //   }
-  //   return false;
-  // } else if (pin == PIN_CANCELED_BY_BUTTON)
-  //   return false;
-  // if (strncmp(new_pin, pin, sizeof(new_pin)) != 0) {
-  //   memzero(old_pin, sizeof(old_pin));
-  //   memzero(new_pin, sizeof(new_pin));
-  //   layoutDialogSwipeCenterAdapter(
-  //       &bmp_icon_error, NULL, NULL, &bmp_btn_retry, _("Retry"), NULL, NULL,
-  //       NULL, NULL, _("Inconsistent PIN code"), _("Please try again"), NULL);
-  //   while (1) {
-  //     key = protectWaitKey(0, 1);
-  //     if (key == KEY_CONFIRM) {
-  //       goto retry;
-  //     } else if (key == KEY_NULL) {
-  //       return false;
-  //     }
-  //   }
-  // }
-  // TODO. set pin and change pin would separated
-  bool ret = false;
-  if (!is_change) {
-    ret = config_setPin(new_pin);
-  } else {
-    ret = config_changePin(old_pin, new_pin);
+  pin = protectInputPin(_("Please re-enter new PIN"), DEFAULT_PIN_LEN,
+                        MAX_PIN_LEN, true);
+  if (pin == NULL) {
+    memzero(old_pin, sizeof(old_pin));
+    memzero(new_pin, sizeof(new_pin));
+    if (set) {
+      goto_check(retry);
+    }
+    return false;
+  } else if (pin == PIN_CANCELED_BY_BUTTON)
+    return false;
+  if (strncmp(new_pin, pin, sizeof(new_pin)) != 0) {
+    memzero(old_pin, sizeof(old_pin));
+    memzero(new_pin, sizeof(new_pin));
+    layoutDialogSwipeCenterAdapter(
+        &bmp_icon_error, NULL, NULL, &bmp_btn_retry, _("Retry"), NULL, NULL,
+        NULL, NULL, _("Inconsistent PIN code"), _("Please try again"), NULL);
+    while (1) {
+      key = protectWaitKey(0, 1);
+      if (key == KEY_CONFIRM) {
+        goto retry;
+      } else if (key == KEY_NULL) {
+        return false;
+      }
+    }
   }
 
+  bool ret = config_changePin(old_pin, new_pin);
   memzero(old_pin, sizeof(old_pin));
   memzero(new_pin, sizeof(new_pin));
   if (ret == false) {

@@ -2248,9 +2248,6 @@ refresh_menu:
 
       for (int i = 0; i < BUILD_ID_MAX_LEN; i++) {
         build_id1[i] = BUILD_ID[i];
-        if (i == BUILD_ID_MAX_LEN - 1) {
-          build_id1[i] = BUILD_ID[i];
-        }
         if (oledStringWidthAdapter(build_id1, FONT_STANDARD) > OLED_WIDTH) {
           build_id1[i] = 0;
           strcat(build_id2, BUILD_ID + i);

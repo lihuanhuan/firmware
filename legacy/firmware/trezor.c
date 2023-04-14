@@ -146,7 +146,6 @@ int main(void) {
                                    // unpredictable stack protection checks
   oledInit();
 #else
-  // TODO. setup bootloader hash value
   check_and_replace_bootloader(true);
   setupApp();
   ble_reset();
