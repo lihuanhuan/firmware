@@ -661,11 +661,11 @@ void se_reset_storage(void) {
 }
 
 bool se_get_sn(char **serial, uint16_t len) {
-  uint8_t ucSnCmd[5] = {0x00, 0xf5, 0x01, 0x00, 0x10};
+  uint8_t ucSnCmd[5] = {0x00, 0xf5, 0x01, 0x00, 0x0a};
   static char sn[32] = {0};
   uint16_t sn_len = sizeof(sn);
 
-  if (len > 0x10) len = 0x10;
+  if (len > 0x0a) len = 0x0a;
   ucSnCmd[4] = len;
   // TODO
   if (MI2C_OK !=
@@ -709,9 +709,9 @@ char *se_get_version(void) {
   se_version = _se_get_version();
   if (se_version) {
     if (strcmp(se_version, "1.1.0.2") == 0) {
-      // TODO
-      if (se_get_sn(&se_sn, 0x10)) {
-        if (strcmp(se_sn, "Bixin21032201500") > 0) {
+      // TODO. se sn change 10
+      if (se_get_sn(&se_sn, 0x0a)) {
+        if (strcmp(se_sn, "Bixin2304") > 0) {
           return fix_version;
         }
       }

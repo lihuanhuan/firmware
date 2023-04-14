@@ -112,9 +112,10 @@ bool get_features(Features *resp) {
   resp->backup_only = config_getMnemonicsImported();
 
   resp->has_onekey_version = true;
+
   strlcpy(resp->onekey_version, ONEKEY_VERSION, sizeof(resp->onekey_version));
   // TODO
-  if (se_get_sn(&serial, 0x10)) {
+  if (se_get_sn(&serial, 0x0a)) {
     if (serial[0] == 0xff && serial[1] == 0xff) {
       resp->has_onekey_serial = false;
     } else {

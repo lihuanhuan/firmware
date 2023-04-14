@@ -2172,7 +2172,6 @@ refresh_menu:
 
   switch (index) {
     case 0:
-
       oledDrawStringAdapter(0, y, _("MODEL:"), FONT_STANDARD);
       y += font->pixel + 1;
       oledDrawStringAdapter(0, y, "OneKey Classic", FONT_STANDARD);
@@ -2181,10 +2180,9 @@ refresh_menu:
       oledDrawStringAdapter(0, y, _("BLUETOOTH NAME:"), FONT_STANDARD);
       y += font->pixel + 1;
       oledDrawStringAdapter(0, y, ble_get_name(), FONT_STANDARD);
-
       break;
-    case 1:
 
+    case 1:
       oledDrawStringAdapter(0, y, _("FIRMWARE VERSION:"), FONT_STANDARD);
       y += font->pixel + 1;
       oledDrawStringAdapter(0, y, ONEKEY_VERSION, FONT_STANDARD);
@@ -2214,9 +2212,10 @@ refresh_menu:
       oledDrawStringAdapter(0, y, _("SERIAL NUMBER:"), FONT_STANDARD);
       y += font->pixel + 1;
       // TODO
-      se_get_sn(&se_sn, 0x10);
+      se_get_sn(&se_sn, 0x0a);
       oledDrawStringAdapter(0, y, se_sn, FONT_STANDARD);
       break;
+
     case 4:
       oledDrawStringAdapter(0, y, _("DEVICE ID:"), FONT_STANDARD);
       y += font->pixel + 1;
@@ -2239,8 +2238,7 @@ refresh_menu:
       oledDrawStringAdapter(0, y, uuid2, FONT_STANDARD);
       break;
 
-    case 5:  // TODO it maybe generated errors BUILD_ID='"$(NAME)"' , after
-             // change makefile will be solve
+    case 5:
       oledDrawStringAdapter(0, y, _("BUILD ID:"), FONT_STANDARD);
       y += font->pixel + 1;
 
@@ -2270,13 +2268,16 @@ refresh_menu:
       oledDrawStringCenterAdapter(OLED_WIDTH / 2, 40, "FCC ID:2AV5MBIXINKEY1",
                                   FONT_STANDARD);
       break;
+
     case 7:
       oledDrawBitmap((OLED_WIDTH - bmp_Icon_bc.width) / 2, 12, &bmp_Icon_bc);
       break;
+
     case 8:
       oledDrawBitmap(20, 12, &bmp_Icon_ce);
       oledDrawBitmap(72, 12, &bmp_Icon_weee);
       break;
+
     default:
       break;
   }
