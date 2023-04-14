@@ -36,9 +36,9 @@ void menu_recovery_device(int index) {
 
 void menu_reset_device(int index) {
   (void)index;
-  if (!protectPinOnDevice(true, true)) {
-    return;
-  }
+  // if (!protectPinOnDevice(true, true)) {
+  //   return;
+  // }
   reset_on_device();
   if (config_isInitialized()) {
     layoutDialogSwipeCenterAdapter(&bmp_icon_ok, NULL, NULL, &bmp_btn_confirm,

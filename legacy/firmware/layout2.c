@@ -1598,7 +1598,7 @@ void layoutHomeInfo(void) {
       refreshUsbConnectTips();
 #endif
       if (key == KEY_UP || key == KEY_DOWN || key == KEY_CONFIRM) {
-        if (protectPinOnDevice(true, true)) {
+        if (protectPinOnDevice(true, true) || !config_isInitialized()) {
           menu_run(KEY_NULL, 0);
         } else {
           layoutHome();

@@ -802,27 +802,21 @@ refresh_menu:
 }
 
 bool protectPinOnDevice(bool use_cached, bool cancel_allowed) {
-  //   static bool input_pin = false;  // void recursive
+  if (!config_hasPin()) return false;
+
   if (use_cached && session_isUnlocked()) {
     return true;
   }
-  //   if (input_pin) return true;
-  // TODO.
+
   const char *pin = "";
   (void)cancel_allowed;
 input:
-  if (config_hasPin()) {
-    // TODO. for test
-    //  // input_pin = true;
-
-    pin = protectInputPin(_("Please enter current PIN"), MIN_PIN_LEN,
-                          MAX_PIN_LEN, cancel_allowed);
-    // input_pin = false;
-    if (!pin) {
-      return false;
-    } else if (pin == PIN_CANCELED_BY_BUTTON)
-      return false;
-  }
+  pin = protectInputPin(_("Please enter current PIN"), MIN_PIN_LEN, MAX_PIN_LEN,
+                        cancel_allowed);
+  if (!pin) {
+    return false;
+  } else if (pin == PIN_CANCELED_BY_BUTTON)
+    return false;
 
   bool ret = config_unlock(pin);
   if (ret == false) {
@@ -911,8 +905,12 @@ retry:
       }
     }
   }
-
-  bool ret = config_changePin(old_pin, new_pin);
+  bool ret = false;
+  if (!is_change) {
+    ret = config_setPin(new_pin);
+  } else {
+    ret = config_changePin(old_pin, new_pin);
+  }
   memzero(old_pin, sizeof(old_pin));
   memzero(new_pin, sizeof(new_pin));
   if (ret == false) {
