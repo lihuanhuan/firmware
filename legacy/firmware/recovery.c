@@ -20,6 +20,7 @@
 
 #include "recovery.h"
 #include <ctype.h>
+#include <stdint.h>
 #include "bip39.h"
 #include "buttons.h"
 #include "config.h"
@@ -33,6 +34,7 @@
 #include "protect.h"
 #include "recovery-table.h"
 #include "rng.h"
+#include "se_chip.h"
 #include "timer.h"
 #include "usb.h"
 #include "util.h"
@@ -207,7 +209,18 @@ static bool recovery_done(void) {
         } else {
         }
         success = true;
+        uint8_t entropy[33] = {0};
+        // entropy from mnemonic
+        mnemonic_to_bits(new_mnemonic, entropy);
+        // set entropy to SE
+        se_set_entropy(entropy);
+        // generate seed
         if (!generate_seed_steps()) {
+          fsm_sendFailure(FailureType_Failure_ProcessError,
+                          _("Failed to store mnemonic"));
+        }
+        layoutSwipe();
+        if (!protectVerifyPinFirst()) {
           fsm_sendFailure(FailureType_Failure_ProcessError,
                           _("Failed to store mnemonic"));
         }
@@ -849,7 +862,6 @@ check_word:
   }
 
   recovery_done();
-
   recovery_byself = false;
   return true;
 }
