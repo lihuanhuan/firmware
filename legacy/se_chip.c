@@ -149,7 +149,7 @@ bool se_sync_session_key(void) {
   aes_decrypt_ctx de_ctxe;
   // TODO
   memzero(data_buf, sizeof(data_buf));
-  // if (!bPresetDataRead(default_key)) return false;
+  if (!bPresetDataRead(default_key)) return false;
 
   // get random from se
   randomBuf_SE(r1, 16);
