@@ -256,7 +256,7 @@ static bool recovery_done(void) {
       protectWaitKey(0, 1);
     } else {
       if (!dry_run) {
-        // session_clear(true);
+        session_clear(true);
       } else {
         layoutDialogAdapter(&bmp_icon_error, NULL, _("Confirm"), NULL,
                             _("The seed is"), _("INVALID!"), NULL, NULL, NULL,
@@ -586,7 +586,7 @@ static void recovery_scrambledword(const char *word) {
   if (word_pos == 0) {  // fake word
     if (strcmp(word, fake_word) != 0) {
       if (!dry_run) {
-        // session_clear(true);
+        session_clear(true);
       }
       fsm_sendFailure(FailureType_Failure_ProcessError,
                       _("Wrong word retyped"));
@@ -597,7 +597,7 @@ static void recovery_scrambledword(const char *word) {
     if (enforce_wordlist) {
       if (index < 0) {  // not found
         if (!dry_run) {
-          // session_clear(true);
+          session_clear(true);
         }
         fsm_sendFailure(FailureType_Failure_DataError,
                         _("Word not found in a wordlist"));

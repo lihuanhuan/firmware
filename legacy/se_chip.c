@@ -1062,6 +1062,15 @@ bool se_sessionClose(void) {
   return true;
 }
 
+bool se_sessionClear(void) {
+  uint16_t recv_len = 0;
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x04, NULL, 0, NULL,
+                             &recv_len, MI2C_ENCRYPT, GET_SESTORE_DATA)) {
+    return false;
+  }
+  return true;
+}
+
 bool se_set_public_region(const uint16_t offset, const void *val_dest,
                           uint16_t len) {
   uint8_t cmd[5] = {0x00, 0xE6, 0x00, 0x00, 0x10};

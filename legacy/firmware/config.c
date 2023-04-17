@@ -461,8 +461,8 @@ inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
 }
 
 // mode : SE_WRFLG_GENSEED or SE_WRFLG_GENMINISECRET;
-// bool config_genSeed(uint8_t mode) {
-bool config_genSeed(void) {
+// bool config_genSessionSeed(uint8_t mode) {
+bool config_genSessionSeed(void) {
   char passphrase[MAX_PASSPHRASE_LEN + 1] = {0};
 
   if (!protectPassphrase(passphrase)) {
@@ -655,6 +655,14 @@ bool session_isUnlocked(void) {
   // } else {
   //   return true;
   // }
+}
+
+void session_clear(bool lock) {
+  se_sessionClear();
+
+  if (lock) {
+    config_lockDevice();
+  }
 }
 
 bool config_isInitialized(void) {

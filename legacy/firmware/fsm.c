@@ -253,7 +253,7 @@ static HDNode *fsm_getDerivedNode(const char *curve, const uint32_t *address_n,
     *fingerprint = 0;
   }
   // TODO. se generate session seed and minisecret
-  if (!config_genSeed()) {
+  if (!config_genSessionSeed()) {
     layoutHome();
     return 0;
   }

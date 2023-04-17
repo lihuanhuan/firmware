@@ -228,7 +228,7 @@ void reset_backup(bool separated, const char *mnemonic) {
       layoutResetWord(current_word, pass, word_pos, mnemonic[i] == 0);
       if (!protectButton(ButtonRequestType_ButtonRequest_ConfirmWord, false)) {
         if (!separated) {
-          // session_clear(true);
+          session_clear(true);
         }
         layoutHome();
         fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);
