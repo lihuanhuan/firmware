@@ -348,6 +348,7 @@ void config_init(void) {
   char oldTiny = usbTiny(1);
 
   memzero(HW_ENTROPY_DATA, sizeof(HW_ENTROPY_DATA));
+  g_bHomeGetFlg = config_homeScreen();
 
   config_getLanguage(config_language, sizeof(config_language));
 
