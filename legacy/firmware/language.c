@@ -386,6 +386,8 @@ const char *languages[][2] = {
     {"GPG sign for:", ""},
     // reset.c &&
     {"Generating seed ...", "生成种子..."},
+    // se_chip.c
+    {"Generating session seed ...", "生成会话种子..."},
     // cosmos.c
     {"Granter", "授予人"},
     // layout2.c
