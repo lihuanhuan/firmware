@@ -636,11 +636,15 @@ void session_endCurrentSession(void) {
 
 bool session_isUnlocked(void) {
   // TODO. if se has pin auth
+  if (!se_getSecsta()) {  // if no pin auth
+    return false;
+  }
+
   uint8_t recv_buf[3] = {0x00};
   uint16_t left_seconds = 0;
   if (se_getPinValidtime(recv_buf)) {
     left_seconds = recv_buf[1] * 256 + recv_buf[2];
-    if (left_seconds <= 60) {
+    if (left_seconds <= 60 && left_seconds > 0) {
       // TODO. se apply delay
       if (!se_applyPinValidtime()) {
         return false;
@@ -650,12 +654,6 @@ bool session_isUnlocked(void) {
   }
 
   return false;
-  // if (!se_getSecsta()) {  // if no pin auth
-  //   // return sectrue == se_unlocked;
-  //   return false;
-  // } else {
-  //   return true;
-  // }
 }
 
 void session_clear(bool lock) {

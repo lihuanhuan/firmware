@@ -446,6 +446,8 @@ void usbPoll(void) {
     }
   } else if (!usb_connect_status && usb_status_bak) {
     usb_status_bak = false;
+    // TODO: usb interface would be restart
+    usbInit();
     if (config_hasPin() && session_isUnlocked()) {
       reset = true;
     }
