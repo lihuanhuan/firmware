@@ -21,7 +21,10 @@
 #define __CONFIG_H__
 
 #include "bip32.h"
+#include "messages-bitcoin.pb.h"
+#include "messages-common.pb.h"
 #include "messages-management.pb.h"
+#include "messages.pb.h"
 
 typedef enum {
   COIN_SWITCH_ETH_EIP712 = 0x01,
@@ -58,6 +61,10 @@ void config_loadDevice_ex(const BixinLoadDevice *msg);
 
 const uint8_t *config_getSeed(void);
 
+bool config_setCoinJoinAuthorization(const AuthorizeCoinJoin *authorization);
+MessageType config_getAuthorizationType(void);
+const AuthorizeCoinJoin *config_getCoinJoinAuthorization(void);
+
 bool config_getU2FRoot(HDNode *node);
 // TODO
 bool config_getRootNode(HDNode *node, const char *curve);
@@ -76,6 +83,7 @@ void config_setHomescreen(const uint8_t *data, uint32_t size);
 
 uint8_t *session_startSession(const uint8_t *received_session_id);
 
+bool config_genSessionSeed(void);
 bool config_setMnemonic(const char *mnemonic, bool import);
 // bool config_containsMnemonic(const char *mnemonic);
 bool config_hasMnemonic(void);
@@ -84,7 +92,7 @@ bool config_getMnemonic(char *dest, uint16_t dest_size);
 // bool config_getMnemonicBytes(uint8_t *dest, uint16_t dest_size,
 //  uint16_t *real_size);
 
-bool config_genSessionSeed(void);
+bool config_genSeed(void);
 bool config_setSeedsBytes(const uint8_t *seeds, uint8_t len);
 
 // bool config_SeedsEncExportBytes(BixinOutMessageSE_outmessage_t *get_msg);
@@ -161,6 +169,9 @@ uint32_t config_getPinFails(void);
 
 bool config_getCoinSwitch(CoinSwitch loc);
 void config_setCoinSwitch(CoinSwitch loc, bool flag);
+
+void config_setTrezorCompMode(bool trezor_comp_mode);
+bool config_getTrezorCompMode(bool *trezor_comp_mode);
 
 extern char config_uuid_str[2 * UUID_SIZE + 1];
 

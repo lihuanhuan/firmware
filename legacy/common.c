@@ -18,6 +18,7 @@
  */
 #include <stdio.h>
 
+#include <unistd.h>
 #include "bitmaps.h"
 #include "common.h"
 #include "firmware/usb.h"
@@ -31,6 +32,7 @@
 uint8_t HW_ENTROPY_DATA[HW_ENTROPY_LEN];
 
 uint8_t ui_language = 0;
+uint8_t cpu_mode = 0;
 
 bool g_bIsBixinAPP = false;
 uint32_t g_uiFastPayFlag = 0;
@@ -72,7 +74,7 @@ __fatal_error(const char *expr, const char *msg, const char *file, int line_num,
   oledDrawString(0, y, line, FONT_STANDARD);
   y += FONT_HEIGHT + 1;
 
-  oledDrawString(0, y, "Contact Trezor support.", FONT_STANDARD);
+  oledDrawString(0, y, "Contact Onekey support.", FONT_STANDARD);
   oledRefresh();
 
   shutdown();
@@ -93,7 +95,17 @@ void __assert_func(const char *file, int line, const char *func,
 }
 #endif
 
-void hal_delay(uint32_t ms) { usbSleep(ms); }
+void hal_delay(uint32_t ms) {
+#if EMULATOR
+  usleep(ms * 1000);
+#else
+  uint32_t start = timer_ms();
+
+  while ((timer_ms() - start) < ms) {
+    asm("nop");
+  }
+#endif
+}
 
 void drbg_init() {
   uint8_t entropy[48] = {0};
