@@ -501,7 +501,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
   static uint16_t msg_id = 0xFFFF;
   static uint32_t w;
   static int wi;
-  // static int old_was_signed;
+  static int old_was_signed;
   uint8_t *p_buf;
   uint8_t se_version[2];
   uint8_t apduBuf[7 + 512];  // set se apdu data context
@@ -604,11 +604,11 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
         send_msg_failure(dev, 1);
         return;
       }
-      //设置APP存在标志 防止升级过程中意外插拔生效
-      // if (0 == ucFLASH_Pagerase(K21_APP_EXIST_ADDR)) {
-      //   send_msg_failure(dev);
-      //   return;
-      // }
+      // 设置APP存在标志 防止升级过程中意外插拔生效
+      //  if (0 == ucFLASH_Pagerase(K21_APP_EXIST_ADDR)) {
+      //    send_msg_failure(dev);
+      //    return;
+      //  }
       send_msg_success(dev);
       return;
     }
@@ -663,18 +663,17 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
         proceed = true;
       }
       if (proceed) {
-        // check whether the current firmware is signed (old or new method)
-        // if (firmware_present_new()) {
-        //   const image_header *hdr =
-        //       (const image_header *)FLASH_PTR(FLASH_FWHEADER_START);
-        //   old_was_signed =
-        //       signatures_new_ok(hdr, NULL) & check_firmware_hashes(hdr);
-        //   old_was_signed = SIG_OK;
-        // } else if (firmware_present_old()) {
-        //   old_was_signed = signatures_old_ok();
-        // } else {
-        //   old_was_signed = SIG_FAIL;
-        // }
+        // check whether the current firmware is signed(old or new method)
+        if (firmware_present_new()) {
+          const image_header *hdr =
+              (const image_header *)FLASH_PTR(FLASH_FWHEADER_START);
+          old_was_signed =
+              signatures_new_ok(hdr, NULL) & check_firmware_hashes(hdr);
+        } else if (firmware_present_old()) {
+          old_was_signed = signatures_old_ok();
+        } else {
+          old_was_signed = SIG_FAIL;
+        }
         send_msg_success(dev);
         flash_state = STATE_FLASHSTART;
         timer_out_set(timer_out_oper, timer1s * 5);
@@ -833,7 +832,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
           flash_pos += 4;
           wi = 0;
           if (FLASH_FWHEADER_LEN == flash_pos) {
-            //更新SE，获取HASH和签名，发给SE进行固件升级
+            // 更新SE，获取HASH和签名，发给SE进行固件升级
             if (UPDATE_SE == update_mode) {
               delay_ms(100);
               // check se version
@@ -855,7 +854,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
                 return;
               }
 
-              //更新SE确保SE在Boot状态
+              // 更新SE确保SE在Boot状态
               if (false == bSE_GetState(apduBuf)) {
                 show_unplug("Update SE", "aborted.");
                 send_msg_failure(dev, 4);  // Failure_ActionCancelled
@@ -1023,13 +1022,14 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       } else {
         hash_check_ok = true;
       }
-
       layoutProgress("Programing ... Please wait", 1000);
 
-      // wipe storage if:
-      /*
-        TODO do nothing
-      */
+      // TODO: check firmware hash
+      if (SIG_OK != old_was_signed || SIG_OK != check_firmware_hashes(hdr)) {
+        send_msg_failure(dev, 9);  // Failure_ProcessError
+        show_halt("Error installing", "firmware.");
+        return;
+      }
 
       flash_enter();
       // write firmware header only when hash was confirmed

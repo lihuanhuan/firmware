@@ -442,12 +442,25 @@ void gd_setPresetData(const APDU *papdu) {
   uint8_t ucBuf[2];
 
   if (APDU_LEN(*papdu) != 0) {
-    debugLog(0, "", "u2f version - badlen");
+    debugLog(0, "", "u2f set preset data - badlen");
     send_u2f_error(U2F_SW_WRONG_LENGTH);
     return;
   }
 
   bPresetDataWrite((uint8_t *)papdu->data);
+  ucBuf[0] = U2F_SW_NO_ERROR >> 8 & 0xFF;
+  ucBuf[1] = U2F_SW_NO_ERROR & 0xFF;
+  send_u2f_msg(ucBuf, 2);
+}
+
+void gd_checkPresetData(void) {
+  uint8_t ucBuf[2];
+
+  if (!se_sync_session_key()) {
+    debugLog(0, "", "u2f check preset data - failed");
+    send_u2f_error(U2F_SW_CONDITIONS_NOT_SATISFIED);
+    return;
+  }
   ucBuf[0] = U2F_SW_NO_ERROR >> 8 & 0xFF;
   ucBuf[1] = U2F_SW_NO_ERROR & 0xFF;
   send_u2f_msg(ucBuf, 2);
@@ -477,6 +490,9 @@ void u2fhid_msg(const APDU *a, uint32_t len) {
       break;
     case SET_PRESETDATA:  // set presets default data
       gd_setPresetData(a);
+      break;
+    case CHECK_PRESETDATA:  // check presets default data
+      gd_checkPresetData();
       break;
     case MEMORY_LOCK:  // it would disable swd and system bootloader
                        // it will reset system nothing to return pc
