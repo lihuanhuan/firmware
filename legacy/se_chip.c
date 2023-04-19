@@ -820,21 +820,21 @@ bool se_getRetryTimes(uint8_t *ptimes) {
 }
 
 bool se_clearSecsta(void) {
+  uint8_t cmd[5] = {0x80, 0xe1, 0x26, 0x01, 0x00};
   uint16_t recv_len = 0xff;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_SECSTATUS & 0xFF), NULL, 0,
-                             NULL, &recv_len, MI2C_ENCRYPT, SET_SESTORE_DATA)) {
+
+  if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), NULL, &recv_len)) {
     return false;
   }
-
   return true;
 }
 
 bool se_getSecsta(void) {
+  uint8_t cmd[5] = {0x80, 0xe1, 0x26, 0x00, 0x00};
   uint8_t cur_secsta = 0xff;
   uint16_t recv_len = 0xff;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_SECSTATUS & 0xFF), NULL, 0,
-                             &cur_secsta, &recv_len, MI2C_ENCRYPT,
-                             GET_SESTORE_DATA)) {
+
+  if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), &cur_secsta, &recv_len)) {
     return false;
   }
   // 0x55 is verified pin 0x00 is not verified pin

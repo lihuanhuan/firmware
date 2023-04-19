@@ -635,25 +635,25 @@ void session_endCurrentSession(void) {
 }
 
 bool session_isUnlocked(void) {
-  // TODO. if se has pin auth
+  uint8_t recv_buf[3] = {0x00};
+  uint16_t left_seconds = 0;
+
   if (!se_getSecsta()) {  // if no pin auth
     return false;
   }
 
-  uint8_t recv_buf[3] = {0x00};
-  uint16_t left_seconds = 0;
-  if (se_getPinValidtime(recv_buf)) {
-    left_seconds = recv_buf[1] * 256 + recv_buf[2];
-    if (left_seconds <= 60 && left_seconds > 0) {
-      // TODO. se apply delay
-      if (!se_applyPinValidtime()) {
-        return false;
-      }
-    }
-    return true;
+  if (!se_getPinValidtime(recv_buf)) {
+    return false;
   }
 
-  return false;
+  left_seconds = recv_buf[1] * 256 + recv_buf[2];
+  if (left_seconds <= 60 && left_seconds > 0) {
+    // TODO. se apply delay
+    if (!se_applyPinValidtime()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void session_clear(bool lock) {

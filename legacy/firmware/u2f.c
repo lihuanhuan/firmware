@@ -454,7 +454,7 @@ void gd_setPresetData(const APDU *papdu) {
 }
 
 void u2fhid_msg(const APDU *a, uint32_t len) {
-  if (a->cla != 0) {
+  if (a->cla != 0 && a->cla != 0x80) {
     send_u2f_error(U2F_SW_CLA_NOT_SUPPORTED);
     return;
   }
