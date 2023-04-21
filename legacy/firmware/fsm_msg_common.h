@@ -154,10 +154,12 @@ bool get_features(Features *resp) {
   resp->coin_switch |=
       config_getCoinSwitch(COIN_SWITCH_SOLANA) ? COIN_SWITCH_SOLANA : 0;
 
+#if !EMULATOR
   if (battery_cap != 0xff) {
     resp->has_battery_level = true;
     resp->battery_level = battery_cap;
   }
+#endif
 
   return resp;
 }
@@ -757,6 +759,7 @@ void fsm_msgSetBusy(const SetBusy *msg) {
 void fsm_msgBixinReboot(const BixinReboot *msg) {
   (void)msg;
 
+#if !EMULATOR
   if (sys_usbState() == false && battery_cap < 2) {
     layoutDialogCenterAdapterEx(
         &bmp_icon_warning, NULL, &bmp_bottom_right_confirm, NULL,
@@ -774,6 +777,7 @@ void fsm_msgBixinReboot(const BixinReboot *msg) {
       }
     }
   }
+#endif
 
   layoutDialogCenterAdapter(&bmp_icon_warning, &bmp_bottom_left_close, NULL,
                             &bmp_bottom_right_arrow, NULL, NULL, NULL, NULL,

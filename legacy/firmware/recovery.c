@@ -239,11 +239,17 @@ static bool recovery_done(void) {
       memzero(new_mnemonic, sizeof(new_mnemonic));
       if (recovery_byself) {
         if (match) {
-          layoutDialogAdapterEx(_("Correct!"), NULL, NULL,
-                                &bmp_bottom_right_confirm, NULL,
-                                _("The Recovery Phrase you \nentered is "
-                                  "matched, your \nbackup is correct."),
-                                NULL, NULL, NULL, NULL);
+          if (ui_language) {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_ok, NULL, NULL, &bmp_bottom_right_arrow, NULL, NULL,
+                NULL, NULL, NULL, "输入的助记词完全匹配, 您", "的备份是正确的.",
+                NULL);
+          } else {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_ok, NULL, NULL, &bmp_bottom_right_arrow, NULL, NULL,
+                NULL, NULL, NULL, "Recovery phrase is",
+                "matched! Your backup is", "correct.");
+          }
           while (1) {
             key = protectWaitKey(0, 1);
             if (key == KEY_CONFIRM) {
@@ -251,11 +257,17 @@ static bool recovery_done(void) {
             }
           }
         } else {
-          layoutDialogAdapterEx(_("Not Match!"), NULL, NULL,
-                                &bmp_bottom_right_retry, NULL,
-                                _("The entered Recovery\nPhrase is valid but "
-                                  "does\nnot match the one stored\nn device."),
-                                NULL, NULL, NULL, NULL);
+          if (ui_language) {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_error, NULL, NULL, &bmp_bottom_right_retry, NULL,
+                NULL, NULL, NULL, NULL, "输入的助记词有效但与设备",
+                "中存储的不匹配. 请检查您", "的备份后重试.");
+          } else {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_error, NULL, NULL, &bmp_bottom_right_retry, NULL,
+                NULL, NULL, NULL, NULL, "Recovery phrase is valid",
+                "but does not match. Check", "and try again.");
+          }
           while (1) {
             key = protectWaitKey(0, 1);
             if (key == KEY_CONFIRM) {
@@ -265,20 +277,32 @@ static bool recovery_done(void) {
         }
       } else {
         if (match) {
-          layoutDialogAdapterEx(_("Correct!"), NULL, NULL,
-                                &bmp_bottom_right_confirm, NULL,
-                                _("The Recovery Phrase you \nentered is "
-                                  "matched, your \nbackup is correct."),
-                                NULL, NULL, NULL, NULL);
+          if (ui_language) {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_ok, NULL, NULL, &bmp_bottom_right_arrow, NULL, NULL,
+                NULL, NULL, NULL, "输入的助记词完全匹配, 您", "的备份是正确的.",
+                NULL);
+          } else {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_ok, NULL, NULL, &bmp_bottom_right_arrow, NULL, NULL,
+                NULL, NULL, NULL, "Recovery phrase is",
+                "matched! Your backup is", "correct.");
+          }
           protectButton(ButtonRequestType_ButtonRequest_Other, true);
           fsm_sendSuccess(
               _("The seed is valid and matches the one in the device"));
         } else {
-          layoutDialogAdapterEx(_("Not Match!"), NULL, NULL,
-                                &bmp_bottom_right_retry, NULL,
-                                _("The entered Recovery\nPhrase is valid but "
-                                  "does\nnot match the one stored\nn device."),
-                                NULL, NULL, NULL, NULL);
+          if (ui_language) {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_error, NULL, NULL, &bmp_bottom_right_retry, NULL,
+                NULL, NULL, NULL, NULL, "输入的助记词有效但与设备",
+                "中存储的不匹配. 请检查您", "的备份后重试.");
+          } else {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_error, NULL, NULL, &bmp_bottom_right_retry, NULL,
+                NULL, NULL, NULL, NULL, "Recovery phrase is valid",
+                "but does not match. Check", "and try again.");
+          }
           protectButton(ButtonRequestType_ButtonRequest_Other, true);
           fsm_sendFailure(
               FailureType_Failure_DataError,
@@ -290,10 +314,10 @@ static bool recovery_done(void) {
     // New mnemonic is invalid.
     memzero(new_mnemonic, sizeof(new_mnemonic));
     if (recovery_byself) {
-      layoutDialogAdapterEx(
-          _("Invalid!"), NULL, NULL, &bmp_bottom_right_retry, NULL,
-          _("Invalid Recovery Phrase. \nCheck your backup and try again."),
-          NULL, NULL, NULL, NULL);
+      layoutDialogSwipeCenterAdapter(&bmp_icon_error, NULL, NULL,
+                                     &bmp_bottom_right_retry, NULL, NULL, NULL,
+                                     NULL, NULL, _("Invalid recovery phrase!"),
+                                     _("Check and try again."), NULL);
       while (1) {
         key = protectWaitKey(0, 1);
         if (key == KEY_CONFIRM) {
@@ -304,10 +328,10 @@ static bool recovery_done(void) {
       if (!dry_run) {
         session_clear(true);
       } else {
-        layoutDialogAdapterEx(
-            _("Invalid!"), NULL, NULL, &bmp_bottom_right_retry, NULL,
-            _("Invalid Recovery Phrase. \nCheck your backup and try again."),
-            NULL, NULL, NULL, NULL);
+        layoutDialogSwipeCenterAdapter(
+            &bmp_icon_error, NULL, NULL, &bmp_bottom_right_retry, NULL, NULL,
+            NULL, NULL, NULL, _("Invalid recovery phrase!"),
+            _("Check and try again."), NULL);
         protectButton(ButtonRequestType_ButtonRequest_Other, true);
       }
       fsm_sendFailure(FailureType_Failure_DataError,
@@ -738,7 +762,7 @@ refresh_menu:
     strcat(desc, "(1-6)");
   } else if (index == 1) {
     strcat(desc, "(7-12)");
-  } else if (index == 1) {
+  } else if (index == 2) {
     strcat(desc, "(13-18)");
   } else {
     strcat(desc, "(19-24)");
