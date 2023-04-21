@@ -20,9 +20,11 @@
 #ifndef __FSM_H__
 #define __FSM_H__
 
+#include "coins.h"
 #include "messages-algorand.pb.h"
 #include "messages-aptos.pb.h"
 #include "messages-bitcoin.pb.h"
+#include "messages-cardano.pb.h"
 #include "messages-conflux.pb.h"
 #include "messages-cosmos.pb.h"
 #include "messages-crypto.pb.h"
@@ -39,6 +41,9 @@
 #include "messages-stellar.pb.h"
 #include "messages-sui.pb.h"
 #include "messages-tron.pb.h"
+
+// CoinJoin fee rate multiplier.
+#define FEE_RATE_DECIMALS (1000000)
 
 // message functions
 
@@ -81,6 +86,8 @@ void fsm_msgRecoveryDevice(const RecoveryDevice *msg);
 void fsm_msgWordAck(const WordAck *msg);
 void fsm_msgSetU2FCounter(const SetU2FCounter *msg);
 void fsm_msgGetNextU2FCounter(void);
+void fsm_msgGetFirmwareHash(const GetFirmwareHash *msg);
+void fsm_msgSetBusy(const SetBusy *msg);
 
 // coin
 void fsm_msgGetPublicKey(const GetPublicKey *msg);
@@ -90,6 +97,12 @@ void fsm_msgTxAck(
 void fsm_msgGetAddress(const GetAddress *msg);
 void fsm_msgSignMessage(const SignMessage *msg);
 void fsm_msgVerifyMessage(const VerifyMessage *msg);
+void fsm_msgGetOwnershipId(const GetOwnershipId *msg);
+void fsm_msgGetOwnershipProof(const GetOwnershipProof *msg);
+void fsm_msgAuthorizeCoinJoin(const AuthorizeCoinJoin *msg);
+void fsm_msgCancelAuthorization(const CancelAuthorization *msg);
+void fsm_msgDoPreauthorized(const DoPreauthorized *msg);
+void fsm_msgUnlockPath(const UnlockPath *msg);
 
 // crypto
 void fsm_msgCipherKeyValue(const CipherKeyValue *msg);
@@ -98,6 +111,7 @@ void fsm_msgGetECDHSessionKey(const GetECDHSessionKey *msg);
 void fsm_msgCosiCommit(const CosiCommit *msg);
 void fsm_msgCosiSign(const CosiSign *msg);
 void fsm_msgBatchGetPublickeys(const BatchGetPublickeys *msg);
+void fsm_clearCosiNonce(void);
 
 // debug
 #if DEBUG_LINK
@@ -107,6 +121,7 @@ void fsm_msgDebugLinkStop(const DebugLinkStop *msg);
 void fsm_msgDebugLinkMemoryWrite(const DebugLinkMemoryWrite *msg);
 void fsm_msgDebugLinkMemoryRead(const DebugLinkMemoryRead *msg);
 void fsm_msgDebugLinkFlashErase(const DebugLinkFlashErase *msg);
+void fsm_msgDebugLinkReseedRandom(const DebugLinkReseedRandom *msg);
 #endif
 
 // ethereum
@@ -161,10 +176,16 @@ void fsm_msgStellarBumpSequenceOp(const StellarBumpSequenceOp *msg);
 
 void fsm_msgRebootToBootloader(void);
 
-bool fsm_layoutSignMessage(const uint8_t *msg, uint32_t len);
-bool fsm_layoutSignMessage_ex(const char *description, const uint8_t *msg,
-                              uint32_t len);
-bool fsm_layoutVerifyMessage(const uint8_t *msg, uint32_t len);
+bool fsm_layoutSignMessage(const char *chain_name, const char *signer,
+                           const uint8_t *msg, uint32_t len);
+bool fsm_layoutVerifyMessage(const char *chain_name, const char *signer,
+                             const uint8_t *msg, uint32_t len);
+bool fsm_layoutSignHash(const char *chain_name, const char *signer,
+                        const char *domain_hash, const char *message_hash,
+                        const char *warning);
+bool fsm_layoutVerifyHash(const char *chain_name, const char *signer,
+                          const char *domain_hash, const char *message_hash,
+                          const char *warning);
 
 void fsm_msgBixinReboot(const BixinReboot *msg);
 void fsm_msgBixinMessageSE(const BixinMessageSE *msg);
@@ -172,9 +193,19 @@ void fsm_msgBixinVerifyDeviceRequest(const BixinVerifyDeviceRequest *msg);
 void fsm_msgBixinLoadDevice(const BixinLoadDevice *msg);
 void fsm_msgBixinBackupDevice(void);
 
-void fsm_msgDeviceEraseSector(void);
-
 void fsm_msgGetPublicKeyMultiple(const GetPublicKeyMultiple *msg);
+
+bool fsm_layoutPathWarning(uint32_t address_n_count, const uint32_t *address_n);
+bool fsm_checkCoinPath(const CoinInfo *coin, InputScriptType script_type,
+                       uint32_t address_n_count, const uint32_t *address_n,
+                       bool has_multisig, MessageType message_type,
+                       bool show_warning);
+
+bool fsm_getOwnershipId(uint8_t *script_pubkey, size_t script_pubkey_size,
+                        uint8_t ownership_id[32]);
+
+void fsm_abortWorkflows(void);
+void fsm_postMsgCleanup(MessageType message_type);
 
 // tron
 void fsm_msgTronSignMessage(TronSignMessage *msg);
@@ -221,5 +252,29 @@ void fsm_msgCosmosSignTx(const CosmosSignTx *msg);
 // polkadot
 void fsm_msgPolkadotGetAddress(PolkadotGetAddress *msg);
 void fsm_msgPolkadotSignTx(const PolkadotSignTx *msg);
+
+// cardano
+void fsm_msgCardanoGetPublicKey(CardanoGetPublicKey *msg);
+void fsm_msgCardanoGetAddress(CardanoGetAddress *msg);
+void fsm_msgCardanoTxWitnessRequest(CardanoTxWitnessRequest *msg);
+void fsm_msgCardanoTxHostAck(void);
+void fsm_msgCardanoSignTxInit(CardanoSignTxInit *msg);
+void fsm_msgCardanoTxInput(CardanoTxInput *msg);
+void fsm_msgCardanoTxOutput(CardanoTxOutput *msg);
+void fsm_msgCardanoAssetGroup(CardanoAssetGroup *msg);
+void fsm_msgCardanoToken(CardanoToken *msg);
+void fsm_msgCardanoTxCertificate(CardanoTxCertificate *msg);
+void fsm_msgCardanoTxWithdrawal(CardanoTxWithdrawal *msg);
+void fsm_msgCardanoTxAuxiliaryData(CardanoTxAuxiliaryData *msg);
+void fsm_msgCardanoPoolOwner(CardanoPoolOwner *msg);
+void fsm_msgCardanoPoolRelayParameters(CardanoPoolRelayParameters *msg);
+void fsm_msgCardanoGetNativeScriptHash(void);
+void fsm_msgCardanoTxMint(CardanoTxMint *msg);
+void fsm_msgCardanoTxCollateralInput(CardanoTxCollateralInput *msg);
+void fsm_msgCardanoTxRequiredSigner(CardanoTxRequiredSigner *msg);
+void fsm_msgCardanoTxInlineDatumChunk(CardanoTxInlineDatumChunk *msg);
+void fsm_msgCardanoTxReferenceScriptChunk(CardanoTxReferenceScriptChunk *msg);
+void fsm_msgCardanoTxReferenceInput(CardanoTxReferenceInput *msg);
+void fsm_msgCardanoSignMessage(CardanoSignMessage *msg);
 
 #endif

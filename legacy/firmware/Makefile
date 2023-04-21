@@ -9,29 +9,24 @@ else
 NAME=classic.$(FIRMWARE_BUILD_VERSION)-Alpha-$(FIRMWARE_BUILD_DATE)-$(BUILD_ID)
 endif
 
-SECP256K1_ZKP ?= 0
+SECP256K1_ZKP ?= 1
 
 
 ifeq ($(SECP256K1_ZKP),1)
+CFLAGS   += -DSECP256K1_ZKP
 CFLAGS   += -DUSE_SECP256K1_ZKP
 CFLAGS   += -DUSE_SECP256K1_ZKP_ECDSA
 ifeq ($(EMULATOR),1)
 CFLAGS += -DSECP256K1_CONTEXT_SIZE=208
 else
-CFLAGS += -DSECP256K1_CONTEXT_SIZE=184
+CFLAGS += -DSECP256K1_CONTEXT_SIZE=180
 OBJS += field_10x26_arm.o
 endif
 ZKP_CFLAGS = \
 	-DUSE_ASM_ARM \
-	-DUSE_NUM_NONE \
-	-DUSE_FIELD_INV_BUILTIN \
-	-DUSE_SCALAR_INV_BUILTIN \
 	-DUSE_EXTERNAL_ASM \
-	-DUSE_FIELD_10X26 \
-	-DUSE_SCALAR_8X32 \
-	-DUSE_ECMULT_STATIC_PRECOMPUTATION \
 	-DUSE_EXTERNAL_DEFAULT_CALLBACKS \
-	-DECMULT_GEN_PREC_BITS=4 \
+	-DECMULT_GEN_PREC_BITS=2 \
 	-DECMULT_WINDOW_SIZE=8 \
 	-DENABLE_MODULE_GENERATOR \
 	-DENABLE_MODULE_RECOVERY \
@@ -39,6 +34,8 @@ ZKP_CFLAGS = \
 	-DENABLE_MODULE_EXTRAKEYS
 
 OBJS += secp256k1-zkp.o
+OBJS += precomputed_ecmult.o
+OBJS += precomputed_ecmult_gen.o
 OBJS += ../vendor/trezor-crypto/zkp_bip340.o
 OBJS += ../vendor/trezor-crypto/zkp_context.o
 OBJS += ../vendor/trezor-crypto/zkp_ecdsa.o
@@ -51,6 +48,7 @@ OBJS += usb.o
 OBJS += bl_check.o
 OBJS += otp.o
 OBJS += header.o
+OBJS += startup.o
 endif
 
 OBJS += font.o
@@ -86,7 +84,6 @@ OBJS += solana.o
 OBJS += starcoin.o
 OBJS += stellar.o
 OBJS += tron.o
-OBJS += tron_ui.o
 OBJS += tron_tokens.o
 OBJS += aptos.o
 OBJS += near.o
@@ -100,7 +97,6 @@ OBJS += algo/parser_impl.o
 OBJS += algo/parser.o
 OBJS += algo/tx.o
 OBJS += ripple.o
-OBJS += sui.o
 OBJS += filecoin.o
 OBJS += filecoin/cborparser.o
 OBJS += filecoin/cborvalidation.o
@@ -119,15 +115,16 @@ OBJS += polkadot.o
 OBJS += polkadot/crypto_helper.o
 OBJS += polkadot/bignum.o
 OBJS += polkadot/substrate/substrate_types_V18.o
-OBJS += polkadot/substrate/substrate_types_V19.o
 OBJS += polkadot/substrate/substrate_types.o
 OBJS += polkadot/substrate/substrate_dispatch_V18.o
-OBJS += polkadot/substrate/substrate_dispatch_V19.o
 OBJS += polkadot/substrate/substrate_dispatch.o
 OBJS += polkadot/parser_impl_common.o
 OBJS += polkadot/parser_impl.o
 OBJS += polkadot/parser.o
 OBJS += polkadot/tx.o
+OBJS += ada.o
+OBJS += cbor.o
+OBJS += sui.o
 endif
 
 OBJS += debug.o
@@ -157,17 +154,18 @@ OBJS += ../vendor/trezor-crypto/ed25519-donna/ed25519-keccak.o
 OBJS += ../vendor/trezor-crypto/hmac.o
 OBJS += ../vendor/trezor-crypto/bip32.o
 OBJS += ../vendor/trezor-crypto/bip39.o
+OBJS += ../vendor/trezor-crypto/bip39_english.o
 OBJS += ../vendor/trezor-crypto/pbkdf2.o
 OBJS += ../vendor/trezor-crypto/base32.o
 OBJS += ../vendor/trezor-crypto/base58.o
 OBJS += ../vendor/trezor-crypto/segwit_addr.o
-OBJS += ../vendor/trezor-crypto/cash_addr.o
 
 OBJS += ../vendor/trezor-crypto/ripemd160.o
 OBJS += ../vendor/trezor-crypto/sha2.o
 OBJS += ../vendor/trezor-crypto/sha3.o
 OBJS += ../vendor/trezor-crypto/blake256.o
 OBJS += ../vendor/trezor-crypto/blake2b.o
+OBJS += ../vendor/trezor-crypto/blake2s.o
 OBJS += ../vendor/trezor-crypto/groestl.o
 OBJS += ../vendor/trezor-crypto/hasher.o
 
@@ -202,7 +200,9 @@ OBJS += protob/messages-common.pb.o
 OBJS += protob/messages-crypto.pb.o
 OBJS += protob/messages-debug.pb.o
 OBJS += protob/messages-management.pb.o
+
 ifneq ($(BITCOIN_ONLY),1)
+OBJS += ../vendor/trezor-crypto/cash_addr.o
 OBJS += protob/messages-ethereum.pb.o
 OBJS += protob/messages-nem.pb.o
 OBJS += protob/messages-solana.pb.o
@@ -214,10 +214,11 @@ OBJS += protob/messages-near.pb.o
 OBJS += protob/messages-conflux.pb.o
 OBJS += protob/messages-algorand.pb.o
 OBJS += protob/messages-ripple.pb.o
-OBJS += protob/messages-sui.pb.o
 OBJS += protob/messages-filecoin.pb.o
 OBJS += protob/messages-cosmos.pb.o
 OBJS += protob/messages-polkadot.pb.o
+OBJS += protob/messages-cardano.pb.o
+OBJS += protob/messages-sui.pb.o
 endif
 
 OPTFLAGS ?= -Os
@@ -230,17 +231,13 @@ OPTFLAGS ?= -Os
 
 include ../Makefile.include
 
-DEBUG_LINK ?= 0
-DEBUG_LOG  ?= 0
 
 ifeq ($(EMULATOR),1)
 CFLAGS += --warn-no-unused-parameter
 endif
-CFLAGS += -fstack-protector-all
+# CFLAGS += -fstack-protector-all
 CFLAGS += -Wno-sequence-point
 CFLAGS += -I../vendor/nanopb -Iprotob -DPB_FIELD_16BIT=1 -DPB_ENCODE_ARRAYS_UNPACKED=1 -DPB_VALIDATE_UTF8=1
-CFLAGS += -DDEBUG_LINK=$(DEBUG_LINK)
-CFLAGS += -DDEBUG_LOG=$(DEBUG_LOG)
 CFLAGS += -DSCM_REVISION='"$(shell git rev-parse HEAD | sed 's:\(..\):\\x\1:g')"'
 CFLAGS += -DBUILD_ID='"$(NAME)"'
 CFLAGS += -DUSE_MONERO=0
@@ -265,9 +262,17 @@ CFLAGS += -DUSE_CARDANO=1
 	@printf "  MAKO    $@\n"
 	$(Q)$(PYTHON) ../vendor/trezor-common/tools/cointool.py render $(MAKO_RENDER_FLAG) $@.mako
 
+ifeq ($(BOOTLOADER_QA), 0)
 bl_data.h: bl_data.py bootloader.dat
-	@printf "  PYTHON  bl_data.py\n"
-	$(Q)$(PYTHON) bl_data.py
+	@printf "  PYTHON  bl_data.py bootloader.dat\n"
+	$(Q)$(PYTHON) bl_data.py bootloader.dat
+else
+bl_data.h: bl_data.py bootloader_qa.dat
+	@printf "  PYTHON  bl_data.py bootloader_qa.dat\n"
+	$(Q)$(PYTHON) bl_data.py bootloader_qa.dat
+endif
+
+header.o: version.h
 
 clean::
 	rm -f bl_data.h

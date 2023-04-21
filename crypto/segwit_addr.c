@@ -66,7 +66,8 @@ int bech32_encode(char *output, const char *hrp, const uint8_t *data, size_t dat
         chk = bech32_polymod_step(chk) ^ (ch >> 5);
         ++i;
     }
-    if (i + 7 + data_len > 90) return 0;
+    // for compatibility cardano does not limit the length
+    // if (i + 7 + data_len > 90) return 0;
     chk = bech32_polymod_step(chk);
     while (*hrp != 0) {
         chk = bech32_polymod_step(chk) ^ (*hrp & 0x1f);
@@ -95,7 +96,7 @@ bech32_encoding bech32_decode(char* hrp, uint8_t *data, size_t *data_len, const 
     size_t input_len = strlen(input);
     size_t hrp_len = 0;
     int have_lower = 0, have_upper = 0;
-    if (input_len < 8 || input_len > 90) {
+    if (input_len < 8) {
         return BECH32_ENCODING_NONE;
     }
     *data_len = 0;

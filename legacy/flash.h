@@ -36,10 +36,9 @@
   (FLASH_SR_RDERR | FLASH_SR_PGSERR | FLASH_SR_PGPERR | FLASH_SR_PGAERR | \
    FLASH_SR_WRPERR | FLASH_SR_SOP | FLASH_SR_EOP)
 
-void flash_init(void);
-
 secbool __wur flash_unlock_write(void);
 secbool __wur flash_lock_write(void);
+uint32_t flash_sector_size(uint8_t sector);
 
 const void *flash_get_address(uint8_t sector, uint32_t offset, uint32_t size);
 uint8_t *flash_read_bytes(uint32_t addr);
