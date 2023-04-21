@@ -5,6 +5,7 @@
 #include "bitmaps.h"
 #include "ble.h"
 #include "oled.h"
+#include "se_chip.h"
 #include "si2c.h"
 #include "sys.h"
 #include "timer.h"
@@ -12,6 +13,13 @@
 uint8_t g_ucFlag = 0;
 uint8_t g_ucBatValue = 0;
 uint8_t battery_cap = 0xFF;
+
+void sys_seReset(void) {
+  se_power_off();
+  delay_ms(100);
+  se_power_on();
+  delay_ms(100);
+}
 
 bool sys_usbState(void) {
   if (get_usb_state()) {

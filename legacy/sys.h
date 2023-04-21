@@ -39,6 +39,7 @@
 #define get_ble_state() gpio_get(BLE_CONNECT_PORT, BLE_CONNECT_PIN)
 #define get_power_key_state() gpio_get(BTN_POWER_PORT, BTN_POWER_PIN)
 
+void sys_seReset(void);
 bool sys_usbState(void);
 bool sys_bleState(void);
 void sys_poweron(void);

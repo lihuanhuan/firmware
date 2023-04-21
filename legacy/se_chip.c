@@ -1071,30 +1071,36 @@ bool se_sessionClear(void) {
   return true;
 }
 
+// TODO: lc is three bytes
 bool se_set_public_region(const uint16_t offset, const void *val_dest,
                           uint16_t len) {
-  uint8_t cmd[5] = {0x00, 0xE6, 0x00, 0x00, 0x10};
+  uint8_t cmd[7] = {0x00, 0xE6, 0x00, 0x00, 0x00, 0x04, 0x00};
   uint8_t recv_buf[8];
   uint16_t recv_len = sizeof(recv_buf);
+
   if (offset > PUBLIC_REGION_SIZE) return false;
   cmd[2] = (uint8_t)((uint16_t)offset >> 8 & 0x00FF);
   cmd[3] = (uint8_t)((uint16_t)offset & 0x00FF);
-  cmd[4] = len;
-  memcpy(SH_CMDHEAD, cmd, 5);
-  memcpy(SH_IOBUFFER, (uint8_t *)val_dest, len);
-  if (MI2C_OK != se_transmit_plain(SH_CMDHEAD, 5 + len, recv_buf, &recv_len)) {
+  cmd[4] = 0;
+  cmd[5] = len >> 8;
+  cmd[6] = len;
+  memcpy(SH_CMDHEAD, cmd, 7);
+  memcpy(SH_IOBUFFER + 2, (uint8_t *)val_dest, len);
+  if (MI2C_OK != se_transmit_plain(SH_CMDHEAD, 7 + len, recv_buf, &recv_len)) {
     return false;
   }
   return true;
 }
-
+// TODO: le is three bytes
 bool se_get_public_region(uint16_t offset, void *val_dest, uint16_t len) {
-  uint8_t cmd[5] = {0x00, 0xE5, 0x00, 0x00, 0x10};
+  uint8_t cmd[7] = {0x00, 0xE5, 0x00, 0x00, 0x00, 0x00, 0x10};
   uint16_t recv_len = len;
   if (offset > PUBLIC_REGION_SIZE) return false;
   cmd[2] = (uint8_t)((uint16_t)offset >> 8 & 0x00FF);
   cmd[3] = (uint8_t)((uint16_t)offset & 0x00FF);
-  cmd[4] = len;
+  cmd[4] = 0;
+  cmd[5] = len >> 8;
+  cmd[6] = len;
   if (MI2C_OK !=
       se_transmit_plain(cmd, sizeof(cmd), (uint8_t *)val_dest, &recv_len)) {
     return false;

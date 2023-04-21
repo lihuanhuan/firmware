@@ -382,7 +382,8 @@ bool protectVerifyPinFirst(void) {
 
 bool protectPin(bool use_cached) {
   const char *newpin = NULL;
-  if (use_cached && session_isUnlocked()) {
+  // TODO: add pin valid time apply
+  if (use_cached && session_isUnlocked() && session_isProtectUnlocked()) {
     return true;
   }
 
@@ -803,7 +804,6 @@ refresh_menu:
 
 bool protectPinOnDevice(bool use_cached, bool cancel_allowed) {
   if (!config_hasPin()) return false;
-
   if (use_cached && session_isUnlocked()) {
     return true;
   }

@@ -433,7 +433,7 @@ static void i2c_slave_poll(void) {
 void usbPoll(void) {
   static const uint8_t *data;
 
-  bool reset = false;
+  volatile bool reset = false;
 
   static bool usb_status_bak = false;
 
@@ -446,13 +446,14 @@ void usbPoll(void) {
     }
   } else if (!usb_connect_status && usb_status_bak) {
     usb_status_bak = false;
-    // TODO: usb interface would be restart
+    // usb interface would be restart
     usbInit();
     if (config_hasPin() && session_isUnlocked()) {
       reset = true;
     }
   }
   if (reset) {
+    sys_seReset();
     svc_system_privileged();
     vector_table_t *ivt = (vector_table_t *)FLASH_PTR(FLASH_APP_START);
     __asm__ volatile("msr msp, %0" ::"r"(ivt->initial_sp_value));

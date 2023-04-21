@@ -99,7 +99,7 @@ bool config_changePin(const char *old_pin, const char *new_pin);
 #define config_unlock(pin) config_verifyPin(pin)
 
 bool session_isUnlocked(void);
-
+bool session_isProtectUnlocked(void);
 bool config_hasWipeCode(void);
 bool config_changeWipeCode(const char *pin, const char *wipe_code);
 

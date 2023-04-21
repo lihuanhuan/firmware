@@ -170,8 +170,6 @@ DEF_PRIVATE_ID(free_pay_times);
 
 #define MAX_SESSIONS_COUNT 10
 
-static secbool se_unlocked = secfalse;
-
 static uint32_t config_uuid[UUID_SIZE / sizeof(uint32_t)];
 _Static_assert(sizeof(config_uuid) == UUID_SIZE, "config_uuid has wrong size");
 
@@ -325,20 +323,21 @@ inline static secbool config_set_string(const struct CfgRecord id,
 
 #define config_clear_string(id) config_clear_bytes(id)
 
-/*inline*/ static secbool config_get_uint32(const struct CfgRecord id,
-                                            uint32_t *value) {
+inline static secbool config_get_uint32(const struct CfgRecord id,
+                                        uint32_t *value) {
   *value = 0;
   CHECK_CONFIG_OP(config_get(id, value, sizeof(uint32_t)));
   return sectrue;
 }
-/*inline*/ static secbool config_set_uint32(const struct CfgRecord id,
-                                            uint32_t value) {
+inline static secbool config_set_uint32(const struct CfgRecord id,
+                                        uint32_t value) {
   return config_set(id, &value, sizeof(value));
 }
 
 inline static secbool config_homeScreen(void) {
   memzero(g_ucHomeScreen, sizeof(g_ucHomeScreen));
-  if (!config_get_bytes(id_homescreen, g_ucHomeScreen, NULL)) {
+  uint16_t realSize = 0xff;
+  if (!config_get_bytes(id_homescreen, g_ucHomeScreen, &realSize)) {
     return secfalse;
   }
   return sectrue;
@@ -348,7 +347,10 @@ void config_init(void) {
   char oldTiny = usbTiny(1);
 
   memzero(HW_ENTROPY_DATA, sizeof(HW_ENTROPY_DATA));
-  g_bHomeGetFlg = config_homeScreen();
+
+  if (secfalse == g_bHomeGetFlg) {
+    g_bHomeGetFlg = config_homeScreen();
+  }
 
   config_getLanguage(config_language, sizeof(config_language));
 
@@ -367,7 +369,7 @@ void config_init(void) {
   usbTiny(oldTiny);
 }
 
-void config_lockDevice(void) { se_unlocked = secfalse; }
+void config_lockDevice(void) { se_clearSecsta(); }
 
 void config_loadDevice_ex(const BixinLoadDevice *msg) {
   config_set_bool(id_mnemonics_imported, true);
@@ -415,6 +417,8 @@ bool config_getPassphraseProtection(bool *passphrase_protection) {
 }
 
 void config_setHomescreen(const uint8_t *data, uint32_t size) {
+  g_bHomeGetFlg = secfalse;
+
   if (data != NULL && size == HOMESCREEN_SIZE) {
     config_set_bytes(id_homescreen, data, size);
   } else {
@@ -545,8 +549,7 @@ bool config_getLanguage(char *dest, uint16_t dest_size) {
 }
 
 bool config_getHomescreen(uint8_t *dest, uint16_t dest_size) {
-  if (id_homescreen.size != dest_size || secfalse == g_bHomeGetFlg)
-    return false;
+  if (HOMESCREEN_SIZE != dest_size || secfalse == g_bHomeGetFlg) return false;
 
   memcpy(dest, g_ucHomeScreen, HOMESCREEN_SIZE);
   return true;
@@ -570,19 +573,15 @@ bool config_setPin(const char *pin) { return se_setPin(pin_to_int(pin)); }
  */
 bool config_verifyPin(const char *pin) {
   if (se_verifyPin((pin_to_int(pin)), SE_VERIFYPIN_OTHER)) {
-    se_unlocked = sectrue;
     return true;
   } else {
-    se_unlocked = secfalse;
     return false;
   }
 }
 bool config_firstVerifyPin(const char *pin) {
   if (se_verifyPin((pin_to_int(pin)), SE_VERIFYPIN_FIRST)) {
-    se_unlocked = sectrue;
     return true;
   } else {
-    se_unlocked = secfalse;
     return false;
   }
 }
@@ -594,10 +593,8 @@ bool config_changePin(const char *old_pin, const char *new_pin) {
     return false;
   }
   if (se_changePin(pin_to_int(old_pin), new_pin_int)) {
-    se_unlocked = sectrue;
     return true;
   } else {
-    se_unlocked = secfalse;
     return false;
   }
 }
@@ -635,12 +632,15 @@ void session_endCurrentSession(void) {
 }
 
 bool session_isUnlocked(void) {
-  uint8_t recv_buf[3] = {0x00};
-  uint16_t left_seconds = 0;
-
   if (!se_getSecsta()) {  // if no pin auth
     return false;
   }
+  return true;
+}
+
+bool session_isProtectUnlocked(void) {
+  uint8_t recv_buf[3] = {0x00};
+  uint16_t left_seconds = 0;
 
   if (!se_getPinValidtime(recv_buf)) {
     return false;
@@ -791,7 +791,7 @@ void config_setSleepDelayMs(uint32_t auto_sleep_ms) {
 
 void config_wipe(void) {
   se_reset_storage();
-  se_unlocked = secfalse;
+  se_clearSecsta();
   char oldTiny = usbTiny(1);
   usbTiny(oldTiny);
   random_buffer((uint8_t *)config_uuid, sizeof(config_uuid));

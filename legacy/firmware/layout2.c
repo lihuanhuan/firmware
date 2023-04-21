@@ -19,6 +19,7 @@
 
 #include <ctype.h>
 #include <inttypes.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -2319,7 +2320,7 @@ void layoutEnterSleep(void) {
   if (layoutLast != layoutScreensaver) {
     // 1000 ms refresh
     if ((timer_ms() - system_millis_logo_refresh) >= 1000) {
-      layoutStatusLogoEx(true, false);
+      layoutStatusLogoEx(true, true);
       system_millis_logo_refresh = timer_ms();
     }
   }
