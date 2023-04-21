@@ -77,7 +77,7 @@
 
 #define USB_STRINGS                                 \
   X(MANUFACTURER, "ByteForge")                      \
-  X(PRODUCT, "ONEKEY")                              \
+  X(PRODUCT, "ONEKEY CLASSIC")                      \
   X(SERIAL_NUMBER, config_uuid_str)                 \
   X(INTERFACE_MAIN, "ONEKEY Interface")             \
   X(INTERFACE_DEBUG, "ONEKEY Debug Link Interface") \
@@ -409,8 +409,12 @@ static const struct usb_bos_descriptor bos_descriptor = {
 
 void usbInit(void) {
   bool trezor_comp_mode = false;
-  //TODO:
-  config_getTrezorCompMode(&trezor_comp_mode);
+  if (!config_hasTrezorCompMode()) {
+    config_setTrezorCompMode(true);
+    trezor_comp_mode = true;
+  } else {
+    config_getTrezorCompMode(&trezor_comp_mode);
+  }
   // dev_descr.idProduct = trezor_comp_mode ? 0x53c1 : 0x4F4B;
   if (trezor_comp_mode) {
     dev_descr.idProduct = 0x53c1;
