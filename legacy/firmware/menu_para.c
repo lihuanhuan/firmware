@@ -8,7 +8,7 @@
 
 extern uint8_t ui_language;
 
-static char* format_time(uint32_t ms) {
+char* format_time(uint32_t ms) {
   static char line[sizeof("4294967296 minutes?")] = {0};
 
   const char* unit = _("second");
@@ -36,12 +36,10 @@ static char* format_time(uint32_t ms) {
 }
 
 char* menu_para_ble_state(void) {
-  return ble_get_switch() ? _(" On") : _(" Off");
+  return ble_get_switch() ? _(" Enable") : _(" Disable");
 }
 
-char* menu_para_language(void) {
-  return ui_language ? _("English") : "English";
-}
+char* menu_para_language(void) { return ui_language ? "简体中文" : "English"; }
 
 char* menu_para_shutdown(void) {
   return format_time(config_getAutoLockDelayMs());
@@ -49,19 +47,21 @@ char* menu_para_shutdown(void) {
 
 char* menu_para_autolock(void) { return format_time(config_getSleepDelayMs()); }
 
-char* menu_para_eth_eip_switch(void) {
-  return config_getCoinSwitch(COIN_SWITCH_ETH_EIP712) ? _(" On") : _(" Off");
-};
+char* menu_para_eth_eip_switch(void) { return _(" On"); };
 
-char* menu_para_sol_switch(void) {
-  return config_getCoinSwitch(COIN_SWITCH_SOLANA) ? _(" On") : _(" Off");
-};
+char* menu_para_sol_switch(void) { return _(" On"); };
 
 char* menu_para_passphrase(void) {
   bool passphrase_protection = false;
   config_getPassphraseProtection(&passphrase_protection);
-  return passphrase_protection ? _(" On") : _(" Off");
+  return passphrase_protection ? _(" Enabled") : _(" Disabled");
 };
+
+char* menu_para_trezor_comp_mode_state(void) {
+  bool trezor_comp_mode_current = false;
+  config_getTrezorCompMode(&trezor_comp_mode_current);
+  return trezor_comp_mode_current ? _(" Enable") : _(" Disable");
+}
 
 void menu_para_set_ble(int index) {
   bool ble_state = index ? false : true;

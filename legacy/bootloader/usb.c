@@ -27,6 +27,7 @@
 #include "bootloader.h"
 #include "buttons.h"
 #include "ecdsa.h"
+#include "fw_signatures.h"
 #include "layout.h"
 #include "layout_boot.h"
 #include "memory.h"
@@ -37,7 +38,6 @@
 #include "secp256k1.h"
 #include "sha2.h"
 #include "si2c.h"
-#include "signatures.h"
 #include "sys.h"
 #include "updateble.h"
 #include "usb.h"
@@ -496,12 +496,58 @@ static secbool readprotobufint(const uint8_t **ptr, uint32_t *result) {
   return sectrue;
 }
 
+/** Reverse-endian version comparison
+ *
+ * Versions are loaded from the header via a packed struct image_header. A
+ * version is represented as a single uint32_t. Arm is natively little-endian,
+ * but the version is actually stored as four bytes in major-minor-patch-build
+ * order. This function implements `cmp` with "lowest" byte first.
+ */
+static int version_compare(const uint32_t vera, const uint32_t verb) {
+  int a, b;  // signed temp values so that we can safely return a signed result
+  a = vera & 0xFF;
+  b = verb & 0xFF;
+  if (a != b) return a - b;
+  a = (vera >> 8) & 0xFF;
+  b = (verb >> 8) & 0xFF;
+  if (a != b) return a - b;
+  a = (vera >> 16) & 0xFF;
+  b = (verb >> 16) & 0xFF;
+  if (a != b) return a - b;
+  a = (vera >> 24) & 0xFF;
+  b = (verb >> 24) & 0xFF;
+  return a - b;
+}
+
+static int should_keep_storage(int old_was_signed,
+                               uint32_t fix_version_current) {
+  (void)old_was_signed;
+  (void)fix_version_current;
+  return SIG_OK;
+      // if the current firmware is unsigned, always erase storage
+  if (SIG_OK != old_was_signed) return SIG_FAIL;
+
+  const image_header *new_hdr = (const image_header *)FW_HEADER;
+  // new header must be signed by v3 signmessage/verifymessage scheme
+  if (SIG_OK != signatures_ok(new_hdr, NULL, sectrue)) return SIG_FAIL;
+  // if the new header hashes don't match flash contents, erase storage
+  if (SIG_OK != check_firmware_hashes(new_hdr)) return SIG_FAIL;
+
+  // if the current fix_version is higher than the new one, erase storage
+  if (version_compare(new_hdr->version, fix_version_current) < 0) {
+    return SIG_FAIL;
+  }
+
+  return SIG_OK;
+}
+
 static void rx_callback(usbd_device *dev, uint8_t ep) {
   (void)ep;
   static uint16_t msg_id = 0xFFFF;
   static uint32_t w;
   static int wi;
   static int old_was_signed;
+  static uint32_t fix_version_current = 0xffffffff;
   uint8_t *p_buf;
   uint8_t se_version[2];
   uint8_t apduBuf[7 + 512];  // set se apdu data context
@@ -653,27 +699,50 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
 
   if (flash_state == STATE_OPEN) {
     if (msg_id == 0x0006) {  // FirmwareErase message (id 6)
-      volatile bool proceed = false;
+
+      if (sys_usbState() == false && battery_cap < 2) {
+        layoutDialogCenterAdapterEx(
+            &bmp_icon_warning, NULL, &bmp_bottom_right_confirm, NULL,
+            "Low Battery!Use cable or", "Charge to 25% before",
+            "updating the bootloader", NULL);
+        while (1) {
+          uint8_t key = keyScan();
+          if (key == KEY_CONFIRM) {
+            send_msg_failure(dev, 30);  // FailureType_Failure_BatteryLow
+            flash_state = STATE_END;
+            show_unplug("Low battery!", "aborted.");
+            shutdown();
+            return;
+          }
+          if (sys_usbState() == true) {
+            break;
+          }
+        }
+      }
+
+      bool proceed = false;
       if (firmware_present_new()) {
-        layoutDialog(&bmp_icon_question, "Abort", "Continue", NULL,
-                     "Install new", "firmware?", NULL, "Never do this without",
-                     "your recovery card!", NULL);
+        layoutDialogCenterAdapterEx(NULL, &bmp_bottom_left_close,
+                                    &bmp_bottom_right_confirm, NULL, NULL, NULL,
+                                    "Install firmware by", "OneKey?");
         proceed = waitButtonResponse(BTN_PIN_YES, default_oper_time);
       } else {
         proceed = true;
       }
       if (proceed) {
-        // check whether the current firmware is signed(old or new method)
+        // check whether the current firmware is signed (old or new method)
         if (firmware_present_new()) {
           const image_header *hdr =
               (const image_header *)FLASH_PTR(FLASH_FWHEADER_START);
+          // previous firmware was signed either v2 or v3 scheme
           old_was_signed =
-              signatures_new_ok(hdr, NULL) & check_firmware_hashes(hdr);
-        } else if (firmware_present_old()) {
-          old_was_signed = signatures_old_ok();
+              signatures_match(hdr, NULL) & check_firmware_hashes(hdr);
+          fix_version_current = hdr->fix_version;
         } else {
           old_was_signed = SIG_FAIL;
+          fix_version_current = 0xffffffff;
         }
+        erase_code_progress();
         send_msg_success(dev);
         flash_state = STATE_FLASHSTART;
         timer_out_set(timer_out_oper, timer1s * 5);
@@ -816,8 +885,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
     timer_out_set(timer_out_oper, timer1s * 5);
     static uint8_t flash_anim = 0;
     if (flash_anim % 32 == 4) {
-      layoutProgress("INSTALLING ... Please wait",
-                     1000 * flash_pos / flash_len);
+      layoutProgress("Installing...", 1000 * flash_pos / flash_len);
     }
     flash_anim++;
 
@@ -949,7 +1017,8 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       flash_state = STATE_CHECK;
       if (UPDATE_ST == update_mode) {
         const image_header *hdr = (const image_header *)FW_HEADER;
-        if (SIG_OK != signatures_new_ok(hdr, NULL)) {
+        // allow only v3 signmessage/verifymessage signature for new FW
+        if (SIG_OK != signatures_ok(hdr, NULL, sectrue)) {
           send_msg_buttonrequest_firmwarecheck(dev);
           return;
         }
@@ -1011,24 +1080,41 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
 
       bool hash_check_ok;
       // show fingerprint of unsigned firmware
-      if (SIG_OK != signatures_new_ok(hdr, NULL)) {
+      if (SIG_OK != signatures_ok(hdr, NULL, sectrue)) {
         if (msg_id != 0x001B) {  // ButtonAck message (id 27)
           return;
         }
-        uint8_t hash[32] = {0};
-        compute_firmware_fingerprint(hdr, hash);
-        layoutFirmwareFingerprint(hash);
-        hash_check_ok = waitButtonResponse(BTN_PIN_YES, default_oper_time);
+        // OneKey not allowed Unofficial firmware
+        hash_check_ok = false;
+        // uint8_t hash[32] = {0};
+        // compute_firmware_fingerprint(hdr, hash);
+        // layoutFirmwareFingerprint(hash);
+        // hash_check_ok = waitButtonResponse(BTN_PIN_YES, default_oper_time);
       } else {
         hash_check_ok = true;
       }
-      layoutProgress("Programing ... Please wait", 1000);
+      layoutProgress("Programing...", 1000);
 
-      // TODO: check firmware hash
-      if (SIG_OK != old_was_signed || SIG_OK != check_firmware_hashes(hdr)) {
-        send_msg_failure(dev, 9);  // Failure_ProcessError
-        show_halt("Error installing", "firmware.");
-        return;
+      // wipe storage if:
+      // 1) old firmware was unsigned or not present
+      // 2) signatures are not OK
+      // 3) hashes are not OK
+      if (SIG_OK != should_keep_storage(old_was_signed, fix_version_current)) {
+        // erase storage
+        // erase_storage();
+        // // check erasure
+        // uint8_t hash[32] = {0};
+        // sha256_Raw(FLASH_PTR(FLASH_STORAGE_START), FLASH_STORAGE_LEN, hash);
+        // if (memcmp(
+        //         hash,
+        //         "\x2d\x86\x4c\x0b\x78\x9a\x43\x21\x4e\xee\x85\x24\xd3\x18\x20"
+        //         "\x75\x12\x5e\x5c\xa2\xcd\x52\x7f\x35\x82\xec\x87\xff\xd9\x40"
+        //         "\x76\xbc",
+        //         32) != 0) {
+        //   send_msg_failure(dev, 9);  // Failure_ProcessError
+        //   show_halt("Error installing", "firmware.");
+        //   return;
+        // }
       }
 
       flash_enter();
@@ -1046,8 +1132,10 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       flash_exit();
       flash_state = STATE_END;
       if (hash_check_ok) {
-        show_unplug("New firmware", "successfully installed.");
         send_msg_success(dev);
+        layoutDialogCenterAdapterEx(&bmp_icon_ok, NULL, NULL, NULL,
+                                    "New firmware installed.",
+                                    "Device will be power off.", NULL, NULL);
         shutdown();
       } else {
         layoutDialog(&bmp_icon_warning, NULL, NULL, NULL,
@@ -1055,6 +1143,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
                      "You need to repeat", "the procedure with",
                      "the correct firmware.");
         send_msg_failure(dev, 9);  // Failure_ProcessError
+        delay_ms(1000);
         shutdown();
       }
       return;

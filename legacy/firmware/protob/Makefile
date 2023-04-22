@@ -2,11 +2,10 @@ ifneq ($(V),1)
 Q := @
 endif
 
-SKIPPED_MESSAGES := Binance Cardano DebugMonero Eos Monero Ontology SdProtect Tezos WebAuthn \
-	DebugLinkRecordScreen DebugLinkReseedRandom DebugLinkShowText DebugLinkEraseSdCard DebugLinkWatchLayout \
-	GetOwnershipProof OwnershipProof GetOwnershipId OwnershipId AuthorizeCoinJoin DoPreauthorized \
-	CancelAuthorization DebugLinkLayout \
-	TxAckInput TxAckOutput TxAckPrev \
+SKIPPED_MESSAGES := Binance DebugMonero Eos Monero Ontology SdProtect Tezos WebAuthn \
+	DebugLinkRecordScreen DebugLinkEraseSdCard DebugLinkWatchLayout \
+	DebugLinkLayout GetNonce \
+	TxAckInput TxAckOutput TxAckPrev TxAckPaymentRequest \
 	EthereumSignTypedData EthereumTypedDataStructRequest EthereumTypedDataStructAck \
 	EthereumTypedDataValueRequest EthereumTypedDataValueAck
 
@@ -17,8 +16,8 @@ endif
 PROTO_NAMES = messages messages-bitcoin messages-common messages-crypto messages-debug \
 	messages-ethereum messages-management messages-nem messages-stellar messages-solana \
 	messages-starcoin messages-tron messages-aptos messages-near messages-conflux \
-	messages-algorand messages-ripple messages-sui messages-filecoin messages-cosmos \
-	messages-polkadot
+	messages-algorand messages-ripple messages-filecoin messages-cosmos \
+	messages-polkadot messages-cardano messages-sui
 
 PROTO_OPTIONS = $(PROTO_NAMES:=.options)
 PROTO_COMPILED = $(PROTO_NAMES:=.pb)

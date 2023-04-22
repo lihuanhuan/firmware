@@ -42,12 +42,12 @@
 /* number of words expected in the new seed */
 static uint32_t word_count;
 
-/* recovery mode:
- * 0: not recovering
- * 1: recover by scrambled plain text words
- * 2: recover by matrix entry
- */
-static int awaiting_word = 0;
+/* recovery mode */
+static enum {
+  RECOVERY_NONE = 0,       // recovery not in progress
+  RECOVERY_SCRAMBLED = 1,  // standard recovery by scrambled plain text words
+  RECOVERY_MATRIX = 2,     // advanced recovery by matrix entry
+} recovery_mode = RECOVERY_NONE;
 
 /* True if we should not write anything back to config
  * (can be used for testing seed for correctness).
@@ -170,7 +170,7 @@ static void format_number(char *dest, int number) {
 static void recovery_request(void) {
   WordRequest resp = {0};
   memzero(&resp, sizeof(WordRequest));
-  if (awaiting_word == 1) {
+  if (recovery_mode == RECOVERY_SCRAMBLED) {
     resp.type = WordRequestType_WordRequestType_Plain;
   } else if (word_index % 4 == 3) {
     resp.type = WordRequestType_WordRequestType_Matrix6;
@@ -187,6 +187,7 @@ extern bool generate_seed_steps(void);
  */
 static bool recovery_done(void) {
   bool success = false;
+  uint8_t key;
   char new_mnemonic[MAX_MNEMONIC_LEN + 1] = {0};
 
   strlcpy(new_mnemonic, words[0], sizeof(new_mnemonic));
@@ -230,44 +231,116 @@ static bool recovery_done(void) {
       }
       memzero(new_mnemonic, sizeof(new_mnemonic));
     } else {
+      //TODO:
+      // bool match =
+      //     (config_isInitialized() && config_containsMnemonic(new_mnemonic));
+      bool match = true;
       // not support check mnemonic is existed in SE only check-mnemonic
       memzero(new_mnemonic, sizeof(new_mnemonic));
       if (recovery_byself) {
-        layoutDialogCenterAdapter(&bmp_icon_ok, NULL, NULL, &bmp_btn_confirm,
-                                  _("Okay"), NULL, NULL, NULL, NULL,
-                                  _("Check passed"), NULL, NULL);
-        protectWaitKey(0, 1);
+        if (match) {
+          if (ui_language) {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_ok, NULL, NULL, &bmp_bottom_right_arrow, NULL, NULL,
+                NULL, NULL, NULL, "输入的助记词完全匹配, 您", "的备份是正确的.",
+                NULL);
+          } else {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_ok, NULL, NULL, &bmp_bottom_right_arrow, NULL, NULL,
+                NULL, NULL, NULL, "Recovery phrase is",
+                "matched! Your backup is", "correct.");
+          }
+          while (1) {
+            key = protectWaitKey(0, 1);
+            if (key == KEY_CONFIRM) {
+              break;
+            }
+          }
+        } else {
+          if (ui_language) {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_error, NULL, NULL, &bmp_bottom_right_retry, NULL,
+                NULL, NULL, NULL, NULL, "输入的助记词有效但与设备",
+                "中存储的不匹配. 请检查您", "的备份后重试.");
+          } else {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_error, NULL, NULL, &bmp_bottom_right_retry, NULL,
+                NULL, NULL, NULL, NULL, "Recovery phrase is valid",
+                "but does not match. Check", "and try again.");
+          }
+          while (1) {
+            key = protectWaitKey(0, 1);
+            if (key == KEY_CONFIRM) {
+              break;
+            }
+          }
+        }
       } else {
-        layoutDialogAdapter(&bmp_icon_ok, NULL, _("Confirm"), NULL,
-                            _("The seed is valid"), _("and MATCHES"),
-                            _("the one in the device."), NULL, NULL, NULL);
-        protectButton(ButtonRequestType_ButtonRequest_Other, true);
-        fsm_sendSuccess(
-            _("The seed is valid and matches the one in the device"));
+        if (match) {
+          if (ui_language) {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_ok, NULL, NULL, &bmp_bottom_right_arrow, NULL, NULL,
+                NULL, NULL, NULL, "输入的助记词完全匹配, 您", "的备份是正确的.",
+                NULL);
+          } else {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_ok, NULL, NULL, &bmp_bottom_right_arrow, NULL, NULL,
+                NULL, NULL, NULL, "Recovery phrase is",
+                "matched! Your backup is", "correct.");
+          }
+          protectButton(ButtonRequestType_ButtonRequest_Other, true);
+          fsm_sendSuccess(
+              _("The seed is valid and matches the one in the device"));
+        } else {
+          if (ui_language) {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_error, NULL, NULL, &bmp_bottom_right_retry, NULL,
+                NULL, NULL, NULL, NULL, "输入的助记词有效但与设备",
+                "中存储的不匹配. 请检查您", "的备份后重试.");
+          } else {
+            layoutDialogSwipeCenterAdapter(
+                &bmp_icon_error, NULL, NULL, &bmp_bottom_right_retry, NULL,
+                NULL, NULL, NULL, NULL, "Recovery phrase is valid",
+                "but does not match. Check", "and try again.");
+          }
+          protectButton(ButtonRequestType_ButtonRequest_Other, true);
+          fsm_sendFailure(
+              FailureType_Failure_DataError,
+              _("The seed is valid but does not match the one in the device"));
+        }
       }
     }
   } else {
     // New mnemonic is invalid.
     memzero(new_mnemonic, sizeof(new_mnemonic));
     if (recovery_byself) {
-      layoutDialogCenterAdapter(&bmp_icon_error, NULL, NULL, &bmp_btn_cancel,
-                                _("Quit"), NULL, NULL, NULL, NULL,
-                                _("Check failed"), NULL, NULL);
-      protectWaitKey(0, 1);
+      layoutDialogSwipeCenterAdapter(&bmp_icon_error, NULL, NULL,
+                                     &bmp_bottom_right_retry, NULL, NULL, NULL,
+                                     NULL, NULL, _("Invalid recovery phrase!"),
+                                     _("Check and try again."), NULL);
+      while (1) {
+        key = protectWaitKey(0, 1);
+        if (key == KEY_CONFIRM) {
+          break;
+        }
+      }
     } else {
       if (!dry_run) {
         session_clear(true);
       } else {
-        layoutDialogAdapter(&bmp_icon_error, NULL, _("Confirm"), NULL,
-                            _("The seed is"), _("INVALID!"), NULL, NULL, NULL,
-                            NULL);
+        layoutDialogSwipeCenterAdapter(
+            &bmp_icon_error, NULL, NULL, &bmp_bottom_right_retry, NULL, NULL,
+            NULL, NULL, NULL, _("Invalid recovery phrase!"),
+            _("Check and try again."), NULL);
         protectButton(ButtonRequestType_ButtonRequest_Other, true);
       }
       fsm_sendFailure(FailureType_Failure_DataError,
                       _("Invalid seed, are words in correct order?"));
     }
   }
-  awaiting_word = 0;
+  memzero(words, sizeof(words));
+  word_pincode = 0;
+  recovery_mode = RECOVERY_NONE;
   layoutHome();
 
   return success;
@@ -472,7 +545,7 @@ static void recovery_digit(const char digit) {
     oledInvert(x + 1, y, x + 62, y + 9);
     oledRefresh();
     usbTiny(1);
-    usbSleep(250);
+    waitAndProcessUSBRequests(250);
     usbTiny(0);
 
     /* index of the chosen word */
@@ -503,7 +576,7 @@ void next_word(void) {
                               FONT_STANDARD);
   word_pos = word_order[word_index];
   if (word_pos == 0) {
-    strlcpy(fake_word, mnemonic_get_word(random_uniform(BIP39_WORDS)),
+    strlcpy(fake_word, mnemonic_get_word(random_uniform(BIP39_WORD_COUNT)),
             sizeof(fake_word));
     oledDrawStringCenterAdapter(OLED_WIDTH / 2, 24, fake_word,
                                 FONT_FIXED | FONT_DOUBLE);
@@ -529,6 +602,9 @@ void recovery_init(uint32_t _word_count, bool passphrase_protection,
                    bool _dry_run) {
   if (_word_count != 12 && _word_count != 18 && _word_count != 24) return;
 
+  recovery_mode = RECOVERY_NONE;
+  word_pincode = 0;
+  word_index = 0;
   word_count = _word_count;
 #if !EMULATOR
   _enforce_wordlist = true;
@@ -559,10 +635,9 @@ void recovery_init(uint32_t _word_count, bool passphrase_protection,
     config_setU2FCounter(u2f_counter);
   }
 
+  // Prefer matrix recovery if the host supports it.
   if ((type & RecoveryDeviceType_RecoveryDeviceType_Matrix) != 0) {
-    awaiting_word = 2;
-    word_index = 0;
-    word_pincode = 0;
+    recovery_mode = RECOVERY_MATRIX;
     next_matrix();
   } else {
     for (uint32_t i = 0; i < word_count; i++) {
@@ -572,8 +647,7 @@ void recovery_init(uint32_t _word_count, bool passphrase_protection,
       word_order[i] = 0;
     }
     random_permute(word_order, 24);
-    awaiting_word = 1;
-    word_index = 0;
+    recovery_mode = RECOVERY_SCRAMBLED;
     next_word();
   }
 }
@@ -582,29 +656,18 @@ static void recovery_scrambledword(const char *word) {
   int index = -1;
   if (enforce_wordlist) {  // check if word is valid
     index = mnemonic_find_word(word);
-  }
-  if (word_pos == 0) {  // fake word
-    if (strcmp(word, fake_word) != 0) {
+    if (index < 0) {  // not found
       if (!dry_run) {
         session_clear(true);
       }
-      fsm_sendFailure(FailureType_Failure_ProcessError,
-                      _("Wrong word retyped"));
-      layoutHome();
+      fsm_sendFailure(FailureType_Failure_DataError,
+                      _("Word not found in a wordlist"));
+      recovery_abort();
       return;
     }
-  } else {  // real word
-    if (enforce_wordlist) {
-      if (index < 0) {  // not found
-        if (!dry_run) {
-          session_clear(true);
-        }
-        fsm_sendFailure(FailureType_Failure_DataError,
-                        _("Word not found in a wordlist"));
-        layoutHome();
-        return;
-      }
-    }
+  }
+
+  if (word_pos != 0) {  // ignore fake words
     strlcpy(words[word_pos - 1], word, sizeof(words[word_pos - 1]));
   }
 
@@ -620,11 +683,11 @@ static void recovery_scrambledword(const char *word) {
  * for scrambled recovery.
  */
 void recovery_word(const char *word) {
-  switch (awaiting_word) {
-    case 2:
+  switch (recovery_mode) {
+    case RECOVERY_MATRIX:
       recovery_digit(word[0]);
       break;
-    case 1:
+    case RECOVERY_SCRAMBLED:
       recovery_scrambledword(word);
       break;
     default:
@@ -637,9 +700,11 @@ void recovery_word(const char *word) {
 /* Abort recovery.
  */
 void recovery_abort(void) {
-  if (awaiting_word) {
+  memzero(words, sizeof(words));
+  word_pincode = 0;
+  if (recovery_mode != RECOVERY_NONE) {
     layoutHome();
-    awaiting_word = 0;
+    recovery_mode = RECOVERY_NONE;
   }
 }
 
@@ -650,11 +715,18 @@ static void select_complete_word(char *title, int start, int len) {
   int index = 0;
 
 refresh_menu:
-  layoutItemsSelectAdapter(
-      &bmp_btn_up, &bmp_btn_down, &bmp_btn_back, &bmp_btn_forward, _("Cancel"),
-      _("Confirm"), 0, 0, title, NULL, mnemonic_get_word(start + index),
+  layoutItemsSelectAdapterWords(
+      &bmp_bottom_middle_arrow_up, &bmp_bottom_middle_arrow_down,
+      &bmp_bottom_left_arrow, &bmp_bottom_right_confirm, NULL, NULL, index + 1,
+      len, title, mnemonic_get_word(start + index),
+      mnemonic_get_word(start + index),
       index > 0 ? mnemonic_get_word(start + index - 1) : NULL,
-      index < len - 1 ? mnemonic_get_word(start + index + 1) : NULL);
+      index > 1 ? mnemonic_get_word(start + index - 2) : NULL,
+      index > 2 ? mnemonic_get_word(start + index - 3) : NULL,
+      index < len - 1 ? mnemonic_get_word(start + index + 1) : NULL,
+      index < len - 2 ? mnemonic_get_word(start + index + 2) : NULL,
+      index < len - 3 ? mnemonic_get_word(start + index + 3) : NULL, true,
+      true);
 
   key = protectWaitKey(0, 0);
   switch (key) {
@@ -676,31 +748,50 @@ refresh_menu:
   }
 }
 
-static bool recovery_check_words(void) {
+static uint8_t recovery_check_words(void) {
   uint8_t key = KEY_NULL;
-  uint32_t index = 0;
   char desc[64] = "";
+  uint32_t pages, index = 0;
+
+  pages = word_count / 6;
 
 refresh_menu:
   memzero(desc, sizeof(desc));
-  strcat(desc, " #");
-  uint2str(index + 1, desc + strlen(desc));
-  strcat(desc, " ");
-  layoutItemsSelectAdapter(&bmp_btn_up, &bmp_btn_down, NULL, &bmp_btn_confirm,
-                           NULL, _("Okay"), index + 1, word_count, NULL, desc,
-                           words[index], index > 0 ? words[index - 1] : NULL,
-                           index < word_count - 1 ? words[index + 1] : NULL);
-
+  strcat(desc, _("Wordlist "));
+  if (index == 0) {
+    strcat(desc, "(1-6)");
+  } else if (index == 1) {
+    strcat(desc, "(7-12)");
+  } else if (index == 2) {
+    strcat(desc, "(13-18)");
+  } else {
+    strcat(desc, "(19-24)");
+  }
+  if (index == pages - 1) {
+    layoutWords(
+        desc, &bmp_bottom_middle_arrow_up, &bmp_bottom_middle_arrow_down,
+        &bmp_bottom_left_arrow, &bmp_bottom_right_confirm, index + 1, pages,
+        words[index * 6 + 0], words[index * 6 + 1], words[index * 6 + 2],
+        words[index * 6 + 3], words[index * 6 + 4], words[index * 6 + 5]);
+  } else {
+    layoutWords(desc, &bmp_bottom_middle_arrow_up,
+                &bmp_bottom_middle_arrow_down, &bmp_bottom_left_arrow, NULL,
+                index + 1, pages, words[index * 6 + 0], words[index * 6 + 1],
+                words[index * 6 + 2], words[index * 6 + 3],
+                words[index * 6 + 4], words[index * 6 + 5]);
+  }
   key = protectWaitKey(0, 0);
   switch (key) {
-    case KEY_DOWN:
-      if (index < word_count - 1) index++;
-      goto refresh_menu;
     case KEY_UP:
       if (index > 0) index--;
       goto refresh_menu;
+    case KEY_CANCEL:
+      return 2;
+    case KEY_DOWN:
+      if (index < pages - 1) index++;
+      goto refresh_menu;
     case KEY_CONFIRM:
-      if (index < word_count - 1) {
+      if (index < pages - 1) {
         index++;
         goto refresh_menu;
       } else {
@@ -711,16 +802,14 @@ refresh_menu:
           strlcat(new_mnemonic, " ", sizeof(new_mnemonic));
           strlcat(new_mnemonic, words[i], sizeof(new_mnemonic));
         }
-        if (!mnemonic_check(new_mnemonic)) return false;
+        if (!mnemonic_check(new_mnemonic)) return 1;
       }
-      return true;
-    case KEY_CANCEL:
-      goto refresh_menu;
+      return 0;
     default:
       break;
   }
 
-  return false;
+  return 1;
 }
 
 static bool input_words(void) {
@@ -730,6 +819,8 @@ static bool input_words(void) {
   int index = 0;
   int letter_count = 0;
   char desc[64] = "";
+  char title[13] = "";
+  char last_letter = 0;
 
   memzero(words[word_index], sizeof(words[word_index]));
 
@@ -742,7 +833,6 @@ refresh_menu:
   memzero(letter_list, sizeof(letter_list));
   letter_count = mnemonic_next_letter_with_prefix(words[word_index], prefix_len,
                                                   letter_list);
-
   layoutInputWord(desc, prefix_len, words[word_index], letter_list + 2 * index);
   key = protectWaitKey(0, 0);
   switch (key) {
@@ -767,7 +857,10 @@ refresh_menu:
       } else {
         uint32_t candidate_location =
             mnemonic_word_index_with_prefix(words[word_index], prefix_len);
-        select_complete_word(NULL, candidate_location, letter_count);
+        memset(title, 0, 13);
+        strcat(title, words[word_index]);
+        strcat(title, "_");
+        select_complete_word(title, candidate_location, letter_count);
         if (word_index == word_count) {
           return true;
         } else {  // next word
@@ -780,8 +873,18 @@ refresh_menu:
     case KEY_CANCEL:
       if (prefix_len > 0) {
         prefix_len--;
+        last_letter = words[word_index][prefix_len];
         index = 0;
         words[word_index][prefix_len] = 0;
+
+        letter_count = mnemonic_next_letter_with_prefix(
+            words[word_index], prefix_len, letter_list);
+        for (int i = 0; i < letter_count; i++) {
+          if (letter_list[2 * i] == last_letter) {
+            index = i;
+            break;
+          }
+        }
       } else if (word_index > 0) {
         word_index--;
         prefix_len = 0;
@@ -798,13 +901,15 @@ refresh_menu:
 }
 
 bool recovery_on_device(void) {
-  char desc[64] = "";
-  uint8_t key = KEY_NULL;
+  char desc[128] = "";
+  uint8_t ret, key = KEY_NULL;
 
 prompt_recovery:
-  layoutDialogSwipeCenterAdapter(
-      NULL, &bmp_btn_back, _("Back"), &bmp_btn_forward, _("Next"), NULL, NULL,
-      NULL, _("Enter words to"), _("restore wallet"), NULL, NULL);
+  layoutDialogAdapterEx(
+      _("Import Wallet"), &bmp_bottom_left_arrow, NULL, &bmp_bottom_right_arrow,
+      NULL,
+      _("Restore the wallet you\npreviously used from a \nrecovery phrase"),
+      NULL, NULL, NULL, NULL);
   key = protectWaitKey(0, 1);
   if (key != KEY_CONFIRM) {
     return false;
@@ -816,18 +921,18 @@ select_mnemonic_count:
   }
 
   memzero(desc, sizeof(desc));
-  strcat(desc, _("Please enter your"));
+  strcat(desc, _("Enter your "));
   uint2str(word_count, desc + strlen(desc));
+  strcat(desc, _(" words recovery phrase in order."));
 
-  layoutDialogSwipeCenterAdapter(NULL, &bmp_btn_back, _("Back"),
-                                 &bmp_btn_forward, _("Next"), NULL, NULL, NULL,
-                                 desc, _("words"), NULL, NULL);
+  layoutDialogAdapterEx(_("Enter Recovery Phrase"), &bmp_bottom_left_arrow,
+                        NULL, &bmp_bottom_right_arrow, NULL, desc, NULL, NULL,
+                        NULL, NULL);
   key = protectWaitKey(0, 1);
   if (key != KEY_CONFIRM) {
     goto_check(select_mnemonic_count);
   }
 
-input_word:
   word_index = 0;
   recovery_byself = true;
   enforce_wordlist = true;
@@ -838,26 +943,62 @@ input_word:
   }
 
   memzero(desc, sizeof(desc));
-  strcat(desc, _("Check the entered"));
+  strcat(desc, _("The next screen will start\ndisplay"));
+  strcat(desc, " ");
   uint2str(word_count, desc + strlen(desc));
-  layoutDialogCenterAdapter(NULL, &bmp_btn_back, _("Back"), &bmp_btn_forward,
-                            _("Next"), NULL, NULL, NULL, desc, _("words"), NULL,
-                            NULL);
+  strcat(desc, _(" words you just entered."));
+check_words_again:
+  layoutDialogAdapterEx(_("Review Wordlist"), &bmp_bottom_left_close, NULL,
+                        &bmp_bottom_right_arrow, NULL, desc, NULL, NULL, NULL,
+                        NULL);
 
-  key = protectWaitKey(0, 1);
+  while (1) {
+    key = protectWaitKey(0, 1);
+    if (key == KEY_CONFIRM || key == KEY_CANCEL) {
+      break;
+    }
+  }
   if (key != KEY_CONFIRM) {
-    goto_check(input_word);
+    layoutDialogAdapterEx(
+        _("Abort Import?"), &bmp_bottom_left_close, NULL,
+        &bmp_bottom_right_confirm, NULL,
+        _("Are you sure to abort this\nprocess? All progress\nwill be lost."),
+        NULL, NULL, NULL, NULL);
+    key = protectWaitKey(0, 1);
+    if (key == KEY_CONFIRM) {
+      return false;
+    } else {
+      goto check_words_again;
+    }
   }
-
 check_word:
-  if (!recovery_check_words()) {
+  ret = recovery_check_words();
+  if (1 == ret) {
+    layoutDialogSwipeCenterAdapter(&bmp_icon_error, NULL, NULL,
+                                   &bmp_bottom_right_retry, NULL, NULL, NULL,
+                                   NULL, NULL, _("Invalid recovery phrase!"),
+                                   _("Check and try again."), NULL);
+    while (1) {
+      key = protectWaitKey(0, 1);
+      if (key == KEY_CONFIRM) {
+        break;
+      }
+    }
+    goto_check(select_mnemonic_count);
+  } else if (2 == ret) {
+    goto_check(check_words_again);
+  } else {
     layoutDialogSwipeCenterAdapter(
-        &bmp_icon_error, NULL, NULL, &bmp_btn_retry, _("Retry"), NULL, NULL,
-        NULL, NULL, _("Invalid words"), _("Please try again"), NULL);
-    protectWaitKey(0, 1);
-    goto_check(prompt_recovery);
+        &bmp_icon_ok, NULL, NULL, &bmp_bottom_right_arrow, NULL, NULL, NULL,
+        NULL, NULL, _("Awesome!"), _("You wallet is restored."), NULL);
+    while (1) {
+      key = protectWaitKey(0, 1);
+      if (key == KEY_CONFIRM) {
+        break;
+      }
+    }
   }
-  if (!protectChangePinOnDevice(false, true)) {
+  if (!protectChangePinOnDevice(false, true, true)) {
     goto_check(check_word);
   }
 

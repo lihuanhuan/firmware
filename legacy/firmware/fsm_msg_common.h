@@ -28,6 +28,19 @@ extern char bootloader_version[8];
 bool get_features(Features *resp) {
   char *sn_version = NULL;
   char *serial = NULL;
+  resp->has_fw_vendor = true;
+#if EMULATOR
+  strlcpy(resp->fw_vendor, "EMULATOR", sizeof(resp->fw_vendor));
+#else
+  const image_header *hdr =
+      (const image_header *)FLASH_PTR(FLASH_FWHEADER_START);
+  // allow both v2 and v3 signatures
+  if (SIG_OK == signatures_match(hdr, NULL)) {
+    strlcpy(resp->fw_vendor, "OneKey", sizeof(resp->fw_vendor));
+  } else {
+    strlcpy(resp->fw_vendor, "UNSAFE, DO NOT USE!", sizeof(resp->fw_vendor));
+  }
+#endif
   resp->has_vendor = true;
   strlcpy(resp->vendor, "trezor.io", sizeof(resp->vendor));
   resp->major_version = VERSION_MAJOR;
@@ -68,6 +81,8 @@ bool get_features(Features *resp) {
   strlcpy(resp->model, "1", sizeof(resp->model));
   resp->has_safety_checks = true;
   resp->safety_checks = config_getSafetyCheckLevel();
+  resp->has_busy = true;
+  resp->busy = (system_millis_busy_deadline > timer_ms());
   if (session_isUnlocked()) {
     resp->has_wipe_code_protection = false;
     resp->has_auto_lock_delay_ms = true;
@@ -139,12 +154,18 @@ bool get_features(Features *resp) {
   resp->coin_switch |=
       config_getCoinSwitch(COIN_SWITCH_SOLANA) ? COIN_SWITCH_SOLANA : 0;
 
+#if !EMULATOR
+  if (battery_cap != 0xff) {
+    resp->has_battery_level = true;
+    resp->battery_level = battery_cap;
+  }
+#endif
+
   return resp;
 }
 
 void fsm_msgInitialize(const Initialize *msg) {
-  recovery_abort();
-  signing_abort();
+  fsm_abortWorkflows();
 
   uint8_t *session_id;
   if (msg && msg->has_session_id) {
@@ -296,30 +317,60 @@ void fsm_msgChangeWipeCode(const ChangeWipeCode *msg) {
 }
 
 void fsm_msgWipeDevice(const WipeDevice *msg) {
-  if (g_bIsBixinAPP) {
-    CHECK_PIN_UNCACHED
-  }
   (void)msg;
-  layoutDialogSwipe(&bmp_icon_question, _("Cancel"), _("Confirm"), NULL,
-                    _("Do you really want to"), _("wipe the device?"), NULL,
-                    _("All data will be lost."), NULL, NULL);
+  uint8_t key = KEY_NULL;
 
-  if (!protectButton(ButtonRequestType_ButtonRequest_WipeDevice, false)) {
+  if (!layoutEraseDevice()) {
     i2c_set_wait(false);
     fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);
     layoutHome();
     return;
   }
+  if (!protectPinOnDevice(false, true)) {
+    i2c_set_wait(false);
+    fsm_sendFailure(FailureType_Failure_PinInvalid, NULL);
+    layoutHome();
+    return;
+  }
+  layoutDialogAdapterEx(
+      _("Erase Device"), &bmp_bottom_left_delete, _("Back"),
+      &bmp_bottom_right_confirm, _("Reset "),
+      _("Are you sure to reset this \ndevice? This action can not be undo!"),
+      NULL, NULL, NULL, NULL);
+  key = protectWaitKey(0, 1);
+  if (key != KEY_CONFIRM) {
+    i2c_set_wait(false);
+    fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);
+    layoutHome();
+    return;
+  }
+
+  uint8_t ui_language_bak = ui_language;
+
   config_wipe();
+  if (ui_language_bak) {
+    ui_language = ui_language_bak;
+  }
+  layoutDialogAdapterEx(
+      _("Reset Complete"), NULL, NULL, &bmp_bottom_right_confirm, _("Reset "),
+      _("The device is reset, restart now."), NULL, NULL, NULL, NULL);
+  protectWaitKey(0, 0);
+
   // the following does not work on Mac anyway :-/ Linux/Windows are fine, so it
   // is not needed usbReconnect(); // force re-enumeration because of the serial
   // number change
   i2c_set_wait(false);
   fsm_sendSuccess(_("Device wiped"));
   layoutHome();
+#if !EMULATOR
+  // svc_system_reset();
+  reset_to_firmware();
+#endif
 }
 
 void fsm_msgGetEntropy(const GetEntropy *msg) {
+  CHECK_PIN
+
 #if !DEBUG_RNG
   layoutDialogSwipe(&bmp_icon_question, _("Cancel"), _("Confirm"), NULL,
                     _("Do you really want to"), _("send entropy?"), NULL, NULL,
@@ -414,11 +465,7 @@ void fsm_msgBackupDevice(const BackupDevice *msg) {
 
 void fsm_msgCancel(const Cancel *msg) {
   (void)msg;
-  recovery_abort();
-  signing_abort();
-#if !BITCOIN_ONLY
-  ethereum_signing_abort();
-#endif
+  fsm_abortWorkflows();
   fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);
 }
 
@@ -588,7 +635,8 @@ void fsm_msgApplySettings(const ApplySettings *msg) {
     config_setHomescreen(msg->homescreen.bytes, msg->homescreen.size);
   }
   if (msg->has_auto_lock_delay_ms) {
-    config_setAutoLockDelayMs(msg->auto_lock_delay_ms);
+    config_setSleepDelayMs(msg->auto_lock_delay_ms);
+    menu_autolock_added_custom();
   }
   if (msg->has_use_ble) {
     config_setBleTrans(msg->use_ble);
@@ -638,9 +686,15 @@ void fsm_msgRecoveryDevice(const RecoveryDevice *msg) {
                 msg->has_u2f_counter ? msg->u2f_counter : 0, dry_run);
 }
 
-void fsm_msgWordAck(const WordAck *msg) { recovery_word(msg->word); }
+void fsm_msgWordAck(const WordAck *msg) {
+  CHECK_UNLOCKED
+
+  recovery_word(msg->word);
+}
 
 void fsm_msgSetU2FCounter(const SetU2FCounter *msg) {
+  CHECK_PIN
+
   layoutDialogSwipe(&bmp_icon_question, _("Cancel"), _("Confirm"), NULL,
                     _("Do you want to set"), _("the U2F counter?"), NULL, NULL,
                     NULL, NULL);
@@ -655,6 +709,8 @@ void fsm_msgSetU2FCounter(const SetU2FCounter *msg) {
 }
 
 void fsm_msgGetNextU2FCounter() {
+  CHECK_PIN
+
   layoutDialogSwipe(&bmp_icon_question, _("Cancel"), _("Confirm"), NULL,
                     _("Do you want to"), _("increase and retrieve"),
                     _("the U2F counter?"), NULL, NULL, NULL);
@@ -671,11 +727,62 @@ void fsm_msgGetNextU2FCounter() {
   layoutHome();
 }
 
+static void progress_callback(uint32_t iter, uint32_t total) {
+  layoutProgress(_("Please wait"), 1000 * iter / total);
+}
+
+void fsm_msgGetFirmwareHash(const GetFirmwareHash *msg) {
+  RESP_INIT(FirmwareHash);
+  layoutProgressSwipe(_("Please wait"), 0);
+  if (memory_firmware_hash(msg->challenge.bytes, msg->challenge.size,
+                           progress_callback, resp->hash.bytes) != 0) {
+    fsm_sendFailure(FailureType_Failure_FirmwareError, NULL);
+    return;
+  }
+
+  resp->hash.size = sizeof(resp->hash.bytes);
+  msg_write(MessageType_MessageType_FirmwareHash, resp);
+  layoutHome();
+}
+
+void fsm_msgSetBusy(const SetBusy *msg) {
+  if (msg->has_expiry_ms) {
+    system_millis_busy_deadline = timer_ms() + msg->expiry_ms;
+  } else {
+    system_millis_busy_deadline = 0;
+  }
+  fsm_sendSuccess(NULL);
+  layoutHome();
+  return;
+}
+
 void fsm_msgBixinReboot(const BixinReboot *msg) {
   (void)msg;
-  layoutDialogSwipeCenterAdapter(
-      NULL, &bmp_btn_cancel, _("Cancel"), &bmp_btn_confirm, _("Confirm"), NULL,
-      NULL, NULL, NULL, _("Are you sure to update?"), NULL, NULL);
+
+#if !EMULATOR
+  if (sys_usbState() == false && battery_cap < 2) {
+    layoutDialogCenterAdapterEx(
+        &bmp_icon_warning, NULL, &bmp_bottom_right_confirm, NULL,
+        _("Low Battery!Use cable or"), _("Charge to 25% before"),
+        _("updating the bootloader"), NULL);
+    while (1) {
+      uint8_t key = keyScan();
+      if (key == KEY_CONFIRM) {
+        fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);
+        layoutHome();
+        return;
+      }
+      if (sys_usbState() == true) {
+        break;
+      }
+    }
+  }
+#endif
+
+  layoutDialogCenterAdapter(&bmp_icon_warning, &bmp_bottom_left_close, NULL,
+                            &bmp_bottom_right_arrow, NULL, NULL, NULL, NULL,
+                            NULL, _("Do you want to restart"),
+                            _("device in update mode?"), NULL);
   if (!protectButton(ButtonRequestType_ButtonRequest_ProtectCall, false)) {
     fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);
     layoutHome();
@@ -683,9 +790,9 @@ void fsm_msgBixinReboot(const BixinReboot *msg) {
   }
   CHECK_PIN_UNCACHED
   fsm_sendSuccess(_("reboot start"));
-  usbPoll();  // send response before reboot
+  usbFlush(500);  // send response before reboot
 #if !EMULATOR
-  sys_backtoboot();
+  svc_reboot_to_bootloader();
 #endif
 }
 
@@ -784,27 +891,4 @@ void fsm_msgBixinBackupDevice(void) {
   msg_write(MessageType_MessageType_BixinBackupDeviceAck, resp);
   layoutHome();
   return;*/
-}
-
-void fsm_msgDeviceEraseSector(void) {
-  if (config_hasPin()) {
-    CHECK_PIN_UNCACHED
-  }
-
-  layoutDialogSwipeCenterAdapter(NULL, &bmp_btn_cancel, _("Cancel"),
-                                 &bmp_btn_confirm, _("Confirm"), NULL, NULL,
-                                 NULL, _("Firmware will be erased!"),
-                                 _("Confirm your operation!"), NULL, NULL);
-  if (!protectButton(ButtonRequestType_ButtonRequest_ProtectCall, false)) {
-    fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);
-    layoutHome();
-    return;
-  }
-  ensure(flash_erase(FLASH_BIXIN_DATE_SECTOR), "erase failed");
-  ensure(flash_unlock_write(), NULL);
-  ensure(flash_write_word(FLASH_CODE_SECTOR_FIRST, 0x00, 0x00), NULL);
-#if !EMULATOR
-  sys_backtoboot();
-#endif
-  return;
 }

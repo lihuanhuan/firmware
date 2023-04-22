@@ -64,53 +64,67 @@ void secp256k1_default_error_callback_fn(const char *str, void *data) {
 /* Screen timeout */
 uint32_t system_millis_lock_start = 0;
 
-void check_lock_screen(void) {
-  buttonUpdate();
+/* Busyscreen timeout */
+uint32_t system_millis_busy_deadline = 0;
 
-  // wake from screensaver on any button
-  if (layoutLast == layoutScreensaver && (button.NoUp || button.YesUp)) {
+// void check_lock_screen(void) {
+//   buttonUpdate();
+
+//   // wake from screensaver on any button
+//   if (layoutLast == layoutScreensaver && (button.NoUp || button.YesUp)) {
+//     layoutHome();
+//     return;
+//   }
+
+//   // button held for long enough (5 seconds)
+//   if ((layoutLast == layoutHomescreen || layoutLast == layoutBusyscreen) &&
+//       button.NoDown >= 114000 * 5) {
+//     layoutDialogAdapter(&bmp_icon_question, _("Cancel"), _("Lock Device"),
+//     NULL,
+//                         _("Do you really want to"), _("lock your Trezor?"),
+//                         NULL, NULL, NULL, NULL);
+
+//     // wait until NoButton is released
+//     usbTiny(1);
+//     do {
+//       waitAndProcessUSBRequests(5);
+//       buttonUpdate();
+//     } while (!button.NoUp);
+
+//     // wait for confirmation/cancellation of the dialog
+//     do {
+//       waitAndProcessUSBRequests(5);
+//       buttonUpdate();
+//     } while (!button.YesUp && !button.NoUp);
+//     usbTiny(0);
+
+//     if (button.YesUp) {
+//       // lock the screen
+//       config_lockDevice();
+//       layoutScreensaver();
+//     } else {
+//       // resume homescreen
+//       layoutHome();
+//     }
+//   }
+
+//   // if homescreen is shown for too long
+//   if (layoutLast == layoutHomescreen) {
+//     if ((timer_ms() - system_millis_lock_start) >=
+//         config_getAutoLockDelayMs()) {
+//       // lock the screen
+//       config_lockDevice();
+//       layoutScreensaver();
+//     }
+//   }
+// }
+
+void check_busy_screen(void) {
+  // Clear the busy screen once it expires.
+  if (system_millis_busy_deadline != 0 &&
+      system_millis_busy_deadline < timer_ms()) {
+    system_millis_busy_deadline = 0;
     layoutHome();
-    return;
-  }
-
-  // button held for long enough (2 seconds)
-  if (layoutLast == layoutHome && button.NoDown >= 285000 * 2) {
-    layoutDialogAdapter(&bmp_icon_question, _("Cancel"), _("Lock Device"), NULL,
-                        _("Do you really want to"), _("lock your Trezor?"),
-                        NULL, NULL, NULL, NULL);
-
-    // wait until NoButton is released
-    usbTiny(1);
-    do {
-      usbSleep(5);
-      buttonUpdate();
-    } while (!button.NoUp);
-
-    // wait for confirmation/cancellation of the dialog
-    do {
-      usbSleep(5);
-      buttonUpdate();
-    } while (!button.YesUp && !button.NoUp);
-    usbTiny(0);
-
-    if (button.YesUp) {
-      // lock the screen
-      config_lockDevice();
-      layoutScreensaver();
-    } else {
-      // resume homescreen
-      layoutHome();
-    }
-  }
-
-  // if homescreen is shown for too long
-  if (layoutLast == layoutHome) {
-    if ((timer_ms() - system_millis_lock_start) >=
-        config_getAutoLockDelayMs()) {
-      // lock the screen
-      config_lockDevice();
-      layoutScreensaver();
-    }
   }
 }
 
@@ -160,6 +174,7 @@ int main(void) {
   drbg_init();
 
   if (!is_mode_unprivileged()) {
+    cpu_mode = PRIVILEGED;
     collect_hw_entropy(true);
     timer_init();
 #ifdef APPVER
@@ -167,6 +182,7 @@ int main(void) {
     mpu_config_firmware();
 #endif
   } else {
+    cpu_mode = UNPRIVILEGED;
     collect_hw_entropy(false);
   }
 
@@ -175,7 +191,6 @@ int main(void) {
 #endif
 
 #if DEBUG_LINK
-  oledSetDebugLink(1);
 #if !EMULATOR
   config_wipe();
 #endif
@@ -185,14 +200,19 @@ int main(void) {
   layoutHome();
   usbInit();
 
+#if EMULATOR
+  system_millis_lock_start = timer_ms();
+#endif
   for (;;) {
 #if EMULATOR
-    usbSleep(10);
+    waitAndProcessUSBRequests(10);
     layoutHomeInfo();
 #else
     usbPoll();
     layoutHomeInfo();
 #endif
+    // check_lock_screen();
+    check_busy_screen();
   }
   return 0;
 }

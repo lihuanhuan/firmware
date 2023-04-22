@@ -890,3 +890,30 @@ void config_setCoinSwitch(CoinSwitch loc, bool flag) {
   }
   config_set_uint32(id_coin_function_switch, coin_switch);
 }
+
+bool config_hasTrezorCompMode(void) {
+  return false;
+}
+
+void config_setTrezorCompMode(bool trezor_comp_mode) {
+  //config_set_bool(KEY_TREZOR_COMP_MODE, trezor_comp_mode);
+  (void)trezor_comp_mode;
+}
+
+bool config_getTrezorCompMode(bool *trezor_comp_mode) {
+  //return sectrue == config_get_bool(KEY_TREZOR_COMP_MODE, trezor_comp_mode);
+  *trezor_comp_mode = trezor_comp_mode;
+  return true;
+}
+
+const AuthorizeCoinJoin *config_getCoinJoinAuthorization(void){
+  return NULL;
+}
+bool config_setCoinJoinAuthorization(const AuthorizeCoinJoin *authorization){
+  (void)authorization;
+  return true;
+}
+
+MessageType config_getAuthorizationType(void){
+  return 0;
+}

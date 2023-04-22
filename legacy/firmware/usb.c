@@ -77,7 +77,7 @@
 
 #define USB_STRINGS                                 \
   X(MANUFACTURER, "ByteForge")                      \
-  X(PRODUCT, "ONEKEY")                              \
+  X(PRODUCT, "ONEKEY CLASSIC")                      \
   X(SERIAL_NUMBER, config_uuid_str)                 \
   X(INTERFACE_MAIN, "ONEKEY Interface")             \
   X(INTERFACE_DEBUG, "ONEKEY Debug Link Interface") \
@@ -97,7 +97,7 @@ uint16_t s_usOffset;
 static const char *usb_strings[] = {USB_STRINGS};
 #undef X
 
-static const struct usb_device_descriptor dev_descr = {
+static struct usb_device_descriptor dev_descr = {
     .bLength = USB_DT_DEVICE_SIZE,
     .bDescriptorType = USB_DT_DEVICE,
     .bcdUSB = 0x0210,
@@ -106,7 +106,7 @@ static const struct usb_device_descriptor dev_descr = {
     .bDeviceProtocol = 0,
     .bMaxPacketSize0 = USB_PACKET_SIZE,
     .idVendor = 0x1209,
-    .idProduct = 0x53c1,
+    .idProduct = 0x4F4B,
     .bcdDevice = 0x0100,
     .iManufacturer = USB_STRING_MANUFACTURER,
     .iProduct = USB_STRING_PRODUCT,
@@ -408,8 +408,19 @@ static const struct usb_bos_descriptor bos_descriptor = {
     .capabilities = capabilities};
 
 void usbInit(void) {
-  usbd_dev = usbd_init(&otgfs_usb_driver_onekey, &dev_descr, &config,
-                       usb_strings, sizeof(usb_strings) / sizeof(*usb_strings),
+  bool trezor_comp_mode = false;
+  if (!config_hasTrezorCompMode()) {
+    config_setTrezorCompMode(true);
+    trezor_comp_mode = true;
+  } else {
+    config_getTrezorCompMode(&trezor_comp_mode);
+  }
+  // dev_descr.idProduct = trezor_comp_mode ? 0x53c1 : 0x4F4B;
+  if (trezor_comp_mode) {
+    dev_descr.idProduct = 0x53c1;
+  }
+  usbd_dev = usbd_init(&otgfs_usb_driver, &dev_descr, &config, usb_strings,
+                       sizeof(usb_strings) / sizeof(*usb_strings),
                        usbd_control_buffer, sizeof(usbd_control_buffer));
   usbd_register_set_config_callback(usbd_dev, set_config);
   usb21_setup(usbd_dev, &bos_descriptor);
@@ -457,6 +468,9 @@ void usbPoll(void) {
     svc_system_privileged();
     vector_table_t *ivt = (vector_table_t *)FLASH_PTR(FLASH_APP_START);
     __asm__ volatile("msr msp, %0" ::"r"(ivt->initial_sp_value));
+    if (cpu_mode == UNPRIVILEGED) {
+      mpu_config_firmware();
+    }
     __asm__ volatile("b reset_handler");
   }
 
@@ -519,7 +533,7 @@ char usbTiny(char set) {
   return old;
 }
 
-void usbSleep(uint32_t millis) {
+void waitAndProcessUSBRequests(uint32_t millis) {
   uint32_t start = timer_ms();
 
   while ((timer_ms() - start) < millis) {
@@ -527,5 +541,25 @@ void usbSleep(uint32_t millis) {
       usbd_poll(usbd_dev);
     }
     i2c_slave_poll();
+  }
+}
+
+void usbFlush(uint32_t millis) {
+  if (usbd_dev == NULL) {
+    return;
+  }
+
+  static const uint8_t *data;
+  data = msg_out_data();
+  if (data) {
+    while (usbd_ep_write_packet(usbd_dev, ENDPOINT_ADDRESS_MAIN_IN, data,
+                                USB_PACKET_SIZE) != USB_PACKET_SIZE) {
+    }
+  }
+
+  uint32_t start = timer_ms();
+
+  while ((timer_ms() - start) < millis) {
+    asm("nop");
   }
 }

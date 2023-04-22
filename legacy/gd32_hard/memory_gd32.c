@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include "sha2.h"
 #include "gd32f4xx.h"
+#include "blake2s.h"
 
 extern void sys_shutdown(void);
 void memory_protect(void) {
@@ -79,4 +80,38 @@ void mpu_setup_gd32(uint8_t mode) {
     default:
       break;
   }
+}
+int memory_firmware_hash(const uint8_t *challenge, uint32_t challenge_size,
+                         void (*progress_callback)(uint32_t, uint32_t),
+                         uint8_t hash[BLAKE2S_DIGEST_LENGTH]) {
+  //TODO:
+  (void)challenge;
+  (void)challenge_size;
+  (void)progress_callback;
+  (void)hash;
+  return 0;
+  // BLAKE2S_CTX ctx;
+  // if (challenge_size != 0) {
+  //   if (blake2s_InitKey(&ctx, BLAKE2S_DIGEST_LENGTH, challenge,
+  //                       challenge_size) != 0) {
+  //     return 1;
+  //   }
+  // } else {
+  //   blake2s_Init(&ctx, BLAKE2S_DIGEST_LENGTH);
+  // }
+
+  // for (int i = FLASH_CODE_SECTOR_FIRST; i <= FLASH_CODE_SECTOR_LAST; i++) {
+  //   uint32_t size = flash_sector_size(i);
+  //   const void *data = flash_get_address(i, 0, size);
+  //   if (data == NULL) {
+  //     return 1;
+  //   }
+  //   blake2s_Update(&ctx, data, size);
+  //   if (progress_callback != NULL) {
+  //     progress_callback(i - FLASH_CODE_SECTOR_FIRST,
+  //                       FLASH_CODE_SECTOR_LAST - FLASH_CODE_SECTOR_FIRST);
+  //   }
+  // }
+
+  // return blake2s_Final(&ctx, hash, BLAKE2S_DIGEST_LENGTH);
 }
