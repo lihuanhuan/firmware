@@ -48,7 +48,7 @@
 #define SE_U2FCOUNTER (9 | APP)       // uint32
 #define SE_MNEMONIC (2 | APP)         // string(241)
 #define SE_ENTROPY SE_MNEMONIC        // bytes(64)
-#define SE_PIN_RETRY_MAX 16
+#define SE_PIN_RETRY_MAX 9            // se set pin retry max times
 
 #define MI2C_CMD_WR_PIN (0xE1)
 #define MI2C_CMD_AES (0xE2)
@@ -89,8 +89,6 @@
 
 #define AES_ECB (0x00)
 #define AES_CBC (0x01)
-
-static uint32_t se_pin_failed_counter = 0;
 
 uint8_t g_ucSessionKey[SESSION_KEYLEN];
 
@@ -771,7 +769,6 @@ bool se_verifyPin(uint32_t pin, uint8_t mode) {
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_VERIFYPIN & 0xFF),
                              (uint8_t *)&pin, sizeof(pin), &retry, &len,
                              MI2C_ENCRYPT, mode)) {
-    se_pin_failed_counter = SE_PIN_RETRY_MAX - retry;
     return false;
   }
 
@@ -806,17 +803,37 @@ bool se_changePin(uint32_t oldpin, uint32_t newpin) {
   return true;
 }
 
-uint32_t se_pinFailedCounter(void) { return se_pin_failed_counter; }
+bool se_getRetryTimes(uint8_t *pcnts) {
+  uint8_t cmd[5 + 16] = {0x80, 0xe1, 0x25, 0x00, 0x10};
+  uint8_t recv_buf[0x20], ref_buf[0x20], rand_buf[0x10];
+  uint16_t recv_len = 0xff;  // 32 bytes session id
+  aes_decrypt_ctx aes_dec_ctx;
 
-bool se_getRetryTimes(uint8_t *ptimes) {
-  uint16_t recv_len = 0xff;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN_RETRYTIMES & 0xFF), NULL,
-                             0, ptimes, &recv_len, MI2C_ENCRYPT,
-                             GET_SESTORE_DATA)) {
+  // TODO. get se random 16 bytes
+  random_buffer_ST(rand_buf, 0x10);
+  memcpy(cmd + 5, rand_buf, sizeof(rand_buf));
+  if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), recv_buf, &recv_len)) {
     return false;
   }
+  // TODO. parse returned data
+  if (recv_len != 0x20) return false;
+  aes_decrypt_key128(g_ucSessionKey, &aes_dec_ctx);
+  aes_ecb_decrypt(recv_buf, ref_buf, recv_len, &aes_dec_ctx);
+  if (memcmp(ref_buf, rand_buf, sizeof(rand_buf)) != 0) return false;
 
+  // TODO: retry cnts
+  if (ref_buf[0x10] > SE_PIN_RETRY_MAX) return false;
+  *pcnts = ref_buf[0x10];
   return true;
+}
+
+uint32_t se_pinFailedCounter(void) {
+  uint8_t retry_cnts = 0;
+  if (!se_getRetryTimes(&retry_cnts)) {
+    return 0;
+  }
+
+  return (uint32_t)(SE_PIN_RETRY_MAX - retry_cnts);
 }
 
 bool se_clearSecsta(void) {

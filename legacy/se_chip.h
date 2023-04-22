@@ -46,7 +46,7 @@ bool se_setPin(uint32_t pin);
 bool se_verifyPin(uint32_t pin, uint8_t mode);
 bool se_changePin(uint32_t oldpin, uint32_t newpin);
 uint32_t se_pinFailedCounter(void);
-bool se_getRetryTimes(uint8_t *ptimes);
+bool se_getRetryTimes(uint8_t *pcnts);
 bool se_clearSecsta(void);
 bool se_setPinValidtime(uint8_t data);
 bool se_getPinValidtime(uint8_t *data_buf);

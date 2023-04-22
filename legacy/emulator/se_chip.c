@@ -29,7 +29,7 @@ bool se_setPin(uint32_t pin) { return false; }
 bool se_verifyPin(uint32_t pin, uint8_t mode) { return false; }
 bool se_changePin(uint32_t oldpin, uint32_t newpin) { return false; }
 uint32_t se_pinFailedCounter(void) { return false; }
-bool se_getRetryTimes(uint8_t *ptimes) { return false; }
+bool se_getRetryTimes(uint8_t *pcnts) { return false; }
 bool se_setPinValidtime(uint8_t minutes) { return false; }
 bool se_getPinValidtime(uint8_t *pbuf) { return false; }
 bool se_clearSecsta(void) { return false; }
