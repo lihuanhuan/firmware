@@ -123,9 +123,15 @@ int hdnode_sign(const HDNode *node, const uint8_t *msg, uint32_t msg_len,
 int hdnode_sign_digest(const HDNode *node, const uint8_t *digest, uint8_t *sig,
                        uint8_t *pby,
                        int (*is_canonical)(uint8_t by, uint8_t sig[64]));
+int hdnode_bip340_sign_digest(const HDNode *node, const uint8_t *digest,
+                              uint8_t sig[64]);
 
 int hdnode_get_shared_key(const HDNode *node, const uint8_t *peer_public_key,
                           uint8_t *session_key, int *result_size);
+
+int hdnode_bip340_get_shared_key(const HDNode *node,
+                                 const uint8_t *peer_public_key,
+                                 uint8_t session_key[65]);
 
 int hdnode_serialize_public(const HDNode *node, uint32_t fingerprint,
                             uint32_t version, char *str, int strsize);
