@@ -121,7 +121,8 @@ void kaspa_sign_sighash(HDNode *node, const uint8_t *raw_message,
   CALCULATE_SIGNING_HASH(raw_message, raw_message_len);
   if (strcmp(schema, "schnorr") == 0) {
     // schnorr sign
-    tx_sign_bip340(node->private_key, schnorr_digest, signature, signature_len);
+    // tx_sign_bip340(node->private_key, schnorr_digest, signature,
+    // signature_len);
   } else {
     // ecdsa sign
     CALCULATE_SIGNING_HASH_ECDSA
