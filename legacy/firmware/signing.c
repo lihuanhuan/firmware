@@ -2103,8 +2103,7 @@ static bool compile_output(TxOutputType *in, TxOutputBinType *out,
   }
 
   if (needs_confirm) {
-    layoutConfirmOutput(coin, amount_unit, in);
-    if (!protectButton(ButtonRequestType_ButtonRequest_ConfirmOutput, false)) {
+    if (!layoutConfirmOutput(coin, amount_unit, in)) {
       fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);
       signing_abort();
       return false;
