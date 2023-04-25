@@ -71,6 +71,7 @@
 #include "cosmos.h"
 #include "ethereum.h"
 #include "filecoin.h"
+#include "kaspa.h"
 #include "near.h"
 #include "nem.h"
 #include "nem2.h"
@@ -81,7 +82,6 @@
 #include "stellar.h"
 #include "sui.h"
 #include "tron.h"
-
 #endif
 
 #if EMULATOR
@@ -430,7 +430,6 @@ static bool fsm_layoutPaginated(const char *description, const uint8_t *msg,
     const char *label = len > 0 ? _("Next") : _("Confirm");
     layoutDialogSwipeEx(&bmp_icon_question, _("Cancel"), label, description,
                         str[0], str[1], str[2], str[3], NULL, NULL, FONT_FIXED);
-
     if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
       return false;
     }
@@ -552,6 +551,7 @@ bool fsm_layoutPathWarning(uint32_t address_n_count,
 #include "fsm_msg_cosmos.h"
 #include "fsm_msg_ethereum.h"
 #include "fsm_msg_filecoin.h"
+#include "fsm_msg_kaspa.h"
 #include "fsm_msg_near.h"
 #include "fsm_msg_nem.h"
 #include "fsm_msg_polkadot.h"
@@ -561,5 +561,4 @@ bool fsm_layoutPathWarning(uint32_t address_n_count,
 #include "fsm_msg_stellar.h"
 #include "fsm_msg_sui.h"
 #include "fsm_msg_tron.h"
-
 #endif

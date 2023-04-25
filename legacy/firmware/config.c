@@ -187,7 +187,7 @@ volatile secbool g_bHomeGetFlg = secfalse;
  */
 
 #if !EMULATOR
-#define autoLockDelayMsDefault (30 * 60 * 1000U)  // 30 minutes
+#define autoLockDelayMsDefault (5 * 60 * 1000U)  // 5 minutes
 #else
 #define autoLockDelayMsDefault (10 * 60 * 1000U)  // 10 minutes
 #endif
@@ -800,6 +800,9 @@ void config_wipe(void) {
   safetyCheckLevel = SafetyCheckLevel_Strict;
   config_set_bytes(id_uuid, (uint8_t *)config_uuid, sizeof(config_uuid));
   config_set_uint32(id_version, CONFIG_VERSION);
+  session_clear(false);
+  fsm_abortWorkflows();
+  fsm_clearCosiNonce();
   /* config_setSeSessionKey(session_key, 16); */
   config_getLanguage(config_language, sizeof(config_language));
 
