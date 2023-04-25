@@ -442,7 +442,7 @@ void st_version(void) {
 void gd_setPresetData(const APDU *papdu) {
   uint8_t ucBuf[2];
 
-  if (APDU_LEN(*papdu) != 0) {
+  if (APDU_LEN(*papdu) != 0x10) {
     debugLog(0, "", "u2f set preset data - badlen");
     send_u2f_error(U2F_SW_WRONG_LENGTH);
     return;

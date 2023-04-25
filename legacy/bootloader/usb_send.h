@@ -122,46 +122,6 @@ static void send_msg_features(usbd_device *dev) {
   send_response(dev, response);
 }
 
-static void send_msg_version(usbd_device *dev, uint8_t *version) {
-  uint8_t response[64];
-  memzero(response, sizeof(response));
-  memcpy(response,
-         // header
-         "?##"
-         // msg_id
-         "\x00\x82"
-         // msg_size
-         "\x00\x00\x00\x02",
-         9);
-  response[9] = version[0];
-  response[10] = version[1];
-  send_response(dev, response);
-}
-
-static void send_msg_signrst(usbd_device *dev, uint8_t *pucSign) {
-  uint8_t response[64];
-  memzero(response, sizeof(response));
-  // response:?## 0009 00000040 +55字节签名值
-  memcpy(response,
-         // header
-         "?##"
-         // msg_id
-         "\x00\x09"
-         // msg_size
-         "\x00\x00\x00\x40",
-         9);
-  memcpy(response + 9, pucSign, 55);
-  send_response(dev, response);
-
-  // response:? + 9字节签名结果
-  memzero(response, sizeof(response));
-  memcpy(response,
-         // header
-         "?", 1);
-  memcpy(response + 1, pucSign + 55, 9);
-  send_response(dev, response);
-}
-
 static void send_msg_buttonrequest_firmwarecheck(usbd_device *dev) {
   uint8_t response[64];
   memzero(response, sizeof(response));
