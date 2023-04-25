@@ -1,12 +1,10 @@
-#include <string.h>
-#include "sys/_intsup.h"
 #if !defined(EMULATOR) || !EMULATOR
+#include "se_chip.h"
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
-#include "se_chip.h"
-#include "mi2c.h"
 #include "curves.h"
 #include "aes/aes.h"
 #include "bip32.h"
@@ -1318,6 +1316,25 @@ int hdnode_sign(const HDNode *node, const uint8_t *msg, uint32_t msg_len,
     }
   }
   return -1;
+}
+
+int hdnode_bip340_sign_digest(const HDNode *node, const uint8_t *digest,
+                              uint8_t sig[64]) {
+  (void)node;
+  (void)digest;
+  (void)sig;
+
+  return 0;
+}
+
+int hdnode_bip340_get_shared_key(const HDNode *node,
+                                 const uint8_t *peer_public_key,
+                                 uint8_t session_key[65]) {
+  (void)node;
+  (void)*peer_public_key;
+  (void)session_key;
+
+  return 0;
 }
 
 #endif

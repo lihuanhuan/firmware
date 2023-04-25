@@ -1006,7 +1006,6 @@ refresh_menu:
 }
 
 bool protectPinCheck(bool retry) {
-  uint8_t key = KEY_NULL;
   char desc[64] = "";
 
   uint32_t fails = config_getPinFails();
@@ -1056,12 +1055,7 @@ bool protectPinCheck(bool retry) {
     svc_system_reset();
 #endif
   }
-  while (1) {
-    key = protectWaitKey(0, 1);
-    if (key == KEY_CONFIRM) {
-      break;
-    }
-  }
+  protectWaitKey(0, 0);
 
   if (fails >= 5) {
     memset(desc, 0, 64);
@@ -1081,12 +1075,7 @@ bool protectPinCheck(bool retry) {
                                 &bmp_bottom_right_arrow, NULL, NULL, NULL, NULL,
                                 NULL, _("CAUTION!"), desc, NULL);
     }
-    while (1) {
-      key = protectWaitKey(0, 1);
-      if (key == KEY_CONFIRM) {
-        break;
-      }
-    }
+    protectWaitKey(0, 0);
   }
 
   return true;

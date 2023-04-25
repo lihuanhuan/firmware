@@ -533,17 +533,19 @@ bool tx_sign_ecdsa(const ecdsa_curve *curve, const uint8_t *private_key,
   return true;
 }
 
-bool tx_sign_bip340(const uint8_t *private_key, const uint8_t *hash,
-                    uint8_t *out, pb_size_t *size) {
-  static CONFIDENTIAL uint8_t output_private_key[32] = {0};
-  bool ret = (zkp_bip340_tweak_private_key(private_key, NULL,
-                                           output_private_key) == 0);
-  ret =
-      ret && (zkp_bip340_sign_digest(output_private_key, hash, out, NULL) == 0);
-  *size = ret ? 64 : 0;
-  memzero(output_private_key, sizeof(output_private_key));
-  return ret;
-}
+//// use `hdnode_bip340_sign_digest` instead
+// bool tx_sign_bip340(const uint8_t *private_key, const uint8_t *hash,
+//                     uint8_t *out, pb_size_t *size) {
+//   static CONFIDENTIAL uint8_t output_private_key[32] = {0};
+//   bool ret = (zkp_bip340_tweak_private_key(private_key, NULL,
+//                                            output_private_key) == 0);
+//   ret =
+//       ret && (zkp_bip340_sign_digest(output_private_key, hash, out, NULL) ==
+//       0);
+//   *size = ret ? 64 : 0;
+//   memzero(output_private_key, sizeof(output_private_key));
+//   return ret;
+// }
 
 // tx methods
 bool tx_input_check_hash(Hasher *hasher, const TxInputType *input) {
@@ -1187,10 +1189,10 @@ bool get_ownership_proof(const CoinInfo *coin, InputScriptType script_type,
                                   node->public_key, 33, SIGHASH_ALL,
                                   out->ownership_proof.bytes + r);
   } else if (script_type == InputScriptType_SPENDTAPROOT) {
-    if (!tx_sign_bip340(node->private_key, sighash, out->signature.bytes,
-                        &out->signature.size)) {
+    if (hdnode_bip340_sign_digest(node, sighash, out->signature.bytes)) {
       return false;
     }
+    out->signature.size = 64;
     // Write length-prefixed empty scriptSig (1 byte).
     r += ser_length(0, out->ownership_proof.bytes + r);
 

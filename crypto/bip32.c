@@ -701,11 +701,11 @@ int hdnode_nem_decrypt(const HDNode *node, const ed25519_public_key public_key,
 #endif
 
 #if defined(EMULATOR) && EMULATOR
-    // msg is a data to be signed
-    // msg_len is the message length
-    int hdnode_sign(HDNode *node, const uint8_t *msg, uint32_t msg_len,
-                    HasherType hasher_sign, uint8_t *sig, uint8_t *pby,
-                    int (*is_canonical)(uint8_t by, uint8_t sig[64])) {
+// msg is a data to be signed
+// msg_len is the message length
+int hdnode_sign(HDNode *node, const uint8_t *msg, uint32_t msg_len,
+                HasherType hasher_sign, uint8_t *sig, uint8_t *pby,
+                int (*is_canonical)(uint8_t by, uint8_t sig[64])) {
   uint8_t hash_mode = 0;
   (void)hash_mode;
   if (node->curve->params) {
@@ -742,7 +742,23 @@ int hdnode_sign_digest(HDNode *node, const uint8_t *digest, uint8_t *sig,
     return hdnode_sign(node, digest, 32, 0, sig, pby, is_canonical);
   }
 }
-#endif // defined(EMULATOR) && EMULATOR
+
+#include "zkp_bip340.h"
+int hdnode_bip340_sign_digest(const HDNode *node, const uint8_t *digest,
+                              uint8_t sig[64]) {
+  static CONFIDENTIAL uint8_t output_private_key[32] = {0};
+  int ret = 0;
+  ret =
+      zkp_bip340_tweak_private_key(node->private_key, NULL, output_private_key);
+  if (ret) {
+    return ret;
+  }
+  ret = zkp_bip340_sign_digest(output_private_key, digest, sig, NULL);
+  memzero(output_private_key, sizeof(output_private_key));
+  return ret;
+}
+#endif  // defined(EMULATOR) && EMULATOR
+
 int hdnode_get_shared_key(const HDNode *node, const uint8_t *peer_public_key,
                           uint8_t *session_key, int *result_size) {
   // Use elliptic curve Diffie-Helman to compute shared session key
@@ -767,6 +783,24 @@ int hdnode_get_shared_key(const HDNode *node, const uint8_t *peer_public_key,
     return 1;  // ECDH is not supported
   }
 }
+
+#if defined(EMULATOR) && EMULATOR
+#include "zkp_bip340.h"
+int hdnode_bip340_get_shared_key(const HDNode *node,
+                                 const uint8_t *peer_public_key,
+                                 uint8_t session_key[65]) {
+  static CONFIDENTIAL uint8_t output_private_key[32] = {0};
+  int ret =
+      zkp_bip340_tweak_private_key(node->private_key, NULL, output_private_key);
+  if (ret) {
+    return ret;
+  }
+  ret = ecdh_multiply(&secp256k1, output_private_key, peer_public_key,
+                      session_key);
+  memzero(&output_private_key, sizeof(output_private_key));
+  return ret;
+}
+#endif  // defined(EMULATOR) && EMULATOR
 
 static int hdnode_serialize(const HDNode *node, uint32_t fingerprint,
                             uint32_t version, bool use_private, char *str,

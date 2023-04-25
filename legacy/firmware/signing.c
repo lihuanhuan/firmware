@@ -18,6 +18,7 @@
  */
 
 #include "signing.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include "common.h"
 #include "config.h"
@@ -1898,14 +1899,10 @@ static bool coinjoin_add_input(TxInputType *txi) {
   }
 
   // Compute the masking bit for the signable bit in coinjoin flags.
-  static CONFIDENTIAL uint8_t output_private_key[32] = {0};
   uint8_t shared_secret[65] = {0};
-  bool res = (zkp_bip340_tweak_private_key(node.private_key, NULL,
-                                           output_private_key) == 0);
-  res = res && (ecdh_multiply(&secp256k1, output_private_key,
-                              coinjoin_request.mask_public_key.bytes,
-                              shared_secret) == 0);
-  memzero(&output_private_key, sizeof(output_private_key));
+  bool res =
+      hdnode_bip340_get_shared_key(
+          &node, coinjoin_request.mask_public_key.bytes, shared_secret) == 0;
   if (!res) {
     fsm_sendFailure(FailureType_Failure_ProcessError,
                     _("Failed to derive shared secret."));
@@ -2106,8 +2103,7 @@ static bool compile_output(TxOutputType *in, TxOutputBinType *out,
   }
 
   if (needs_confirm) {
-    layoutConfirmOutput(coin, amount_unit, in);
-    if (!protectButton(ButtonRequestType_ButtonRequest_ConfirmOutput, false)) {
+    if (!layoutConfirmOutput(coin, amount_unit, in)) {
       fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);
       signing_abort();
       return false;
@@ -3261,20 +3257,12 @@ static bool signing_sign_bip340(const HDNode *_node, const uint8_t *hash) {
   resp.serialized.signature_index = idx1;
   resp.serialized.has_signature = true;
 
-  // TODO: hdnode add schnoor sign
-  bool ret = false;
-  (void)_node;
-  (void)hash;
-  if (!ret) {
-
-
-  // if (!tx_sign_bip340(private_key, hash, resp.serialized.signature.bytes,
-  //                     &resp.serialized.signature.size)) {
+  if (hdnode_bip340_sign_digest(_node, hash, resp.serialized.signature.bytes)) {
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     signing_abort();
     return false;
   }
-
+  resp.serialized.signature.size = 64;
   return true;
 }
 
