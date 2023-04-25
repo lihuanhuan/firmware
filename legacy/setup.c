@@ -126,10 +126,11 @@ void setup(void) {
   gpio_set_af(OLED_CS_PORT, GPIO_AF5, OLED_SCK_PIN | OLED_MOSI_PIN);
   gpio_mode_setup(OLED_CS_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE,
                   OLED_SCK_PIN | OLED_MOSI_PIN);
-  gpio_set_output_options(OLED_CS_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ,
+  gpio_set_output_options(OLED_CS_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
                           OLED_SCK_PIN | OLED_MOSI_PIN);
   gpio_mode_setup(OLED_CS_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0);
-  gpio_set_output_options(OLED_CS_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, GPIO0);
+  gpio_set_output_options(OLED_CS_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ,
+                          GPIO0);
 
   spi_init_master(OLED_SPI_BASE, SPI_CR1_BAUDRATE_FPCLK_DIV_8,
                   SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE,
