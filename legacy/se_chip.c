@@ -55,6 +55,7 @@
 #define MI2C_CMD_READ_SESTOR_REGION (0xE5)
 #define MI2C_CMD_WRITE_SESTOR_REGION (0xE6)
 #define MI2C_CMD_WR_SESSION (0xE7)
+#define MI2C_CMD_WR_MNEMONIC (0xE8)
 
 // ecc ed2519 index
 #define ECC_INDEX_GITPUBKEY (0x00)
@@ -1335,6 +1336,17 @@ int hdnode_bip340_get_shared_key(const HDNode *node,
   (void)session_key;
 
   return 0;
+}
+
+bool se_containsMnemonic(const char *mnemonic){
+  uint8_t resp[256];
+  uint16_t resp_len;
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_MNEMONIC, 0x00, (uint8_t *)mnemonic,
+                            strlen(mnemonic), resp, &resp_len, MI2C_ENCRYPT,
+                            GET_SESTORE_DATA)) {
+    return false;
+  }
+  return true;
 }
 
 #endif

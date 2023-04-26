@@ -9,7 +9,7 @@ authors = ["SatoshiLabs <info@satoshilabs.com>"]
 python = "^3.7"
 trezor = {path = "./python", develop = true}
 scons = "*"
-protobuf = "4.21.1"
+protobuf = "*"
 pyblake2 = "*"
 nanopb = "^0.4.3"
 

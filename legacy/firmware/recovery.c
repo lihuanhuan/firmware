@@ -231,11 +231,7 @@ static bool recovery_done(void) {
       }
       memzero(new_mnemonic, sizeof(new_mnemonic));
     } else {
-      //TODO:
-      // bool match =
-      //     (config_isInitialized() && config_containsMnemonic(new_mnemonic));
-      bool match = true;
-      // not support check mnemonic is existed in SE only check-mnemonic
+      bool match = (config_isInitialized() && config_containsMnemonic(new_mnemonic));
       memzero(new_mnemonic, sizeof(new_mnemonic));
       if (recovery_byself) {
         if (match) {
@@ -1021,6 +1017,21 @@ uint32_t get_mnemonic_number(char *mnemonic) {
   }
   count++;
   return count;
+}
+
+bool verify_words(uint32_t count) {
+  word_count = count;
+  recovery_byself = true;
+  word_index = 0;
+  enforce_wordlist = true;
+  dry_run = true;
+
+  if (!input_words()) {
+    return false;
+  }
+  recovery_done();
+  recovery_byself = false;
+  return true;
 }
 
 #if DEBUG_LINK

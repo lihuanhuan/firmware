@@ -80,15 +80,6 @@ void menu_changePin(int index) {
   protectChangePinOnDevice(true, false, true);
 }
 
-void menu_showMnemonic(int index) {
-  (void)index;
-  if (protectPinOnDevice(false, true)) {
-    char mnemonic[MAX_MNEMONIC_LEN + 1] = {0};
-    config_getMnemonic(mnemonic, sizeof(mnemonic));
-    scroll_mnemonic(_("Mnemonic"), mnemonic, 0);
-  }
-}
-
 void menu_set_passphrase(int index) {
   (void)index;
 
@@ -217,7 +208,6 @@ static struct menu settings_menu = {
 
 void menu_check_all_words(int index) {
   (void)index;
-  return;
   char desc[64] = "";
   uint8_t key = KEY_NULL;
   uint32_t word_count = 0;
@@ -233,10 +223,8 @@ refresh_menu:
     return;
   }
 
-  // if (protectPinOnDevice(false, true)) {
-  //   char mnemonic[MAX_MNEMONIC_LEN + 1] = {0};
-  //   memset(desc, 0, sizeof(desc));
-  //   config_getMnemonic(mnemonic, sizeof(mnemonic));
+  if (protectPinOnDevice(false, true)) {
+    memset(desc, 0, sizeof(desc));
 
     if (!protectSelectMnemonicNumber(&word_count)) {
       goto refresh_menu;
@@ -250,38 +238,20 @@ refresh_menu:
     else
       return;
 
-  //   layoutDialogAdapterEx(_("Enter Recovery Phrase"), &bmp_bottom_left_arrow,
-  //                         NULL, &bmp_bottom_right_arrow, NULL, desc, NULL, NULL,
-  //                         NULL, NULL);
-  //   key = protectWaitKey(0, 1);
-  //   if (key != KEY_CONFIRM) {
-  //     return;
-  //   }
+    layoutDialogAdapterEx(_("Enter Recovery Phrase"), &bmp_bottom_left_arrow,
+                          NULL, &bmp_bottom_right_arrow, NULL, desc, NULL, NULL,
+                          NULL, NULL);
+    key = protectWaitKey(0, 1);
+    if (key != KEY_CONFIRM) {
+      return;
+    }
 
-  //   (void)word_count;
-  //   //TODO:
-    // if (!verify_words(word_count)) {
-    //   return;
-    // }
-  //}
-}
-
-void menu_check_specified_word(int index) {
-  (void)index;
-  uint32_t word_count = 0;
-
-  if (protectPinOnDevice(false, true)) {
-    char mnemonic[MAX_MNEMONIC_LEN + 1] = {0};
-    config_getMnemonic(mnemonic, sizeof(mnemonic));
-    word_count = get_mnemonic_number(mnemonic);
-
-    (void)word_count;
-    //TODO
-    // if (!verify_words(word_count)) {
-    //   return;
-    // }
+    if (!verify_words(word_count)) {
+      return;
+    }
   }
 }
+
 
 static struct menu_item security_set_menu_items[] = {
     {"Change PIN", NULL, true, menu_changePin, NULL, false},

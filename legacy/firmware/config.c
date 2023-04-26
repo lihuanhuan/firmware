@@ -684,6 +684,9 @@ bool config_getMnemonicsImported(void) {
 
   return mnemonic_imported;
 }
+bool config_containsMnemonic(const char *mnemonic){
+  return se_containsMnemonic(mnemonic);
+}
 
 bool config_getNeedsBackup(bool *needs_backup) {
   return sectrue == config_get_bool(id_need_backup, needs_backup);
