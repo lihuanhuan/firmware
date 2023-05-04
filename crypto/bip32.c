@@ -557,6 +557,8 @@ int hdnode_fill_public_key(HDNode *node) {
     } else if (node->curve == &ed25519_cardano_info) {
       ed25519_publickey_ext(node->private_key, node->public_key + 1);
 #endif
+    } else if (node->curve == &ed25519_ledger_info) {
+      ed25519_publickey(node->private_key, node->public_key + 1);
     }
   }
 #else
@@ -722,6 +724,8 @@ int hdnode_sign(HDNode *node, const uint8_t *msg, uint32_t msg_len,
     } else if (node->curve == &ed25519_keccak_info) {
       ed25519_sign_keccak(msg, msg_len, node->private_key, sig);
 #endif
+    } else if (node->curve == &ed25519_ledger_info) {
+      ed25519_sign(msg, msg_len, node->private_key, sig);
     } else {
       return 1;  // unknown or unsupported curve
     }
@@ -916,6 +920,9 @@ const curve_info *get_curve_by_name(const char *curve_name) {
   }
 #endif
   if (strcmp(curve_name, CURVE25519_NAME) == 0) {
+    return &curve25519_info;
+  }
+  if (strcmp(curve_name, ED25519_LEDGER_NAME) == 0) {
     return &curve25519_info;
   }
   return 0;

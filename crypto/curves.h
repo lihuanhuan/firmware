@@ -39,5 +39,6 @@ extern const char SR25519_NAME[];
 extern const char ED25519_KECCAK_NAME[];
 #endif
 extern const char CURVE25519_NAME[];
+extern const char ED25519_LEDGER_NAME[];
 
 #endif

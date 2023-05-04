@@ -76,7 +76,8 @@
 #define DERIVE_ED25519_SLIP10 (0x04)
 // cardano icarus CIP03
 // TODO: change to SE required value. now is placeholder
-#define DERIVE_SR25519_ICARUS (0x05)
+#define DERIVE_ED25519_ICARUS (0x05)
+#define DERIVE_ED25519_LEDGER (0x06)
 
 #define CURVE_NIST256P1 (0x40)
 #define CURVE_SECP256K1 (0x00)
@@ -496,7 +497,9 @@ inline static bool se_get_derive_mode_by_name(const char *curve,
   } else if (0 == strcmp(curve, SR25519_NAME)) {
     *mode = DERIVE_SR25519;
   } else if (0 == strcmp(curve, ED25519_CARDANO_NAME)) {
-    *mode = DERIVE_SR25519_ICARUS;
+    *mode = DERIVE_ED25519_ICARUS;
+  } else if (0 == strcmp(curve, ED25519_LEDGER_NAME)) {
+    *mode = DERIVE_ED25519_LEDGER;
     //
     // } else if (0 == strcmp(curve, ED25519_KECCAK_NAME)) {
     //   *mode = DERIVE_ED25519_DONNA;
@@ -1382,6 +1385,9 @@ int hdnode_sign(const HDNode *node, const uint8_t *msg, uint32_t msg_len,
       return 0;
     } else if (strcmp(curve, ED25519_CARDANO_NAME) == 0) {
       if (!se_ed25519_icarus_sign(msg, msg_len, sig)) return -1;
+      return 0;
+    } else if (strcmp(curve, ED25519_LEDGER_NAME) == 0) {
+      if (!se_ed25519_sign(msg, msg_len, sig)) return -1;
       return 0;
     }
   }

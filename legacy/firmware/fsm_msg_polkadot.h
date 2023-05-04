@@ -18,115 +18,53 @@
  */
 
 void fsm_msgPolkadotGetAddress(PolkadotGetAddress *msg) {
-  (void)msg;
-   fsm_sendFailure(
-      FailureType_Failure_ProcessError,
-      _("Unexpected failure in constructing polkadot node"));
-  return;
+  CHECK_INITIALIZED
 
-  // CHECK_INITIALIZED
+  CHECK_PIN
 
-  // CHECK_PIN
+  RESP_INIT(PolkadotAddress);
+  HDNode *node = fsm_getDerivedNode(ED25519_LEDGER_NAME, msg->address_n,
+                                    msg->address_n_count, NULL);
+  hdnode_fill_public_key(node);
 
-  // RESP_INIT(PolkadotAddress);
+  data2hexaddr(node->public_key + 1, 32, resp->public_key);
+  resp->has_address = true;
+  resp->has_public_key = true;
+  polkadot_get_address_from_public_key(node->public_key + 1, resp->address,
+                                       msg->prefix);
 
-  // HDNode node = {0};
-  // uint8_t ledger_secret[96 + 1];
-  // int res;
+  if (msg->has_show_display && msg->show_display) {
+    char desc[32] = {0};
+    strcat(desc, msg->network);
+    desc[0] = desc[0] - ('a' - 'A');
+    strcat(desc, " ");
+    strcat(desc, _("Address:"));
+    if (!fsm_layoutAddress(resp->address, desc, false, 0, msg->address_n,
+                           msg->address_n_count, true, NULL, 0, 0, NULL)) {
+      return;
+    }
+  }
 
-  // const uint8_t *seed = config_getSeed();
-  // if (seed == NULL) {
-  //   return;
-  // }
-  // res = secret_from_seed_cardano_ledger(seed, 64, ledger_secret);
-  // if (res != 1) {
-  //   fsm_sendFailure(FailureType_Failure_ProcessError,
-  //                   _("Unexpected failure in Ledger derivation"));
-  //   return;
-  // }
-  // res = hdnode_from_secret_cardano(ledger_secret, &node);
-  // if (res != 1) {
-  //   fsm_sendFailure(FailureType_Failure_ProcessError,
-  //                   _("Unexpected failure in constructing polkadot node"));
-  //   return;
-  // }
-
-  // if (hdnode_private_ckd_cached(&node, msg->address_n, msg->address_n_count,
-  //                               NULL) == 0) {
-  //   fsm_sendFailure(FailureType_Failure_ProcessError,
-  //                   _("Failed to derive private key"));
-  //   return;
-  // }
-  // ed25519_publickey(node.private_key, node.public_key + 1);
-
-  // data2hexaddr(node.public_key + 1, 32, resp->public_key);
-  // resp->has_address = true;
-  // resp->has_public_key = true;
-  // polkadot_get_address_from_public_key(node.public_key + 1, resp->address,
-  //                                      msg->prefix);
-
-  // if (msg->has_show_display && msg->show_display) {
-  //   char desc[32] = {0};
-  //   strcat(desc, msg->network);
-  //   desc[0] = desc[0] - ('a' - 'A');
-  //   strcat(desc, " ");
-  //   strcat(desc, _("Address:"));
-  //   if (!fsm_layoutAddress(resp->address, desc, false, 0, msg->address_n,
-  //                          msg->address_n_count, true, NULL, 0, 0, NULL)) {
-  //     return;
-  //   }
-  // }
-
-  // msg_write(MessageType_MessageType_PolkadotAddress, resp);
-  // layoutHome();
+  msg_write(MessageType_MessageType_PolkadotAddress, resp);
+  layoutHome();
 }
 
 void fsm_msgPolkadotSignTx(const PolkadotSignTx *msg) {
-  (void)msg;
-  fsm_sendFailure(FailureType_Failure_ProcessError,
-                  _("Unexpected failure in Ledger derivation"));
-  return;
-  // CHECK_INITIALIZED
+  CHECK_INITIALIZED
 
-  // CHECK_PIN
+  CHECK_PIN
 
-  // RESP_INIT(PolkadotSignedTx);
+  RESP_INIT(PolkadotSignedTx);
 
-  // HDNode node = {0};
-  // uint8_t ledger_secret[96 + 1];
-  // int res;
+  HDNode *node = fsm_getDerivedNode(ED25519_LEDGER_NAME, msg->address_n,
+                                    msg->address_n_count, NULL);
+  hdnode_fill_public_key(node);
 
-  // const uint8_t *seed = config_getSeed();
-  // if (seed == NULL) {
-  //   return;
-  // }
-  // res = secret_from_seed_cardano_ledger(seed, 64, ledger_secret);
-  // if (res != 1) {
-  //   fsm_sendFailure(FailureType_Failure_ProcessError,
-  //                   _("Unexpected failure in Ledger derivation"));
-  //   return;
-  // }
-
-  // res = hdnode_from_secret_cardano(ledger_secret, &node);
-  // if (res != 1) {
-  //   fsm_sendFailure(FailureType_Failure_ProcessError,
-  //                   _("Unexpected failure in constructing Polkadot node"));
-  //   return;
-  // }
-
-  // if (hdnode_private_ckd_cached(&node, msg->address_n, msg->address_n_count,
-  //                               NULL) == 0) {
-  //   fsm_sendFailure(FailureType_Failure_ProcessError,
-  //                   _("Failed to derive private key"));
-  //   return;
-  // }
-  // ed25519_publickey(node.private_key, node.public_key + 1);
-
-  // if (!polkadot_sign_tx(msg, &node, resp)) {
-  //   fsm_sendFailure(FailureType_Failure_DataError, _("Signing failed"));
-  //   layoutHome();
-  //   return;
-  // }
-  // msg_write(MessageType_MessageType_PolkadotSignedTx, resp);
-  // layoutHome();
+  if (!polkadot_sign_tx(msg, node, resp)) {
+    fsm_sendFailure(FailureType_Failure_DataError, _("Signing failed"));
+    layoutHome();
+    return;
+  }
+  msg_write(MessageType_MessageType_PolkadotSignedTx, resp);
+  layoutHome();
 }
