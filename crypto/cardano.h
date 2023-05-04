@@ -37,6 +37,7 @@ extern const curve_info ed25519_cardano_info;
 
 int hdnode_private_ckd_cardano(HDNode *inout, uint32_t i);
 
+#if defined(EMULATOR) && EMULATOR
 int secret_from_entropy_cardano_icarus(
     const uint8_t *pass, int pass_len, const uint8_t *entropy, int entropy_len,
     uint8_t secret_out[CARDANO_SECRET_LENGTH],
@@ -49,6 +50,7 @@ int secret_from_seed_cardano_slip23(const uint8_t *seed, int seed_len,
 int hdnode_from_secret_cardano(const uint8_t secret[CARDANO_SECRET_LENGTH],
                                HDNode *out);
 
+#endif  // defined(EMULATOR) && EMULATOR
 #endif  // USE_CARDANO
 
 #endif  // __CARDANO_H__

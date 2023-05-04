@@ -71,8 +71,6 @@ bool se_set_public_region(uint16_t offset, const void *val_dest, uint16_t len);
 bool se_get_public_region(uint16_t offset, void *val_dest, uint16_t len);
 bool se_set_private_region(uint16_t offset, const void *val_dest, uint16_t len);
 bool se_get_private_region(uint16_t offset, void *val_dest, uint16_t len);
-bool se_schnoor_sign_plain(uint8_t *data, uint16_t data_len, uint8_t *sig,
-                           uint16_t max_len, uint16_t *len);
 bool se_aes_128_encrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
                         uint16_t send_len, uint8_t *recv, uint16_t *recv_len);
 bool se_aes_128_decrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,

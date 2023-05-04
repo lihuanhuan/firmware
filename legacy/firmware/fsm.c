@@ -263,9 +263,8 @@ static const CoinInfo *fsm_getCoin(bool has_name, const char *name) {
 extern bool se_derive_keys(HDNode *out, const char *curve,
                            const uint32_t *address_n, size_t address_n_count,
                            uint32_t *fingerprint);
-static HDNode *fsm_getDerivedNode(const char *curve, const uint32_t *address_n,
-                                  size_t address_n_count,
-                                  uint32_t *fingerprint) {
+HDNode *fsm_getDerivedNode(const char *curve, const uint32_t *address_n,
+                           size_t address_n_count, uint32_t *fingerprint) {
   static CONFIDENTIAL HDNode node;
   if (fingerprint) {
     *fingerprint = 0;
@@ -288,24 +287,24 @@ static HDNode *fsm_getDerivedNode(const char *curve, const uint32_t *address_n,
 
 static bool fsm_getSlip21Key(const char *path[], size_t path_count,
                              uint8_t key[32]) {
-  //TODO:
+  // TODO:
   (void)path;
   (void)path_count;
   (void)key;
-      // const uint8_t *seed = config_getSeed();
-      // if (seed == NULL) {
-      //   return false;
-      // }
+  // const uint8_t *seed = config_getSeed();
+  // if (seed == NULL) {
+  //   return false;
+  // }
 
-      // static CONFIDENTIAL Slip21Node node;
-      // slip21_from_seed(seed, 64, &node);
-      // for (size_t i = 0; i < path_count; ++i) {
-      //   slip21_derive_path(&node, (uint8_t *)path[i], strlen(path[i]));
-      // }
-      // memcpy(key, slip21_key(&node), 32);
-      // memzero(&node, sizeof(node));
+  // static CONFIDENTIAL Slip21Node node;
+  // slip21_from_seed(seed, 64, &node);
+  // for (size_t i = 0; i < path_count; ++i) {
+  //   slip21_derive_path(&node, (uint8_t *)path[i], strlen(path[i]));
+  // }
+  // memcpy(key, slip21_key(&node), 32);
+  // memzero(&node, sizeof(node));
 
-      return true;
+  return true;
 }
 
 static bool fsm_layoutAddress(const char *address, const char *desc,

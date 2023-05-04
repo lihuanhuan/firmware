@@ -73,11 +73,17 @@
 #define DERIVE_ED25519_DONNA (0x02)
 #define DERIVE_SR25519 (0x03)
 #define DERIVE_ED25519_SLIP10 (0x04)
+// cardano icarus CIP03
+// TODO: change to SE required value. now is placeholder
+#define DERIVE_SR25519_ICARUS (0x05)
 
 #define CURVE_NIST256P1 (0x40)
 #define CURVE_SECP256K1 (0x00)
 #define CURVE_ED25519 (0x02)
 #define CURVE_SR25519 (0x03)
+// cardano icarus CIP03
+// TODO: change to SE required value. now is placeholder
+#define CURVE_ED25519_ICARUS (0x04)
 
 #define EOS_ECDSA_SIGN (60)
 #define ETH_ECDSA_SIGN (194)
@@ -488,6 +494,8 @@ inline static bool se_get_derive_mode_by_name(const char *curve,
     *mode = DERIVE_ED25519_SLIP10;
   } else if (0 == strcmp(curve, SR25519_NAME)) {
     *mode = DERIVE_SR25519;
+  } else if (0 == strcmp(curve, ED25519_CARDANO_NAME)) {
+    *mode = DERIVE_SR25519_ICARUS;
     //
     // } else if (0 == strcmp(curve, ED25519_KECCAK_NAME)) {
     //   *mode = DERIVE_ED25519_DONNA;
@@ -1199,25 +1207,28 @@ bool se_25519_sign(uint8_t curve, const uint8_t *msg, uint16_t msg_len,
 #define se_ed25519_sign(msg, msg_len, sig) \
   se_25519_sign(CURVE_ED25519, msg, msg_len, sig)
 
+// ed25519 ext sign
+#define se_ed25519_icarus_sign(msg, msg_len, sig) \
+  se_25519_sign(CURVE_ED25519_ICARUS, msg, msg_len, sig)
+
 #define se_sr25519_sign(msg, msg_len, sig) \
   se_25519_sign(CURVE_SR25519, msg, msg_len, sig)
 
 // TODO it will sign digest
-bool se_schnoor_sign_plain(uint8_t *data, uint16_t data_len, uint8_t *sig,
-                           uint16_t max_len, uint16_t *len) {
+bool se_schnoor_sign_plain(const uint8_t *data, uint16_t data_len,
+                           uint8_t *sig) {
   uint8_t resp[128];
   uint16_t resp_len;
 
-  if (MI2C_OK != se_transmit(MI2C_CMD_SCHNOOR, SCHNOOR_INDEX_SIGN, data,
-                             data_len, resp, &resp_len, MI2C_ENCRYPT,
-                             GET_SESTORE_DATA)) {
+  if (MI2C_OK != se_transmit(MI2C_CMD_SCHNOOR, SCHNOOR_INDEX_SIGN,
+                             (uint8_t *)data, data_len, resp, &resp_len,
+                             MI2C_ENCRYPT, GET_SESTORE_DATA)) {
     return false;
   }
-  if (resp_len > max_len) {
+  if (resp_len != 64) {
     return false;
   }
-  memcpy(sig, resp, resp_len);
-  if (len) *len = resp_len;
+  memcpy(sig, resp, 64);
   return true;
 }
 
@@ -1306,13 +1317,16 @@ int hdnode_sign(const HDNode *node, const uint8_t *msg, uint32_t msg_len,
     hasher_Raw(hasher_sign, msg, msg_len, hash);
     return hdnode_sign_digest(node, hash, sig, pby, is_canonical);
   } else {
+    // 25519 sign
     const char *curve = node->curve->curve_name;
     if (strcmp(curve, ED25519_NAME) == 0) {
       if (!se_ed25519_sign(msg, msg_len, sig)) return -1;
       return 0;
-
     } else if (strcmp(curve, SR25519_NAME) == 0) {
       if (!se_sr25519_sign(msg, msg_len, sig)) return -1;
+      return 0;
+    } else if (strcmp(curve, ED25519_CARDANO_NAME) == 0) {
+      if (!se_ed25519_icarus_sign(msg, msg_len, sig)) return -1;
       return 0;
     }
   }
@@ -1322,10 +1336,7 @@ int hdnode_sign(const HDNode *node, const uint8_t *msg, uint32_t msg_len,
 int hdnode_bip340_sign_digest(const HDNode *node, const uint8_t *digest,
                               uint8_t sig[64]) {
   (void)node;
-  (void)digest;
-  (void)sig;
-
-  return 0;
+  return se_schnoor_sign_plain(digest, 32, sig) ? 0 : 1;
 }
 
 int hdnode_bip340_get_shared_key(const HDNode *node,
@@ -1338,12 +1349,12 @@ int hdnode_bip340_get_shared_key(const HDNode *node,
   return 0;
 }
 
-bool se_containsMnemonic(const char *mnemonic){
+bool se_containsMnemonic(const char *mnemonic) {
   uint8_t resp[256];
   uint16_t resp_len;
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_MNEMONIC, 0x00, (uint8_t *)mnemonic,
-                            strlen(mnemonic), resp, &resp_len, MI2C_ENCRYPT,
-                            GET_SESTORE_DATA)) {
+                             strlen(mnemonic), resp, &resp_len, MI2C_ENCRYPT,
+                             GET_SESTORE_DATA)) {
     return false;
   }
   return true;

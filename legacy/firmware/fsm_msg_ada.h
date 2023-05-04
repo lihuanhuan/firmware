@@ -100,7 +100,11 @@ void fsm_msgCardanoGetAddress(CardanoGetAddress *msg) {
 
 void fsm_msgCardanoTxWitnessRequest(CardanoTxWitnessRequest *msg) {
   RESP_INIT(CardanoTxWitnessResponse);
-  cardano_txwitness(msg, resp);
+  if (!cardano_txwitness(msg, resp)) {
+    fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
+    layoutHome();
+    return;
+  }
   msg_write(MessageType_MessageType_CardanoTxWitnessResponse, resp);
   layoutHome();
 }
@@ -214,6 +218,8 @@ void fsm_msgCardanoSignMessage(CardanoSignMessage *msg) {
   if (!res) return;
 
   if (!ada_sign_messages(&node, msg, resp)) {
+    fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
+    layoutHome();
     return;
   }
 

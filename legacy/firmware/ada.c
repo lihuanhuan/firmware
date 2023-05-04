@@ -18,6 +18,8 @@
  */
 
 #include "ada.h"
+#include <stdint.h>
+#include <string.h>
 #include "base58.h"
 #include "bip39.h"
 #include "buttons.h"
@@ -33,6 +35,7 @@
 #include "segwit_addr.h"
 #include "sha3.h"
 #include "util.h"
+#include "curves.h"
 
 struct AdaSigner ada_signer;
 static CardanoTxItemAck ada_msg_item_ack;
@@ -40,64 +43,20 @@ static CardanoSignTxFinished ada_msg_sign_tx_finished;
 extern int convert_bits(uint8_t *out, size_t *outlen, int outbits,
                         const uint8_t *in, size_t inlen, int inbits, int pad);
 
+extern HDNode *fsm_getDerivedNode(const char *curve, const uint32_t *address_n,
+                                  size_t address_n_count,
+                                  uint32_t *fingerprint);
+
 bool fsm_getCardanoIcaruNode(HDNode *node, const uint32_t *address_n,
                              size_t address_n_count, uint32_t *fingerprint) {
-
-  //TODO:
-  (void)node;
-  (void)address_n;
-  (void)address_n_count;
-  (void)fingerprint;
-  fsm_sendFailure(
-      FailureType_Failure_ProcessError,
-      _("Unexpected failure in constructing cardano node"));
-  return false;
-
-
-  // int res;
-  // char mnemonic[MAX_MNEMONIC_LEN + 1] = {0};
-  // char passphrase[MAX_PASSPHRASE_LEN + 1] = {0};
-  // if (!config_hasMnemonic()) {
-  //   return false;
-  // }
-  // config_getMnemonic(mnemonic, sizeof(mnemonic));
-  // if (!protectPassphrase(passphrase)) {
-  //   fsm_sendFailure(FailureType_Failure_ProcessError,
-  //                   _("Passphrase dismissed"));
-  //   return false;
-  // }
-
-  // uint8_t mnemonic_bits[64] = {0};
-  // int mnemonic_bits_len = mnemonic_to_bits(mnemonic, mnemonic_bits);
-  // if (mnemonic_bits_len == 0 || mnemonic_bits_len % 33 != 0) {
-  //   fsm_sendFailure(FailureType_Failure_ProcessError, _("Invalid mnemonic"));
-  //   return false;
-  // }
-  // int entropy_len = mnemonic_bits_len - mnemonic_bits_len / 33;
-  // int mnemonic_bytes_used = 0;
-
-  // // Exclude checksum (original Icarus spec)
-  // mnemonic_bytes_used = entropy_len / 8;
-
-  // uint8_t icarus_secret[96] = {0};
-  // secret_from_entropy_cardano_icarus((const uint8_t *)passphrase,
-  //                                    strlen(passphrase), mnemonic_bits,
-  //                                    mnemonic_bytes_used, icarus_secret, NULL);
-
-  // res = hdnode_from_secret_cardano(icarus_secret, node);
-  // if (res != 1) {
-  //   fsm_sendFailure(FailureType_Failure_ProcessError,
-  //                   _("Unexpected failure in constructing cardano node"));
-  //   return false;
-  // }
-  // if (hdnode_private_ckd_cached(node, address_n, address_n_count,
-  //                               fingerprint) == 0) {
-  //   fsm_sendFailure(FailureType_Failure_ProcessError,
-  //                   _("Failed to derive private key"));
-  //   return false;
-  // }
-  // hdnode_fill_public_key(node);
-  // return true;
+  node = fsm_getDerivedNode(ED25519_CARDANO_NAME, address_n, address_n_count,
+                            fingerprint);
+  if (!node) {
+    fsm_sendFailure(FailureType_Failure_ProcessError,
+                    _("Failed to derive private key"));
+  }
+  hdnode_fill_public_key(node);
+  return true;
 }
 
 bool validate_network_info(int network_id, int protocol_magic) {
@@ -1330,11 +1289,11 @@ bool cardano_txwitness(CardanoTxWitnessRequest *msg,
   fsm_getCardanoIcaruNode(&node, msg->path, msg->path_count, &fingerprint);
   resp->pub_key.size = 32;
   memcpy(resp->pub_key.bytes, node.public_key + 1, 32);
-  ed25519_public_key pk = {0};
-  ed25519_publickey_ext(node.private_key_extension, pk);
+  if (hdnode_sign(&node, ada_signer.digest, 32, 0, resp->signature.bytes, NULL,
+                  NULL) != 0) {
+    return false;
+  }
 
-  ed25519_sign_ext(ada_signer.digest, 32, node.private_key,
-                   node.private_key_extension, resp->signature.bytes);
   resp->signature.size = 64;
   if ((msg->path[0] == 2147483692) &&
       (msg->path[1] == 2147485463)) {  // BYRON_ROOT = [44,1815...]
@@ -1355,12 +1314,12 @@ bool ada_sign_messages(const HDNode *node, CardanoSignMessage *msg,
   uint8_t data[1024 + 128] = {0};
   uint8_t sig_structure[1024 + 128] = {0};
   uint8_t phdr_encoded[128] = {0};
-  uint8_t verification_key[32] = {0};
   uint8_t hash[29] = {0};
   uint8_t sig[64];
   int data_index = 0, phdr_encoded_index = 0, sig_structure_index = 0;
   size_t size = 0;
-  ed25519_publickey(node->private_key, verification_key);
+
+  const uint8_t *verification_key = node->public_key + 1;
   blake2b(verification_key, 32, hash + 1, 28);
   hash[0] =
       0x61;  // header = (KEY_NONE << 4 | msg.network_id).to_bytes(1, "big")
@@ -1448,8 +1407,16 @@ bool ada_sign_messages(const HDNode *node, CardanoSignMessage *msg,
          msg->message.size);
   sig_structure_index += msg->message.size;
 
-  ed25519_sign(sig_structure, sig_structure_index, node->private_key, sig);
-
+  // TODO: normal ed25519 sign, how tell SE ??
+  //-ed25519_sign(sig_structure, sig_structure_index, node->private_key, sig);
+  HDNode node_copy = {0};
+  memcpy(&node_copy, node, sizeof(HDNode));
+  node_copy.curve = get_curve_by_name(ED25519_NAME);
+  // or ((HDNode*)node)->curve = get_curve_by_name(ED25519_NAME);
+  if (!hdnode_sign(&node_copy, sig_structure, sig_structure_index, 0, sig, NULL,
+                   NULL)) {
+    return false;
+  }
   size = cbor_writeToken(CBOR_TYPE_BYTES, 64, buffer, 10);
   memcpy(data + data_index, buffer, size);
   data_index += size;

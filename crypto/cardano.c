@@ -68,12 +68,6 @@ static void scalar_add_256bits(const uint8_t *src1, const uint8_t *src2,
   }
 }
 
-static void cardano_ed25519_tweak_bits(uint8_t private_key[32]) {
-  private_key[0] &= 0xf8;
-  private_key[31] &= 0x1f;
-  private_key[31] |= 0x40;
-}
-
 int hdnode_private_ckd_cardano(HDNode *inout, uint32_t index) {
   if (inout->curve != &ed25519_cardano_info) {
     return 0;
@@ -151,6 +145,14 @@ int hdnode_private_ckd_cardano(HDNode *inout, uint32_t index) {
   memzero(priv_key, sizeof(priv_key));
   memzero(res_key, sizeof(res_key));
   return 1;
+}
+
+#if defined(EMULATOR) && EMULATOR
+
+static void cardano_ed25519_tweak_bits(uint8_t private_key[32]) {
+  private_key[0] &= 0xf8;
+  private_key[31] &= 0x1f;
+  private_key[31] |= 0x40;
 }
 
 int hdnode_from_secret_cardano(const uint8_t secret[CARDANO_SECRET_LENGTH],
@@ -304,4 +306,5 @@ int secret_from_entropy_cardano_icarus(
   return 1;
 }
 
+#endif  // defined(EMULATOR) && EMULATOR
 #endif  // USE_CARDANO
