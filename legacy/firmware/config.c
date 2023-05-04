@@ -427,40 +427,47 @@ void config_setHomescreen(const uint8_t *data, uint32_t size) {
 }
 
 inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
-  // one thousandth precision, seed && mini secret
-  static int percentPerStep = 1000 / SE_GENERATE_SEED_MAX_STEPS / 2;
+  // `seed`, `minisecret`, `icarus main secret`, `icarus extension main secret`
+#define TOTAL_STEPS (SE_GENERATE_SEED_MAX_STEPS * 4)
+#define BASE_PER_PROCESS (1000 / 4)
 
-  if (passphrase == NULL) {  // TODO. it would use wallet seed.
-    bool ret = se_sessionGens(NULL, 0, SE_WRFLG_GENSEED, SE_GENSEDMNISEC_FIRST);
-    if (ret) {
-      ret = se_sessionGens(NULL, 0, SE_WRFLG_GENMINISECRET,
-                           SE_GENSEDMNISEC_FIRST);
-    }
-    return ret;
-  }
+  // one thousandth precision
+  static int percentPerStep = 1000 / TOTAL_STEPS;  // 2.5
+  int base = 0;
+
+#define SESSION_GENERATE(type)                                         \
+  do {                                                                 \
+    se_generate_session_t session = {0};                               \
+    se_generate_state_t state =                                        \
+        se_sessionBeginGenerate(passphrase, len, type, &session);      \
+    int step = 1;                                                      \
+    while (state == STATE_GENERATING) {                                \
+      int permil = base + (step + step % 2) * percentPerStep;          \
+      layoutProgressAdapter(_("Generating session seed ..."), permil); \
+      step++;                                                          \
+      state = se_sessionGenerating(&session);                          \
+    }                                                                  \
+    if (state != STATE_COMPLETE) return false;                         \
+  } while (0)
+
   // generate seed
-  for (int i = 1; i <= SE_GENERATE_SEED_MAX_STEPS; i++) {
-    bool ret =
-        se_sessionGens(passphrase, len, SE_WRFLG_GENSEED,
-                       i == 1 ? SE_GENSEDMNISEC_FIRST : SE_GENSEDMNISEC_OTHER);
-    // only latest call return true
-    if ((i == SE_GENERATE_SEED_MAX_STEPS) != ret) return false;
-    // [1...50]
-    int permil = i * percentPerStep;
-    layoutProgressAdapter(_("Generating session seed ..."), permil);
-  }
+  // [1...25]
+  SESSION_GENERATE(TYPE_SEED);
 
   // generate mini secret
-  for (int i = 1; i <= SE_GENERATE_SEED_MAX_STEPS; i++) {
-    bool ret =
-        se_sessionGens(passphrase, len, SE_WRFLG_GENMINISECRET,
-                       i == 1 ? SE_GENSEDMNISEC_FIRST : SE_GENSEDMNISEC_OTHER);
-    // only latest call return true
-    if ((i == SE_GENERATE_SEED_MAX_STEPS) != ret) return false;
-    // [51 ... 100]
-    int permil = 500 + i * percentPerStep;
-    layoutProgressAdapter(_("Generating session seed ..."), permil);
-  }
+  // [26...50]
+  base += BASE_PER_PROCESS;
+  SESSION_GENERATE(TYPE_MINI_SECRET);
+
+  // generate `icarus main secret`
+  // [51...75]
+  base += BASE_PER_PROCESS;
+  SESSION_GENERATE(TYPE_ICARUS_MAIN_SECRET);
+
+  // generate `icarus extended secret`
+  // [76...100]
+  base += BASE_PER_PROCESS;
+  SESSION_GENERATE(TYPE_ICARUS_EXT_SECRET);
 
   return true;
 }
@@ -684,7 +691,7 @@ bool config_getMnemonicsImported(void) {
 
   return mnemonic_imported;
 }
-bool config_containsMnemonic(const char *mnemonic){
+bool config_containsMnemonic(const char *mnemonic) {
   return se_containsMnemonic(mnemonic);
 }
 
@@ -897,29 +904,23 @@ void config_setCoinSwitch(CoinSwitch loc, bool flag) {
   config_set_uint32(id_coin_function_switch, coin_switch);
 }
 
-bool config_hasTrezorCompMode(void) {
-  return false;
-}
+bool config_hasTrezorCompMode(void) { return false; }
 
 void config_setTrezorCompMode(bool trezor_comp_mode) {
-  //config_set_bool(KEY_TREZOR_COMP_MODE, trezor_comp_mode);
+  // config_set_bool(KEY_TREZOR_COMP_MODE, trezor_comp_mode);
   (void)trezor_comp_mode;
 }
 
 bool config_getTrezorCompMode(bool *trezor_comp_mode) {
-  //return sectrue == config_get_bool(KEY_TREZOR_COMP_MODE, trezor_comp_mode);
+  // return sectrue == config_get_bool(KEY_TREZOR_COMP_MODE, trezor_comp_mode);
   *trezor_comp_mode = trezor_comp_mode;
   return true;
 }
 
-const AuthorizeCoinJoin *config_getCoinJoinAuthorization(void){
-  return NULL;
-}
-bool config_setCoinJoinAuthorization(const AuthorizeCoinJoin *authorization){
+const AuthorizeCoinJoin *config_getCoinJoinAuthorization(void) { return NULL; }
+bool config_setCoinJoinAuthorization(const AuthorizeCoinJoin *authorization) {
   (void)authorization;
   return true;
 }
 
-MessageType config_getAuthorizationType(void){
-  return 0;
-}
+MessageType config_getAuthorizationType(void) { return 0; }

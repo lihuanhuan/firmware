@@ -25,7 +25,32 @@
 #define SE_VERIFYPIN_OTHER (0x01)                 // for others
 #define SE_GENSEDMNISEC_FIRST SE_VERIFYPIN_FIRST  // for first generate
 #define SE_GENSEDMNISEC_OTHER SE_VERIFYPIN_OTHER  // for others
-#define SE_GENERATE_SEED_MAX_STEPS 100            // [1, 100] // total 100 steps
+
+#define SE_GENERATE_SEED_MAX_STEPS 100  // [1, 100] // total 100 steps
+
+typedef enum {
+  TYPE_SEED = 0x00,               /* BIP32 seed */
+  TYPE_MINI_SECRET = 0x01,        /* polkadot mini secret */
+  TYPE_ICARUS_MAIN_SECRET = 0x02, /* cardano icarus main secret */
+  TYPE_ICARUS_EXT_SECRET = 0x03,  /* cardano icarus extension main secret */
+  // CARDANO_LEDGER_SECRET, /* ledger cardano secret, does this need? */
+} se_generate_type_t;
+
+typedef enum {
+  PROCESS_BEGIN = 0xFF,
+  PROCESS_GENERATING = 0x01,
+} se_generate_process_t;
+
+typedef enum {
+  STATE_FAILD,
+  STATE_GENERATING,
+  STATE_COMPLETE,
+} se_generate_state_t;
+
+typedef struct {
+  se_generate_type_t type;
+  se_generate_process_t processing;
+} se_generate_session_t;
 
 bool se_sync_session_key(void);
 bool se_device_init(uint8_t mode, const char *passphrase);
@@ -56,15 +81,24 @@ bool se_isFactoryMode(void);
 bool se_isLifecyComSta(void);
 bool se_set_u2f_counter(uint32_t u2fcounter);
 bool se_get_u2f_counter(uint32_t *u2fcounter);
-bool se_setSeed(uint8_t mode);
-bool se_setMinisec(uint8_t mode);
 bool se_get_entropy(uint8_t entroy[32]);
 bool se_set_entropy(const void *entropy);
 bool se_set_mnemonic(const void *mnemonic, uint16_t len);
 bool se_sessionStart(OUT uint8_t *session_id_bytes);
 bool se_sessionOpen(IN uint8_t *session_id_bytes);
-bool se_sessionGens(uint8_t *pass_phase, uint16_t len, uint8_t type,
-                    uint8_t mode);
+
+// generateing secret when create/recover wallet
+se_generate_state_t se_beginGenerate(se_generate_type_t type,
+                                     se_generate_session_t *session);
+se_generate_state_t se_generating(se_generate_session_t *session);
+
+// generateing secret when use passprase session
+se_generate_state_t se_sessionBeginGenerate(const uint8_t *passphase,
+                                            uint16_t len,
+                                            se_generate_type_t type,
+                                            se_generate_session_t *session);
+se_generate_state_t se_sessionGenerating(se_generate_session_t *session);
+
 bool se_sessionClose(void);
 bool se_sessionClear(void);
 bool se_set_public_region(uint16_t offset, const void *val_dest, uint16_t len);
