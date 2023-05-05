@@ -81,6 +81,8 @@ typedef struct {
   CONFIG_BOOL(mnemonics_imported);
   CONFIG_UINT32(sleep_delay_ms);
   CONFIG_UINT32(coin_function_switch);
+  CONFIG_BOOL(hasTrezorCompMode);
+  CONFIG_BOOL(trezorCompMode);
 } PubConfig __attribute__((aligned(1)));
 
 // a helper type to group all private config
@@ -155,6 +157,8 @@ DEF_PUBLIC_ID(mnemonics_imported);
 // DEF_PUBLIC_ID(sleep_delay_ms);
 // switch coin function, ETH SOLANA
 DEF_PUBLIC_ID(coin_function_switch);
+DEF_PUBLIC_ID(hasTrezorCompMode);
+DEF_PUBLIC_ID(trezorCompMode);
 
 /// private config elements
 // does device need backup?
@@ -904,17 +908,19 @@ void config_setCoinSwitch(CoinSwitch loc, bool flag) {
   config_set_uint32(id_coin_function_switch, coin_switch);
 }
 
-bool config_hasTrezorCompMode(void) { return false; }
+bool config_hasTrezorCompMode(void) { 
+  bool has = false;
+  config_get_bool(id_hasTrezorCompMode,&has);
+  return has;
+}
 
 void config_setTrezorCompMode(bool trezor_comp_mode) {
-  // config_set_bool(KEY_TREZOR_COMP_MODE, trezor_comp_mode);
-  (void)trezor_comp_mode;
+  config_set_bool(id_trezorCompMode,trezor_comp_mode);
+  config_set_bool(id_hasTrezorCompMode,true);
 }
 
 bool config_getTrezorCompMode(bool *trezor_comp_mode) {
-  // return sectrue == config_get_bool(KEY_TREZOR_COMP_MODE, trezor_comp_mode);
-  *trezor_comp_mode = trezor_comp_mode;
-  return true;
+  return sectrue == config_get_bool(id_trezorCompMode, trezor_comp_mode);
 }
 
 const AuthorizeCoinJoin *config_getCoinJoinAuthorization(void) { return NULL; }
