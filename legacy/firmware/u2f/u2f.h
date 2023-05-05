@@ -71,6 +71,9 @@ typedef struct __attribute__((packed)) {
 //memory protest lock an unlock
 #define MEMORY_LOCK             0x34
 
+//read presets default data
+#define GET_PRESETDATA          0x35
+
 // U2F_CMD_REGISTER command defines
 #define U2F_REGISTER_ID         0x05    // Version 2 registration identifier
 #define U2F_REGISTER_HASH_ID    0x00    // Version 2 hash identintifier

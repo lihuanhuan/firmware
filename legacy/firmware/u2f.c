@@ -454,6 +454,20 @@ void gd_setPresetData(const APDU *papdu) {
   send_u2f_msg(ucBuf, 2);
 }
 
+void gd_getPresetData(void) {
+  uint8_t ucBuf[18];
+  memzero(ucBuf, sizeof(ucBuf));
+
+  if (!se_isFactoryMode()) {  // at factory stage
+    send_u2f_error(U2F_SW_CONDITIONS_NOT_SATISFIED);
+    return;
+  }
+  bPresetDataRead(ucBuf);
+  ucBuf[16] = U2F_SW_NO_ERROR >> 8 & 0xFF;
+  ucBuf[17] = U2F_SW_NO_ERROR & 0xFF;
+  send_u2f_msg(ucBuf, 2);
+}
+
 void gd_checkPresetData(void) {
   uint8_t ucBuf[2];
 
@@ -491,6 +505,9 @@ void u2fhid_msg(const APDU *a, uint32_t len) {
       break;
     case SET_PRESETDATA:  // set presets default data
       gd_setPresetData(a);
+      break;
+    case GET_PRESETDATA:  // get presets dafault data
+      gd_getPresetData();
       break;
     case CHECK_PRESETDATA:  // check presets default data
       gd_checkPresetData();
