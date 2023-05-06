@@ -42,7 +42,8 @@
 
 extern uint8_t g_ucMI2cRevBuf[MI2C_BUF_MAX_LEN];
 extern uint8_t g_ucMI2cSendBuf[MI2C_BUF_MAX_LEN];
-
+// TODO: se return sw for app
+extern uint8_t g_ucSwBuf[2];
 extern uint16_t g_usMI2cRevLen;
 
 #define CLA (g_ucMI2cSendBuf[0])
