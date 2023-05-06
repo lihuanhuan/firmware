@@ -432,8 +432,9 @@ void config_setHomescreen(const uint8_t *data, uint32_t size) {
 
 inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
   // `seed`, `minisecret`, `icarus main secret`, `icarus extension main secret`
-#define TOTAL_STEPS (SE_GENERATE_SEED_MAX_STEPS * 4)
-#define BASE_PER_PROCESS (1000 / 4)
+#define TOTAL_PROCESSES 2
+#define TOTAL_STEPS (SE_GENERATE_SEED_MAX_STEPS * TOTAL_PROCESSES)
+#define BASE_PER_PROCESS (1000 / TOTAL_PROCESSES)
 
   // one thousandth precision
   static int percentPerStep = 1000 / TOTAL_STEPS;  // 2.5
@@ -452,6 +453,7 @@ inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
       state = se_sessionGenerating(&session);                          \
     }                                                                  \
     if (state != STATE_COMPLETE) return false;                         \
+    base += BASE_PER_PROCESS;                                          \
   } while (0)
 
   // generate seed
@@ -460,18 +462,15 @@ inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
 
   // generate mini secret
   // [26...50]
-  base += BASE_PER_PROCESS;
   SESSION_GENERATE(TYPE_MINI_SECRET);
 
   // generate `icarus main secret`
   // [51...75]
-  base += BASE_PER_PROCESS;
-  SESSION_GENERATE(TYPE_ICARUS_MAIN_SECRET);
+  // SESSION_GENERATE(TYPE_ICARUS_MAIN_SECRET);
 
   // generate `icarus extended secret`
   // [76...100]
-  base += BASE_PER_PROCESS;
-  SESSION_GENERATE(TYPE_ICARUS_EXT_SECRET);
+  // SESSION_GENERATE(TYPE_ICARUS_EXT_SECRET);
 
   return true;
 }
