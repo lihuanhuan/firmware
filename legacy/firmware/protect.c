@@ -1010,13 +1010,13 @@ bool protectPinCheck(bool retry) {
         retry ? &bmp_bottom_right_retry : &bmp_bottom_right_confirm, NULL, NULL,
         NULL, NULL, NULL, _("Incorrect PIN"), _("9 attempts left, try again."),
         NULL);
-  } else if (fails > 1 && fails < 10) {
+  } else if (fails > 1 && fails < 9) {
     if (ui_language == 0) {
-      uint2str(10 - fails, desc);
+      uint2str(9 - fails, desc);
       strcat(desc, " attempts left, try again.");
     } else {
       strcat(desc, _(" left "));
-      uint2str(10 - fails, desc + strlen(desc));
+      uint2str(9 - fails, desc + strlen(desc));
       strcat(desc, _(" times"));
       strcat(desc, _(" attempts left, try again."));
     }

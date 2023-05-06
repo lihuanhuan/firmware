@@ -231,8 +231,8 @@ inline static uint32_t pin_to_int(const char *pin) {
     if (!(cond)) return secfalse; \
   } while (0)
 
-/*inline*/ static secbool config_get(const struct CfgRecord rcd, void *v,
-                                     uint16_t l) {
+inline static secbool config_get(const struct CfgRecord rcd, void *v,
+                                 uint16_t l) {
   bool pri = rcd.id & (1 << 31);
   bool (*reader)(uint16_t, void *, uint16_t) =
       pri ? se_get_private_region : se_get_public_region;
@@ -676,9 +676,9 @@ void session_clear(bool lock) {
 }
 
 bool config_isInitialized(void) {
-  bool initialized = false;
-  initialized = se_isInitialized();
-  return initialized;
+  // bool initialized = false;
+  // initialized = se_isInitialized();
+  return se_isInitialized();
 }
 
 bool config_getImported(bool *imported) {
@@ -817,7 +817,6 @@ void config_wipe(void) {
   session_clear(false);
   fsm_abortWorkflows();
   fsm_clearCosiNonce();
-  /* config_setSeSessionKey(session_key, 16); */
   config_getLanguage(config_language, sizeof(config_language));
 
   change_ble_sta(BLE_ADV_ON);
@@ -908,15 +907,15 @@ void config_setCoinSwitch(CoinSwitch loc, bool flag) {
   config_set_uint32(id_coin_function_switch, coin_switch);
 }
 
-bool config_hasTrezorCompMode(void) { 
+bool config_hasTrezorCompMode(void) {
   bool has = false;
-  config_get_bool(id_hasTrezorCompMode,&has);
+  config_get_bool(id_hasTrezorCompMode, &has);
   return has;
 }
 
 void config_setTrezorCompMode(bool trezor_comp_mode) {
-  config_set_bool(id_trezorCompMode,trezor_comp_mode);
-  config_set_bool(id_hasTrezorCompMode,true);
+  config_set_bool(id_trezorCompMode, trezor_comp_mode);
+  config_set_bool(id_hasTrezorCompMode, true);
 }
 
 bool config_getTrezorCompMode(bool *trezor_comp_mode) {

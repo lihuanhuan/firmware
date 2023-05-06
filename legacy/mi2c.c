@@ -1,6 +1,7 @@
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/i2c.h>
 #include <libopencm3/stm32/rcc.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "mi2c.h"
@@ -25,13 +26,14 @@ static uint8_t ucXorCheck(uint8_t ucInputXor, uint8_t *pucSrc, uint16_t usLen) {
   return ucXor;
 }
 
+uint32_t i2c_retry_cnts = 0;
+
 static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
                                uint16_t *pusOutLen) {
   uint8_t ucLenBuf[2], ucSW[2], ucXor, ucXor1;
   uint32_t i, usRevLen, usTimeout, usRealLen;
 
   ucXor = 0;
-  i = 0;
   usRealLen = 0;
   usTimeout = 0;
 
@@ -41,8 +43,9 @@ static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
   ucSW[0] = 0x00;
   ucSW[1] = 0x00;
 
+  i2c_retry_cnts = 0;
   while (1) {
-    if (i > MI2C_RETRYCNTS) {
+    if (i2c_retry_cnts > MI2C_RETRYCNTS) {
       return false;
     }
     while ((I2C_SR2(i2c) & I2C_SR2_BUSY))
@@ -62,7 +65,7 @@ static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
     }
     if (usTimeout > MI2C_TIMEOUT * 5) {
       usTimeout = 0;
-      i++;
+      i2c_retry_cnts++;
       i2c_send_stop(i2c);  // it will release i2c bus
       continue;
     }
@@ -131,7 +134,7 @@ static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
     return false;
   }
   usRealLen -= MI2C_XOR_LEN;
-  g_lasterror = (ucSW[0] << 2) + ucSW[1];
+  g_lasterror = (ucSW[0] << 8) + ucSW[1];
   if ((0x90 != ucSW[0]) || (0x00 != ucSW[1])) {
     if (ucSW[0] == 0x6c || ucSW[0] == 0x90) {  // for se generate seed not first
                                                // generate will return 0x90xx
@@ -151,9 +154,9 @@ static bool bMI2CDRV_WriteBytes(uint32_t i2c, uint8_t *data,
   uint8_t ucLenBuf[2], ucXor = 0;
   uint16_t i, usTimeout = 0;
 
-  i = 0;
+  i2c_retry_cnts = 0;
   while (1) {
-    if (i > 5) {
+    if (i2c_retry_cnts > MI2C_RETRYCNTS) {
       return false;
     }
     i2c_send_start(i2c);
@@ -176,7 +179,7 @@ static bool bMI2CDRV_WriteBytes(uint32_t i2c, uint8_t *data,
       }
     }
     if (usTimeout > MI2C_TIMEOUT) {
-      i++;
+      i2c_retry_cnts++;
       usTimeout = 0;
       continue;
     }
