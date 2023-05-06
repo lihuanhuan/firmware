@@ -57,6 +57,7 @@
 #define MI2C_CMD_WRITE_SESTOR_REGION (0xE6)
 #define MI2C_CMD_WR_SESSION (0xE7)
 #define MI2C_CMD_WR_MNEMONIC (0xE8)
+#define MI2C_CMD_WR_WIPECODE (0xE9)
 
 // ecc ed2519 index
 #define ECC_INDEX_GITPUBKEY (0x00)
@@ -1419,6 +1420,26 @@ bool se_containsMnemonic(const char *mnemonic) {
     return false;
   }
   return true;
+}
+
+bool se_hasWipeCode(void){
+  return false;
+
+}
+bool se_changeWipeCode(uint32_t wipe_code){
+  uint16_t recv_len = 0xff;
+
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_WIPECODE, 0x00,
+                             (uint8_t *)&wipe_code, sizeof(wipe_code), NULL, &recv_len,
+                             MI2C_ENCRYPT, SE_WRFLG_SETPIN)) {
+    return false;
+  }
+
+  return true;
+}
+
+uint16_t se_lasterror(void){
+  return get_lasterror();
 }
 
 #endif

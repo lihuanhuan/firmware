@@ -11,6 +11,8 @@ uint8_t g_ucMI2cRevBuf[MI2C_BUF_MAX_LEN];
 uint8_t g_ucMI2cSendBuf[MI2C_BUF_MAX_LEN];
 
 uint16_t g_usMI2cRevLen;
+uint16_t g_lasterror; //TODO:will change in encrypt+MAC
+
 
 static uint8_t ucXorCheck(uint8_t ucInputXor, uint8_t *pucSrc, uint16_t usLen) {
   uint16_t i;
@@ -129,7 +131,7 @@ static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
     return false;
   }
   usRealLen -= MI2C_XOR_LEN;
-
+  g_lasterror = (ucSW[0] << 2) + ucSW[1];
   if ((0x90 != ucSW[0]) || (0x00 != ucSW[1])) {
     if (ucSW[0] == 0x6c || ucSW[0] == 0x90) {  // for se generate seed not first
                                                // generate will return 0x90xx
@@ -266,4 +268,8 @@ bool bMI2CDRV_SendData(uint8_t *pucStr, uint16_t usStrLen) {
   }
 
   return bMI2CDRV_WriteBytes(MI2CX, pucStr, usStrLen);
+}
+
+uint16_t get_lasterror(void){
+  return g_lasterror;
 }

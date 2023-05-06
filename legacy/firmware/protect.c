@@ -522,10 +522,6 @@ bool protectChangePin(bool removal) {
 }
 
 bool protectChangeWipeCode(bool removal) {
-  (void)removal;
-
-  // TODO. does has this function
-  /*
   static CONFIDENTIAL char pin[MAX_PIN_LEN + 1] = "";
   static CONFIDENTIAL char wipe_code[MAX_PIN_LEN + 1] = "";
   const char *input = NULL;
@@ -597,8 +593,7 @@ bool protectChangeWipeCode(bool removal) {
   if (ret == false) {
     fsm_sendFailure(FailureType_Failure_PinInvalid, NULL);
   }
-  return ret; */
-  return false;
+  return ret; 
 }
 
 bool protectPassphrase(char *passphrase) {

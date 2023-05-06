@@ -110,4 +110,7 @@ bool se_aes_128_encrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
 bool se_aes_128_decrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
                         uint16_t send_len, uint8_t *recv, uint16_t *recv_len);
 bool se_containsMnemonic(const char *mnemonic);
+bool se_hasWipeCode(void);
+bool se_changeWipeCode(uint32_t wipe_code);
+uint16_t se_lasterror(void);
 #endif

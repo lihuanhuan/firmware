@@ -58,6 +58,7 @@ extern uint16_t g_usMI2cRevLen;
 extern void vMI2CDRV_Init(void);
 extern bool bMI2CDRV_ReceiveData(uint8_t *pucStr, uint16_t *pusRevLen);
 extern bool bMI2CDRV_SendData(uint8_t *pucStr, uint16_t usStrLen);
+extern uint16_t get_lasterror(void);
 #else
 #define vMI2CDRV_Init(...)
 #define bMI2CDRV_SendData(...) true

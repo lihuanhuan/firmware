@@ -100,7 +100,7 @@ bool config_firstVerifyPin(const char *pin);
 bool config_verifyPin(const char *pin);
 bool config_hasPin(void);
 bool config_changePin(const char *old_pin, const char *new_pin);
-#define config_unlock(pin) config_verifyPin(pin)
+bool config_unlock(const char *pin); 
 
 bool session_isUnlocked(void);
 bool session_isProtectUnlocked(void);

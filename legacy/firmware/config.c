@@ -930,3 +930,29 @@ bool config_setCoinJoinAuthorization(const AuthorizeCoinJoin *authorization) {
 }
 
 MessageType config_getAuthorizationType(void) { return 0; }
+
+bool config_hasWipeCode(void) { 
+  return se_hasWipeCode();
+}
+
+bool config_changeWipeCode(const char *pin, const char *wipe_code) {
+  char oldTiny = usbTiny(1);
+  bool ret = config_unlock(pin);
+  if(ret){
+    ret = se_changeWipeCode(pin_to_int(wipe_code));
+  }
+  usbTiny(oldTiny);
+  return ret;
+}
+
+bool config_unlock(const char *pin){
+  bool ret = config_verifyPin(pin);
+  if(!ret){
+    //check wipe code
+    if (0x6f80 == se_lasterror()){
+      error_shutdown("You have entered the", "wipe code. All private",
+                "data has been erased.", NULL);
+    }
+  }
+  return ret;
+}
