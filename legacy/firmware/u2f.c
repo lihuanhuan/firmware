@@ -448,9 +448,13 @@ void gd_setPresetData(const APDU *papdu) {
     return;
   }
 
-  bPresetDataWrite((uint8_t *)papdu->data);
-  ucBuf[0] = U2F_SW_NO_ERROR >> 8 & 0xFF;
-  ucBuf[1] = U2F_SW_NO_ERROR & 0xFF;
+  if (!bPresetDataWrite((uint8_t *)papdu->data)) {
+    ucBuf[0] = U2F_SW_CONDITIONS_NOT_SATISFIED >> 8 & 0xFF;
+    ucBuf[1] = U2F_SW_CONDITIONS_NOT_SATISFIED & 0xFF;
+  } else {
+    ucBuf[0] = U2F_SW_NO_ERROR >> 8 & 0xFF;
+    ucBuf[1] = U2F_SW_NO_ERROR & 0xFF;
+  }
   send_u2f_msg(ucBuf, 2);
 }
 
@@ -465,7 +469,7 @@ void gd_getPresetData(void) {
   bPresetDataRead(ucBuf);
   ucBuf[16] = U2F_SW_NO_ERROR >> 8 & 0xFF;
   ucBuf[17] = U2F_SW_NO_ERROR & 0xFF;
-  send_u2f_msg(ucBuf, 2);
+  send_u2f_msg(ucBuf, sizeof(ucBuf));
 }
 
 void gd_checkPresetData(void) {

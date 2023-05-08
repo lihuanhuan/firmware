@@ -970,7 +970,7 @@ se_generate_state_t se_beginGenerate(se_generate_type_t type,
                                      se_generate_session_t *session) {
   uint8_t cur_cnts = 0xff;
   uint16_t recv_len = 0;
-  if (MI2C_OK != se_transmit_ex(MI2C_CMD_WR_PIN, 0x12, NULL, 0, &cur_cnts,
+  if (MI2C_OK == se_transmit_ex(MI2C_CMD_WR_PIN, 0x12, NULL, 0, &cur_cnts,
                                 &recv_len, MI2C_ENCRYPT, type, PROCESS_BEGIN)) {
     return STATE_FAILD;
   }
@@ -984,7 +984,7 @@ se_generate_state_t se_generating(se_generate_session_t *session) {
   uint8_t cur_cnts = 0xff;
   uint16_t recv_len = 0;
   cmd[3] = session->type;
-  if (!se_transmit_plain(cmd, sizeof(cmd), &cur_cnts, &recv_len)) {
+  if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), &cur_cnts, &recv_len)) {
     return STATE_GENERATING;
   }
 
@@ -1116,7 +1116,7 @@ se_generate_state_t se_sessionBeginGenerate(const uint8_t *passphase,
   unsigned int ret =
       se_transmit_ex(MI2C_CMD_WR_SESSION, 0x02, (uint8_t *)passphase, len,
                      &cur_cnts, &recv_len, MI2C_ENCRYPT, type, PROCESS_BEGIN);
-  if (ret != MI2C_OK) {
+  if (ret == MI2C_OK) {
     return STATE_FAILD;
   }
   session->processing = PROCESS_GENERATING;
@@ -1129,7 +1129,7 @@ se_generate_state_t se_sessionGenerating(se_generate_session_t *session) {
   uint8_t cur_cnts = 0xff;
   uint16_t recv_len = 0;
   cmd[3] = session->type;
-  if (se_transmit_plain(cmd, sizeof(cmd), &cur_cnts, &recv_len)) {
+  if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), &cur_cnts, &recv_len)) {
     return STATE_GENERATING;
   }
 
