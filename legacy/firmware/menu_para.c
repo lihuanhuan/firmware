@@ -36,7 +36,7 @@ char* format_time(uint32_t ms) {
 }
 
 char* menu_para_ble_state(void) {
-  return ble_get_switch() ? _(" Enable") : _(" Disable");
+  return ble_get_switch() ? _(" Enabled") : _(" Disabled");
 }
 
 char* menu_para_language(void) { return ui_language ? "简体中文" : "English"; }
@@ -60,7 +60,13 @@ char* menu_para_passphrase(void) {
 char* menu_para_trezor_comp_mode_state(void) {
   bool trezor_comp_mode_current = false;
   config_getTrezorCompMode(&trezor_comp_mode_current);
-  return trezor_comp_mode_current ? _(" Enable") : _(" Disable");
+  return trezor_comp_mode_current ? _(" Enabled") : _(" Disabled");
+}
+
+char* menu_para_safety_checks_state(void) {
+  SafetyCheckLevel safetyCheckLevel = config_getSafetyCheckLevel();
+  if (safetyCheckLevel == SafetyCheckLevel_Strict) return _(" Enabled");
+  return _(" Disabled");
 }
 
 void menu_para_set_ble(int index) {

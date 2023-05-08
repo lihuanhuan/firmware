@@ -26,6 +26,7 @@
 #include "gettext.h"
 #include "layout.h"
 #include "memory.h"
+#include "oled.h"
 #include "util.h"
 
 char bootloader_version[8] = {0};
@@ -167,8 +168,8 @@ static int known_bootloader(int r, const uint8_t *hash) {
   // BEGIN AUTO-GENERATED BOOTLOADER ENTRIES (bl_check.txt)
   if (0 ==
       memcmp(hash,
-             "\xed\xf1\x9e\x2f\x39\x0c\xb5\xb0\xe7\x32\xb0\x9c\xc7\xb4\xb6\x11"
-             "\xea\xf3\x26\x2a\xec\x8c\x21\x18\x30\x72\xe9\x00\xa5\x01\x1b\xdb",
+             "\xa8\xbe\x50\xe3\xb5\x25\x28\x08\xf5\x22\x47\x96\x99\x1b\x6e\x10"
+             "\xec\x70\x72\x6d\xc7\x29\x17\x93\x5b\x59\xaa\xf2\x0f\xca\xb2\x95",
              32)) {
     memcpy(bootloader_version, "2.0.0", strlen("2.0.0"));
     return 1;  // 2.0.0 shipped with fw 3.0.0
@@ -244,17 +245,16 @@ void check_and_replace_bootloader(bool shutdown_on_replace) {
   // YOUR DEVICE.
 
   layoutDialogCenterAdapterEx(
-      &bmp_icon_warning, &bmp_bottom_left_close, &bmp_bottom_right_confirm,
-      NULL, _("DO NOT power off during"), _("update,or it may cause"),
-      _("irreversible malfunction"), NULL);
+      &bmp_icon_warning, NULL, NULL, NULL, _("DO NOT power off during"),
+      _("update,or it may cause"), _("irreversible malfunction"), NULL);
 
-  while (1) {
-    uint8_t key = keyScan();
-    if (key == KEY_CONFIRM) {
-      break;
-    } else if (key == KEY_CANCEL) {
-      return;
-    }
+  char delay_str[4] = "3s";
+  for (int i = 2; i >= 0; i--) {
+    oledclearLine(7);
+    delay_str[0] = '1' + i;
+    oledDrawStringCenter(OLED_WIDTH / 2, 54, delay_str, FONT_STANDARD);
+    oledRefresh();
+    delay_ms(1000);
   }
 
   // unlock sectors

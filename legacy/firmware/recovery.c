@@ -568,8 +568,7 @@ static void recovery_digit(const char digit) {
 void next_word(void) {
   layoutLast = layoutDialogSwipe;
   layoutSwipe();
-  oledDrawStringCenterAdapter(OLED_WIDTH / 2, 8, _("Please enter"),
-                              FONT_STANDARD);
+  layoutHeader("Enter word ");
   word_pos = word_order[word_index];
   if (word_pos == 0) {
     strlcpy(fake_word, mnemonic_get_word(random_uniform(BIP39_WORD_COUNT)),
@@ -580,14 +579,8 @@ void next_word(void) {
     fake_word[0] = 0;
     char desc[32] = "";
     format_number(desc, word_pos);
-    oledDrawStringCenterAdapter(OLED_WIDTH / 2, 24, desc,
-                                FONT_FIXED | FONT_DOUBLE);
+    oledDrawStringCenterAdapter(OLED_WIDTH / 2, 24, desc, FONT_STANDARD);
   }
-  oledDrawStringCenterAdapter(OLED_WIDTH / 2, 48, _("on your computer"),
-                              FONT_STANDARD);
-  // 35 is the maximum pixels used for a pixel row ("the 21st word")
-  oledSCA(24 - 2, 24 + 15 + 2, 35);
-  oledInvert(0, 24 - 2, OLED_WIDTH - 1, 24 + 15 + 2);
   oledRefresh();
   recovery_request();
 }
@@ -770,11 +763,11 @@ refresh_menu:
         words[index * 6 + 0], words[index * 6 + 1], words[index * 6 + 2],
         words[index * 6 + 3], words[index * 6 + 4], words[index * 6 + 5]);
   } else {
-    layoutWords(desc, &bmp_bottom_middle_arrow_up,
-                &bmp_bottom_middle_arrow_down, &bmp_bottom_left_arrow, NULL,
-                index + 1, pages, words[index * 6 + 0], words[index * 6 + 1],
-                words[index * 6 + 2], words[index * 6 + 3],
-                words[index * 6 + 4], words[index * 6 + 5]);
+    layoutWords(
+        desc, &bmp_bottom_middle_arrow_up, &bmp_bottom_middle_arrow_down,
+        &bmp_bottom_left_arrow, &bmp_bottom_right_arrow_off, index + 1, pages,
+        words[index * 6 + 0], words[index * 6 + 1], words[index * 6 + 2],
+        words[index * 6 + 3], words[index * 6 + 4], words[index * 6 + 5]);
   }
   key = protectWaitKey(0, 0);
   switch (key) {
@@ -901,7 +894,11 @@ bool recovery_on_device(void) {
   uint8_t ret, key = KEY_NULL;
 
   if (config_hasPin()) {
+    uint8_t ui_language_bak = ui_language;
+    const char *lang[2] = {"en-US", "zh-CN"};
     config_wipe();
+    ui_language = ui_language_bak;
+    config_setLanguage(lang[ui_language]);
   }
 prompt_recovery:
   layoutDialogAdapterEx(
@@ -915,7 +912,7 @@ prompt_recovery:
   }
 
 select_mnemonic_count:
-  if (!protectSelectMnemonicNumber(&word_count)) {
+  if (!protectSelectMnemonicNumber(&word_count, false)) {
     goto_check(prompt_recovery);
   }
 

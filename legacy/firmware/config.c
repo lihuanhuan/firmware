@@ -27,6 +27,7 @@
 #include "bip32.h"
 #include "ble.h"
 #include "buttons.h"
+#include "cardano.h"
 #include "common.h"
 #include "config.h"
 
@@ -202,7 +203,7 @@ static uint32_t autoSleepDelayMs = sleepDelayMsDefault;
 
 static SafetyCheckLevel safetyCheckLevel = SafetyCheckLevel_Strict;
 
-static const uint32_t CONFIG_VERSION = 0;
+static const uint32_t CONFIG_VERSION = 11;
 
 static const uint8_t FALSE_BYTE = '\x00';
 static const uint8_t TRUE_BYTE = '\x01';
@@ -530,6 +531,30 @@ bool config_getRootNode(HDNode *node, const char *curve) {
   (void)curve;
   return true;
 }
+
+// bool config_getCardanoRootNode(HDNode *node) {
+//   if (activeSessionCache == NULL) {
+//     fsm_sendFailure(FailureType_Failure_InvalidSession, "Invalid session");
+//     return false;
+//   }
+
+//   if (activeSessionCache->seedCached != sectrue) {
+//     const uint8_t *seed = config_getSeed();
+//     if (seed == NULL) {
+//       fsm_sendFailure(FailureType_Failure_InvalidSession, "Invalid Seed");
+//       return false;
+//     }
+//   }
+//   // activeSessionCache->cardano_icarus_secret
+//   int res = hdnode_from_secret_cardano(
+//       activeSessionCache->cardano_icarus_secret, node);
+//   if (res != 1) {
+//     fsm_sendFailure(FailureType_Failure_ProcessError,
+//                     _("Unexpected failure in constructing cardano node"));
+//     return false;
+//   }
+//   return true;
+// }
 
 bool config_getLabel(char *dest, uint16_t dest_size) {
   if (secfalse == config_get_string(id_label, dest, &dest_size)) {
