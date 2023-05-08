@@ -273,8 +273,7 @@ void fsm_msgChangeWipeCode(const ChangeWipeCode *msg) {
   }
 
   bool removal = msg->has_remove && msg->remove;
-  /* bool has_wipe_code = config_hasWipeCode(); */
-  bool has_wipe_code = false;
+  bool has_wipe_code = config_hasWipeCode(); 
 
   if (removal) {
     // Note that if storage is locked, then config_hasWipeCode() returns false.
