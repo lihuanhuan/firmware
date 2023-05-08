@@ -60,8 +60,8 @@ void menu_erase_device(int index) {
     }
   }
 #if !EMULATOR
-  // svc_system_reset();
-  reset_to_firmware();
+  svc_system_reset();
+  // reset_to_firmware();
 #endif
 }
 
@@ -226,7 +226,7 @@ refresh_menu:
   if (protectPinOnDevice(false, true)) {
     memset(desc, 0, sizeof(desc));
 
-    if (!protectSelectMnemonicNumber(&word_count)) {
+    if (!protectSelectMnemonicNumber(&word_count, true)) {
       goto refresh_menu;
     }
     if (word_count == 12)
@@ -358,12 +358,36 @@ void menu_set_trezor_compatibility(int index) {
 //     .previous = &about_menu,
 // };
 
+void menu_set_safety_checks(int index) {
+  (void)index;
+  if (index) {
+    config_setSafetyCheckLevel(SafetyCheckLevel_PromptAlways);
+  } else {
+    config_setSafetyCheckLevel(SafetyCheckLevel_Strict);
+  }
+}
+
+static struct menu_item safety_checks_set_menu_items[] = {
+    {"Enable", NULL, true, menu_set_safety_checks, NULL, true},
+    {"Disable", NULL, true, menu_set_safety_checks, NULL, true}};
+
+static struct menu safety_checks_set_menu = {
+    .start = 0,
+    .current = 0,
+    .counts = COUNT_OF(safety_checks_set_menu_items),
+    .title = "Safety Checks",
+    .items = safety_checks_set_menu_items,
+    .previous = &about_menu,
+};
+
 static struct menu_item about_menu_items[] = {
     {"Device Info", NULL, true, layoutDeviceParameters, NULL, false},
     {"Certification", NULL, true, layoutAboutCertifications, NULL, false},
     // {"Trezor Compat", NULL, false, .sub_menu =
     // &trezor_compatibility_set_menu,
     //  menu_para_trezor_comp_mode_state, true},
+    {"Safety Checks", NULL, false, .sub_menu = &safety_checks_set_menu,
+     menu_para_safety_checks_state, true},
 };
 
 static struct menu about_menu = {

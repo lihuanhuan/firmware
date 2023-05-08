@@ -159,6 +159,7 @@ const char *languages[][2] = {
     // cosmos.c
     {"Chain Name", "链名称"},
     //
+    {"Change Auto-Lock Time", "更改自动锁定时间"},
     {"Change PIN", "修改PIN码"},
     // layout2.c
     {"Change language to", "设置语言为"},
@@ -408,6 +409,7 @@ const char *languages[][2] = {
     // layout2.c
     {"Guide", "使用教程"},
     // layout2.c c fsm_msg_common.h
+    {"Hash", "哈希值"},
     {"I take the risk", "确认风险"},
     // recovery.c
     {"INVALID!", "不可用"},
@@ -452,6 +454,7 @@ const char *languages[][2] = {
      "继续该操作前, 请确保你仍持有当前钱包的助记词."},
     // layout2.c
     {"Maximum Fee Per Gas:", "交易费上限单价:"},
+    {"Maximum Fee", "交易费上限"},
     {"Maximum Fee:", "交易费上限:"},
     // cosmos.c
     {"Memo", "备注"},
@@ -514,7 +517,7 @@ const char *languages[][2] = {
     // fsm.c
     {"PIN mismatch", "两次输入不相同"},
     // protect.c
-    {"PIN not match. Try again.", "前后输入的 PIN 码不一致, 请重试."},
+    {"PIN not match!", "PIN 不匹配!"},
     //
     {"Page down", "下一页"},
     //
@@ -525,8 +528,6 @@ const char *languages[][2] = {
     {"Please confirm PIN", "请确认PIN码"},
     // recovery.c
     {"Please enter", "请输入"},
-    // protect.c
-    {"Please enter current PIN", "请输入当前PIN码"},
     // protect.c
     {"Please enter new PIN", "请输入新PIN码"},
     // recovery.c
@@ -556,7 +557,7 @@ const char *languages[][2] = {
     //
     {"Prev", "后退"},
     // ethereum.c
-    {"Priority fee per gas:", "每份燃料消耗的优先费用"},
+    {"Priority fee per gas:", "每份燃料消耗的优先费用:"},
     // storage.c
     {"Processing...", "处理中..."},
     // cosmos.c
@@ -627,9 +628,11 @@ const char *languages[][2] = {
     //
     {"SOL advance signing turn", "SOL高级签名"},
     //
+    {"Safety Checks", "安全检查"},
+    //
     {"Scan the QR code below", "扫描下方二维码"},
     //
-    {"Security", "安全"},
+    {"Security", "安全检查"},
     // protect.c
     {"Select Number of Word", "选择助记词位数"},
     //
@@ -639,6 +642,7 @@ const char *languages[][2] = {
     {"Send SOL", "发送 SOL"},
     // layout2.c
     {"Send anyway?", ""},
+    {"Send to", "发送给"},
     {"Send to:", "发送给:"},
     //
     {"Sender", "发送方"},
@@ -662,7 +666,7 @@ const char *languages[][2] = {
     {"Sign at you own risk", "签名可能存在安全风险,请谨慎操作"},
     // layout2.c
     {"Sign message?", "签名消息"},
-    {"Signer:", "签名者"},
+    {"Signer:", "签名者:"},
     // ethereum.c ethereum.c ethereum.c ethereum.c lisk.c
     {"Signing", "签名中"},
     // lisk.c signing.c signing.c signing.c signing.c
@@ -723,6 +727,7 @@ const char *languages[][2] = {
     {"Token Amount:", "代币金额:"},
     {"Token Contract:", "Token 地址:"},
     // ethereum.c
+    {"Total Amount", "总金额"},
     {"Total Amount:", "总金额:"},
     // tron_ui.c
     {"Transaction", "交易"},
@@ -736,6 +741,8 @@ const char *languages[][2] = {
     // menu_list.c
     {"Trezor Compat", "Trezor 兼容性"},
     {"Trezor Compatibility", "Trezor 兼容性"},
+    //
+    {"Try again.", "请重试."},
     // algo
     {"Txn type", "类型"},
     // cosmos.c
@@ -921,6 +928,7 @@ const char *languages[][2] = {
     {"protection?", "保护"},
     // recovery.c
     {"recover the device?", "恢复钱包"},
+    {"remove current PIN?", "移除 PIN?"},
     {"restore wallet", "恢复已拥有的钱包"},
     // layout2.c
     {"s", "秒"},
@@ -970,7 +978,7 @@ const char *languages[][2] = {
     // fsm_msg_common.h
     {"wipe the device?", "擦除设备"},
     //
-    {"word", "助记词"},
+    {"word", "助记词单词"},
     //
     {"words", "助记词"},
     //

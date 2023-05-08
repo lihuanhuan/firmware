@@ -61,7 +61,7 @@ bool layoutConfirmOutput(const CoinInfo *coin, AmountUnit amount_unit,
                          const TxOutputType *out);
 void layoutConfirmOmni(const uint8_t *data, uint32_t size);
 void layoutConfirmOpReturn(const uint8_t *data, uint32_t size);
-void layoutConfirmTx(const CoinInfo *coin, AmountUnit amount_unit,
+bool layoutConfirmTx(const CoinInfo *coin, AmountUnit amount_unit,
                      uint64_t total_in, uint64_t external_in,
                      uint64_t total_out, uint64_t change_out,
                      uint64_t tx_weight);
@@ -121,7 +121,7 @@ void layoutCosiSign(const uint32_t *address_n, size_t address_n_count,
                     const uint8_t *data, uint32_t len);
 
 void layoutConfirmAutoLockDelay(uint32_t delay_ms);
-void layoutConfirmSafetyChecks(SafetyCheckLevel safety_checks_level);
+bool layoutConfirmSafetyChecks(SafetyCheckLevel safety_checks_level);
 
 void layoutConfirmHash(const BITMAP *icon, const char *description,
                        const uint8_t *hash, uint32_t len);
@@ -164,6 +164,11 @@ void layoutDialogAdapterEx(const char *title, const BITMAP *bmp_no,
                            const char *btnYes, const char *desc,
                            const char *line1, const char *line2,
                            const char *line3, const char *line4);
+void layoutDialogCenterAdapterV2(const char *title, const BITMAP *bmp_no,
+                                 const BITMAP *bmp_yes, const BITMAP *bmp_up,
+                                 const BITMAP *bmp_down, const char *line1,
+                                 const char *line2, const char *line3,
+                                 const char *line4);
 void layoutProgressAdapter(const char *desc, int permil);
 
 void layoutDialogSwipeCenterAdapter(const BITMAP *icon, const BITMAP *bmp_no,
@@ -282,5 +287,6 @@ bool layoutSignHash(const char *chain_name, bool verify, const char *signer,
 bool layoutPaginated(const char *title, const uint8_t *data, uint16_t len);
 
 void onboarding(uint8_t key);
+void hide_icons(void);
 
 #endif
