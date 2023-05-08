@@ -305,8 +305,8 @@ void fsm_msgChangeWipeCode(const ChangeWipeCode *msg) {
   if (protectChangeWipeCode(removal)) {
     if (removal) {
       fsm_sendSuccess(_("Wipe code removed"));
-      /* } else if (has_wipe_code) { */
-      /*   fsm_sendSuccess(_("Wipe code changed")); */
+       } else if (has_wipe_code) { 
+        fsm_sendSuccess(_("Wipe code changed")); 
     } else {
       fsm_sendSuccess(_("Wipe code set"));
     }
