@@ -45,6 +45,7 @@
 #include "secbool.h"
 #include "usb.h"
 #include "util.h"
+#include "bip39.h"
 
 #define CONFIG_FIELD(TYPE, NAME) \
   struct {                       \
@@ -379,14 +380,18 @@ bool config_loadDevice_ex(const BixinLoadDevice *msg) {
   uint8_t entropy_buf[32];
   config_set_bool(id_mnemonics_imported, true);
 
-  // add se get entropy
-  if (!se_get_entropy(entropy_buf)) return false;
+  uint8_t entropy[33] = {0};
+  // entropy from mnemonic
+  int mnemonic_bits_len = mnemonic_to_bits(msg->mnemonics, entropy);
+  int words = mnemonic_bits_len / 11;
+
   if (!config_setMnemonic(msg->mnemonics, true)) return false;
   // add setup se pin
   if (!protectChangePinOnDevice(true, true, false)) return false;
   // add loops as follows 1. se set entropy  2. generate seed 3. first verify
   // pin
-  if (!se_set_entropy(entropy_buf)) return false;
+  // set entropy to SE
+  if (!se_set_entropy(entropy_buf,words / 3 * 4)) return false;
   if (!generate_seed_steps()) return false;
   layoutSwipe();
   if (!protectVerifyPinFirst()) return false;

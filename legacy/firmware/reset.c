@@ -650,7 +650,7 @@ select_mnemonic_count:
   if (!writedown_mnemonic(mnemonic, words_count)) {
     goto_check(select_mnemonic_count);
   }
-  if (!se_set_entropy(int_entropy)) return false;
+  if (!se_set_entropy(int_entropy,strength / 8)) return false;
   memzero(int_entropy, 32);
   mnemonic_clear();
   if (!generate_seed_steps()) return false;

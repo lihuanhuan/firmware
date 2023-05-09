@@ -1018,14 +1018,14 @@ bool se_set_mnemonic(const void *mnemonic, uint16_t len) {
   return se_set_spec_value(SE_MNEMONIC, mnemonic, len, SE_WRFLG_MNEMONIC);
 }
 
-bool se_get_entropy(uint8_t entroy[32]) {
-  if (!randomBuf_SE(entroy, 0x10)) return false;
-  if (!randomBuf_SE(entroy + 0x10, 0x10)) return false;
+bool se_get_entropy(uint8_t entropy[32]) {
+  if (!randomBuf_SE(entropy, 0x10)) return false;
+  if (!randomBuf_SE(entropy + 0x10, 0x10)) return false;
   return true;
 }
 
-bool se_set_entropy(const void *entropy) {
-  return se_set_spec_value(SE_ENTROPY, entropy, 0x20, SE_WRFLG_ENTROPY);
+bool se_set_entropy(const void *entropy,uint16_t len) {
+  return se_set_spec_value(SE_ENTROPY, entropy, len, SE_WRFLG_ENTROPY);
 }
 
 bool se_isLifecyComSta(void) {
