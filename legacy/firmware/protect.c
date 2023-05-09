@@ -551,8 +551,7 @@ bool protectChangeWipeCode(bool removal) {
   }
 
   if (!removal) {
-    input =
-  requestPin(PinMatrixRequestType_PinMatrixRequestType_WipeCodeFirst,
+    input = requestPin(PinMatrixRequestType_PinMatrixRequestType_WipeCodeFirst,
                        _("Enter new wipe code:"), &newpin);
     if (input == NULL) {
       memzero(pin, sizeof(pin));
@@ -568,8 +567,7 @@ bool protectChangeWipeCode(bool removal) {
     }
     strlcpy(wipe_code, input, sizeof(wipe_code));
 
-    input =
-  requestPin(PinMatrixRequestType_PinMatrixRequestType_WipeCodeSecond,
+    input = requestPin(PinMatrixRequestType_PinMatrixRequestType_WipeCodeSecond,
                        _("Re-enter new wipe code:"), &newpin);
     if (input == NULL) {
       memzero(pin, sizeof(pin));
@@ -593,7 +591,7 @@ bool protectChangeWipeCode(bool removal) {
   if (ret == false) {
     fsm_sendFailure(FailureType_Failure_PinInvalid, NULL);
   }
-  return ret; 
+  return ret;
 }
 
 bool protectPassphrase(char *passphrase) {

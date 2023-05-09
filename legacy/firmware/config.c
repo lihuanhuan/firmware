@@ -374,16 +374,29 @@ void config_init(void) {
 
 void config_lockDevice(void) { se_clearSecsta(); }
 
-void config_loadDevice_ex(const BixinLoadDevice *msg) {
+extern bool generate_seed_steps(void);
+bool config_loadDevice_ex(const BixinLoadDevice *msg) {
+  uint8_t entropy_buf[32];
   config_set_bool(id_mnemonics_imported, true);
 
-  config_setMnemonic(msg->mnemonics, true);
+  // add se get entropy
+  if (!se_get_entropy(entropy_buf)) return false;
+  if (!config_setMnemonic(msg->mnemonics, true)) return false;
+  // add setup se pin
+  if (!protectChangePinOnDevice(true, true, false)) return false;
+  // add loops as follows 1. se set entropy  2. generate seed 3. first verify
+  // pin
+  if (!se_set_entropy(entropy_buf)) return false;
+  if (!generate_seed_steps()) return false;
+  layoutSwipe();
+  if (!protectVerifyPinFirst()) return false;
 
   if (msg->has_language) {
     config_setLanguage(msg->language);
   }
 
   config_setLabel(msg->has_label ? msg->label : "");
+  return true;
 }
 
 void config_setLabel(const char *label) {
@@ -950,27 +963,25 @@ bool config_setCoinJoinAuthorization(const AuthorizeCoinJoin *authorization) {
 
 MessageType config_getAuthorizationType(void) { return 0; }
 
-bool config_hasWipeCode(void) { 
-  return se_hasWipeCode();
-}
+bool config_hasWipeCode(void) { return se_hasWipeCode(); }
 
 bool config_changeWipeCode(const char *pin, const char *wipe_code) {
   char oldTiny = usbTiny(1);
   bool ret = config_unlock(pin);
-  if(ret){
+  if (ret) {
     ret = se_changeWipeCode(pin_to_int(wipe_code));
   }
   usbTiny(oldTiny);
   return ret;
 }
 
-bool config_unlock(const char *pin){
+bool config_unlock(const char *pin) {
   bool ret = config_verifyPin(pin);
-  if(!ret){
-    //check wipe code
-    if (0x6f80 == se_lasterror()){
+  if (!ret) {
+    // check wipe code
+    if (0x6f80 == se_lasterror()) {
       error_shutdown("You have entered the", "wipe code. All private",
-                "data has been erased.", NULL);
+                     "data has been erased.", NULL);
     }
   }
   return ret;

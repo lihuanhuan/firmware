@@ -273,7 +273,7 @@ void fsm_msgChangeWipeCode(const ChangeWipeCode *msg) {
   }
 
   bool removal = msg->has_remove && msg->remove;
-  bool has_wipe_code = config_hasWipeCode(); 
+  bool has_wipe_code = config_hasWipeCode();
 
   if (removal) {
     // Note that if storage is locked, then config_hasWipeCode() returns false.
@@ -305,8 +305,8 @@ void fsm_msgChangeWipeCode(const ChangeWipeCode *msg) {
   if (protectChangeWipeCode(removal)) {
     if (removal) {
       fsm_sendSuccess(_("Wipe code removed"));
-       } else if (has_wipe_code) { 
-        fsm_sendSuccess(_("Wipe code changed")); 
+    } else if (has_wipe_code) {
+      fsm_sendSuccess(_("Wipe code changed"));
     } else {
       fsm_sendSuccess(_("Wipe code set"));
     }
@@ -386,7 +386,13 @@ void fsm_msgGetEntropy(const GetEntropy *msg) {
     len = 1024;
   }
   resp->entropy.size = len;
+#if EMULATOR
   random_buffer(resp->entropy.bytes, len);
+#else  // TODO: use se get entropy
+  if (len > 32) len = 32;
+  resp->entropy.size = len;
+  se_get_entropy(resp->entropy.bytes);
+#endif
   msg_write(MessageType_MessageType_Entropy, resp);
   layoutHome();
 }
@@ -866,7 +872,12 @@ void fsm_msgBixinLoadDevice(const BixinLoadDevice *msg) {
     return;
   }
 
-  config_loadDevice_ex(msg);
+  if (!config_loadDevice_ex(msg)) {
+    fsm_sendFailure(FailureType_Failure_DataError,
+                    _("Load device failed setup se related"));
+    layoutHome();
+    return;
+  }
   fsm_sendSuccess(_("Device loaded"));
   layoutHome();
 }

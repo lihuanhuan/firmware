@@ -299,7 +299,8 @@ void u2fhid_read_start(const U2FHID_FRAME *f) {
       cid = 0;
       reader = 0;
       usbTiny(0);
-      layoutHome();
+      // TODO:factory setup clear se firmware failed
+      // layoutHome();
       return;
     }
   }

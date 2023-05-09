@@ -57,7 +57,7 @@ void session_endCurrentSession(void);
 void config_lockDevice(void);
 
 void config_loadDevice(const LoadDevice *msg);
-void config_loadDevice_ex(const BixinLoadDevice *msg);
+bool config_loadDevice_ex(const BixinLoadDevice *msg);
 
 const uint8_t *config_getSeed(void);
 
@@ -68,7 +68,7 @@ const AuthorizeCoinJoin *config_getCoinJoinAuthorization(void);
 bool config_getU2FRoot(HDNode *node);
 // TODO
 bool config_getRootNode(HDNode *node, const char *curve);
-//bool config_getCardanoRootNode(HDNode *node);
+// bool config_getCardanoRootNode(HDNode *node);
 
 bool config_getLabel(char *dest, uint16_t dest_size);
 void config_setLabel(const char *label);
@@ -101,7 +101,7 @@ bool config_firstVerifyPin(const char *pin);
 bool config_verifyPin(const char *pin);
 bool config_hasPin(void);
 bool config_changePin(const char *old_pin, const char *new_pin);
-bool config_unlock(const char *pin); 
+bool config_unlock(const char *pin);
 
 bool session_isUnlocked(void);
 bool session_isProtectUnlocked(void);

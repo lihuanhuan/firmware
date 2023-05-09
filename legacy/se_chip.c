@@ -1117,7 +1117,7 @@ se_generate_state_t se_sessionBeginGenerate(const uint8_t *passphase,
       se_transmit_ex(MI2C_CMD_WR_SESSION, 0x02, (uint8_t *)passphase, len,
                      &cur_cnts, &recv_len, MI2C_ENCRYPT, type, PROCESS_BEGIN);
   if (ret == MI2C_OK) {
-    return STATE_FAILD;
+    return STATE_COMPLETE;
   }
   session->processing = PROCESS_GENERATING;
   session->type = type;
@@ -1419,34 +1419,32 @@ bool se_containsMnemonic(const char *mnemonic) {
                              GET_SESTORE_DATA)) {
     return false;
   }
-  if(resp[0] == 0x01) return true;
+  if (resp[0] == 0x01) return true;
   return false;
 }
 
-bool se_hasWipeCode(void){
+bool se_hasWipeCode(void) {
   uint8_t resp[256];
   uint16_t resp_len;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_WIPECODE, 0x01, NULL,0, resp, &resp_len, MI2C_ENCRYPT,
-                             GET_SESTORE_DATA)) {
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_WIPECODE, 0x01, NULL, 0, resp,
+                             &resp_len, MI2C_ENCRYPT, GET_SESTORE_DATA)) {
     return false;
   }
-  if(resp[0] == 0x01) return true;
+  if (resp[0] == 0x01) return true;
   return false;
 }
-bool se_changeWipeCode(uint32_t wipe_code){
+bool se_changeWipeCode(uint32_t wipe_code) {
   uint16_t recv_len = 0xff;
 
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_WIPECODE, 0x00,
-                             (uint8_t *)&wipe_code, sizeof(wipe_code), NULL, &recv_len,
-                             MI2C_ENCRYPT, SE_WRFLG_SETPIN)) {
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_WIPECODE, 0x00, (uint8_t *)&wipe_code,
+                             sizeof(wipe_code), NULL, &recv_len, MI2C_ENCRYPT,
+                             SE_WRFLG_SETPIN)) {
     return false;
   }
 
   return true;
 }
 
-uint16_t se_lasterror(void){
-  return get_lasterror();
-}
+uint16_t se_lasterror(void) { return get_lasterror(); }
 
 #endif
