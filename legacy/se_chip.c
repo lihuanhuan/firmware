@@ -1024,7 +1024,7 @@ bool se_get_entropy(uint8_t entropy[32]) {
   return true;
 }
 
-bool se_set_entropy(const void *entropy,uint16_t len) {
+bool se_set_entropy(const void *entropy, uint16_t len) {
   return se_set_spec_value(SE_ENTROPY, entropy, len, SE_WRFLG_ENTROPY);
 }
 
@@ -1043,23 +1043,15 @@ bool se_isLifecyComSta(void) {
 }
 
 bool se_sessionStart(OUT uint8_t *session_id_bytes) {
-  uint8_t cmd[5 + 16] = {0x80, 0xe7, 0x00, 0x00, 0x10};
-  uint8_t recv_buf[0x30], ref_buf[0x30], rand_buf[0x10];
+  uint8_t cmd[5] = {0x80, 0xe7, 0x00, 0x00, 0x00};
+  uint8_t recv_buf[0x20];
   uint16_t recv_len = 0xff;  // 32 bytes session id
-  aes_decrypt_ctx aes_dec_ctx;
 
-  // TODO. get se random 16 bytes
-  random_buffer_ST(rand_buf, 0x10);
-  memcpy(cmd + 5, rand_buf, sizeof(rand_buf));
   if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), recv_buf, &recv_len)) {
     return false;
   }
   // TODO. parse returned data
-  if (recv_len != 0x30) return false;
-  aes_decrypt_key128(g_ucSessionKey, &aes_dec_ctx);
-  aes_ecb_decrypt(recv_buf, ref_buf, recv_len, &aes_dec_ctx);
-  if (memcmp(ref_buf, rand_buf, sizeof(rand_buf)) != 0) return false;
-  memcpy(session_id_bytes, ref_buf + 16, 0x20);
+  memcpy(session_id_bytes, recv_buf, 0x20);
   return true;
 }
 
