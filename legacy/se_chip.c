@@ -14,7 +14,7 @@
 #include "flash.h"
 #include "memzero.h"
 #include "hard_preset.h"
-
+#include "timer.h"
 #define LITTLE_REVERSE32(w, x)                                       \
   {                                                                  \
     uint32_t ref = (w);                                              \
@@ -112,6 +112,7 @@ bool randomBuf_SE(uint8_t *ucRandom, uint8_t ucLen) {
   if (!bMI2CDRV_SendData(ucRandomCmd, sizeof(ucRandomCmd))) {
     return false;
   }
+  delay_ms(5);
   if (!bMI2CDRV_ReceiveData(ucTempBuf, &usLen)) {
     return false;
   }
@@ -277,6 +278,7 @@ uint32_t se_transmit(uint8_t ucCmd, uint8_t ucIndex, uint8_t *pucSendData,
   if (false == bMI2CDRV_SendData(SH_CMDHEAD, usSendLen)) {
     return MI2C_ERROR;
   }
+  delay_ms(5);
   g_usMI2cRevLen = sizeof(g_ucMI2cRevBuf);
   if (false == bMI2CDRV_ReceiveData(g_ucMI2cRevBuf, &g_usMI2cRevLen)) {
     if (g_usMI2cRevLen && pucRevData) {
@@ -402,6 +404,7 @@ inline static uint32_t se_transmit_ex(uint8_t ucCmd, uint8_t ucIndex,
   if (false == bMI2CDRV_SendData(SH_CMDHEAD, usSendLen)) {
     return MI2C_ERROR;
   }
+  delay_ms(5);
   g_usMI2cRevLen = sizeof(g_ucMI2cRevBuf);
   if (false == bMI2CDRV_ReceiveData(g_ucMI2cRevBuf, &g_usMI2cRevLen)) {
     if (g_usMI2cRevLen && pucRevData) {
@@ -458,6 +461,7 @@ uint32_t se_transmit_plain(uint8_t *pucSendData, uint16_t usSendLen,
   if (false == bMI2CDRV_SendData(pucSendData, usSendLen)) {
     return MI2C_ERROR;
   }
+  delay_ms(5);
   if (false == bMI2CDRV_ReceiveData(pucRevData, pusRevLen)) {
     return MI2C_ERROR;
   }

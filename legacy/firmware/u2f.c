@@ -486,6 +486,17 @@ void gd_checkPresetData(void) {
   send_u2f_msg(ucBuf, 2);
 }
 
+void gd32_protect(void) {
+  uint8_t ucBuf[2];
+
+  ucBuf[0] = U2F_SW_NO_ERROR >> 8 & 0xFF;
+  ucBuf[1] = U2F_SW_NO_ERROR & 0xFF;
+  // first return 9000
+  send_u2f_msg(ucBuf, 2);
+  // memory protect later
+  memory_protect();
+}
+
 void u2fhid_msg(const APDU *a, uint32_t len) {
   if (a->cla != 0 && a->cla != 0x80) {
     send_u2f_error(U2F_SW_CLA_NOT_SUPPORTED);
@@ -517,9 +528,9 @@ void u2fhid_msg(const APDU *a, uint32_t len) {
     case CHECK_PRESETDATA:  // check presets default data
       gd_checkPresetData();
       break;
-    case MEMORY_LOCK:  // it would disable swd and system bootloader
-                       // it will reset system nothing to return pc
-      memory_protect();
+    case MEMORY_LOCK:  // it would disable swd and boot from system bootloader
+                       // and sram
+      gd32_protect();
       break;
 
     default:

@@ -29,7 +29,7 @@ void memory_protect(void) {
   ob_unlock();
   fmc_unlock();
   ob_start();
-  // TODO bootloader's sectors are protected
+  // bootloader's sectors are protected
   ob_write_protection_enable(OB_WP_0 | OB_WP_1 | OB_WP_2 | OB_WP_3);
   ob_security_protection_config(FMC_HSPC);
   ob_lock();
@@ -37,26 +37,17 @@ void memory_protect(void) {
   sys_shutdown();
 }
 
-// Remove write-protection on all flash sectors.
-//
-// This is an undocumented feature/bug of STM32F205/F405 microcontrollers,
-// where flash controller reads its write protection bits from FLASH_OPTCR
-// register not from OPTION_BYTES, rendering write protection useless.
-// This behaviour is fixed in future designs of flash controller used for
-// example in STM32F427, where the protection bits are read correctly
-// from OPTION_BYTES and not form FLASH_OPCTR register.
-//
 // Read protection is unaffected and always stays locked to the desired value.
+// Unlock bootloader sectors.
 void memory_write_unlock(void) {
   /* disable security protection */
   fmc_unlock();
   ob_unlock();
-  ob_security_protection_config(FMC_NSPC);
   ob_start();
+  // bootloader's sectors  unlock
+  ob_write_protection_disable(OB_WP_0 | OB_WP_1 | OB_WP_2 | OB_WP_3);
   ob_lock();
   fmc_lock();
-  /* reload option bytes and generate a system reset */
-  NVIC_SystemReset();
 }
 
 int memory_bootloader_hash(uint8_t *hash) {
@@ -84,7 +75,7 @@ void mpu_setup_gd32(uint8_t mode) {
 int memory_firmware_hash(const uint8_t *challenge, uint32_t challenge_size,
                          void (*progress_callback)(uint32_t, uint32_t),
                          uint8_t hash[BLAKE2S_DIGEST_LENGTH]) {
-  //TODO:
+  // TODO:
   (void)challenge;
   (void)challenge_size;
   (void)progress_callback;

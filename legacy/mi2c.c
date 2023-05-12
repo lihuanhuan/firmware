@@ -12,8 +12,8 @@ uint8_t g_ucMI2cRevBuf[MI2C_BUF_MAX_LEN];
 uint8_t g_ucMI2cSendBuf[MI2C_BUF_MAX_LEN];
 
 uint16_t g_usMI2cRevLen;
-uint16_t g_lasterror; //TODO:will change in encrypt+MAC
-
+uint16_t g_lasterror;  // TODO:will change in encrypt+MAC
+uint32_t i2c_retry_cnts = 0;
 
 static uint8_t ucXorCheck(uint8_t ucInputXor, uint8_t *pucSrc, uint16_t usLen) {
   uint16_t i;
@@ -25,8 +25,6 @@ static uint8_t ucXorCheck(uint8_t ucInputXor, uint8_t *pucSrc, uint16_t usLen) {
   }
   return ucXor;
 }
-
-uint32_t i2c_retry_cnts = 0;
 
 static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
                                uint16_t *pusOutLen) {
@@ -59,11 +57,11 @@ static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
     // Waiting for address is transferred.
     while (!(I2C_SR1(i2c) & I2C_SR1_ADDR)) {
       usTimeout++;
-      if (usTimeout > MI2C_TIMEOUT * 5) {  // setup timeout is 5ms once
+      if (usTimeout > MI2C_TIMEOUT) {  // setup timeout is 5ms once
         break;
       }
     }
-    if (usTimeout > MI2C_TIMEOUT * 5) {
+    if (usTimeout > MI2C_TIMEOUT) {
       usTimeout = 0;
       i2c_retry_cnts++;
       i2c_send_stop(i2c);  // it will release i2c bus
@@ -228,8 +226,6 @@ static bool bMI2CDRV_WriteBytes(uint32_t i2c, uint8_t *data,
   }
 
   i2c_send_stop(i2c);
-  //  delay_us(100);
-
   return true;
 }
 
@@ -273,6 +269,4 @@ bool bMI2CDRV_SendData(uint8_t *pucStr, uint16_t usStrLen) {
   return bMI2CDRV_WriteBytes(MI2CX, pucStr, usStrLen);
 }
 
-uint16_t get_lasterror(void){
-  return g_lasterror;
-}
+uint16_t get_lasterror(void) { return g_lasterror; }

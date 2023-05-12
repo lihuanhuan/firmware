@@ -215,7 +215,7 @@ static bool recovery_done(void) {
         int mnemonic_bits_len = mnemonic_to_bits(new_mnemonic, entropy);
         int words_count = mnemonic_bits_len / 11;
         // set entropy to SE
-        se_set_entropy(entropy,words_count / 3 * 4);
+        se_set_entropy(entropy, words_count / 3 * 4);
         // generate seed
         if (!generate_seed_steps()) {
           fsm_sendFailure(FailureType_Failure_ProcessError,
@@ -232,7 +232,8 @@ static bool recovery_done(void) {
       }
       memzero(new_mnemonic, sizeof(new_mnemonic));
     } else {
-      bool match = (config_isInitialized() && config_containsMnemonic(new_mnemonic));
+      bool match =
+          (config_isInitialized() && config_containsMnemonic(new_mnemonic));
       memzero(new_mnemonic, sizeof(new_mnemonic));
       if (recovery_byself) {
         if (match) {

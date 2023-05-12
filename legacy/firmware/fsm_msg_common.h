@@ -17,6 +17,7 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdbool.h>
+#include "firmware/config.h"
 #include "flash.h"
 #include "menu_list.h"
 #include "mi2c.h"
@@ -32,9 +33,8 @@ bool get_features(Features *resp) {
 #if EMULATOR
   strlcpy(resp->fw_vendor, "EMULATOR", sizeof(resp->fw_vendor));
 #else
-  const image_header *hdr =
-      (const image_header *)FLASH_PTR(FLASH_FWHEADER_START);
-  // allow both v2 and v3 signatures
+  const image_header *hdr = (const image_header *)FLASH_PTR(
+      FLASH_FWHEADER_START);  // allow both v2 and v3 signatures
   if (SIG_OK == signatures_match(hdr, NULL)) {
     strlcpy(resp->fw_vendor, "OneKey", sizeof(resp->fw_vendor));
   } else {
@@ -129,7 +129,6 @@ bool get_features(Features *resp) {
   resp->has_onekey_version = true;
 
   strlcpy(resp->onekey_version, ONEKEY_VERSION, sizeof(resp->onekey_version));
-  // TODO
   if (se_get_sn(&serial, 0x0a)) {
     if (serial[0] == 0xff && serial[1] == 0xff) {
       resp->has_onekey_serial = false;
@@ -276,7 +275,8 @@ void fsm_msgChangeWipeCode(const ChangeWipeCode *msg) {
   bool has_wipe_code = config_hasWipeCode();
 
   if (removal) {
-    // Note that if storage is locked, then config_hasWipeCode() returns false.
+    // Note that if storage is locked, then config_hasWipeCode() returns
+    // false.
     if (has_wipe_code || !session_isUnlocked()) {
       layoutDialogSwipe(&bmp_icon_question, _("Cancel"), _("Confirm"), NULL,
                         NULL, _("Do you really want to"),
@@ -355,9 +355,9 @@ void fsm_msgWipeDevice(const WipeDevice *msg) {
       _("The device is reset, restart now."), NULL, NULL, NULL, NULL);
   protectWaitKey(0, 0);
 
-  // the following does not work on Mac anyway :-/ Linux/Windows are fine, so it
-  // is not needed usbReconnect(); // force re-enumeration because of the serial
-  // number change
+  // the following does not work on Mac anyway :-/ Linux/Windows are fine, so
+  // it is not needed usbReconnect(); // force re-enumeration because of the
+  // serial number change
   i2c_set_wait(false);
   fsm_sendSuccess(_("Device wiped"));
   layoutHome();
@@ -431,7 +431,8 @@ void fsm_msgLoadDevice(const LoadDevice *msg) {
 #endif
 
 void fsm_msgResetDevice(const ResetDevice *msg) {
-  CHECK_PIN
+  // TODO: Does not need verify pin.
+  // CHECK_PIN
   CHECK_NOT_INITIALIZED
 
   CHECK_PARAM(!msg->has_strength || msg->strength == 128 ||
@@ -663,7 +664,7 @@ void fsm_msgApplyFlags(const ApplyFlags *msg) {
 }
 
 void fsm_msgRecoveryDevice(const RecoveryDevice *msg) {
-  CHECK_PIN_UNCACHED
+  // CHECK_PIN_UNCACHED
 
   const bool dry_run = msg->has_dry_run ? msg->dry_run : false;
   if (!dry_run) {

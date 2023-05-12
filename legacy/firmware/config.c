@@ -391,7 +391,7 @@ bool config_loadDevice_ex(const BixinLoadDevice *msg) {
   // add loops as follows 1. se set entropy  2. generate seed 3. first verify
   // pin
   // set entropy to SE
-  if (!se_set_entropy(entropy_buf,words / 3 * 4)) return false;
+  if (!se_set_entropy(entropy_buf, words / 3 * 4)) return false;
   if (!generate_seed_steps()) return false;
   layoutSwipe();
   if (!protectVerifyPinFirst()) return false;
