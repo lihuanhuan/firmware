@@ -474,7 +474,7 @@ inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
 
     // generate `icarus extended secret`
     // [76...100]
-    SESSION_GENERATE(TYPE_ICARUS_EXT_SECRET);
+    //SESSION_GENERATE(TYPE_ICARUS_EXT_SECRET);
   }
 
   return true;
@@ -977,13 +977,10 @@ bool config_unlock(const char *pin) {
 }
 
 bool config_getDeriveCardano(void) {
-
-  //TODO: se add cardano support
-  // if ((activeSessionCache->cardanoSecretCached != sectrue) &&
-  //     (activeSessionCache->seedCached == sectrue)) {
-  //   return false;  // only BIP-0039
-  // }
-
+  se_session_cached_status status = {0};
+  if(se_getSessionCachedState(&status)){
+    return status.se_icarus_status;
+  }
   return false;
 }
 

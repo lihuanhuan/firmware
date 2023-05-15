@@ -36,6 +36,13 @@ typedef enum {
   // CARDANO_LEDGER_SECRET, /* ledger cardano secret, does this need? */
 } se_generate_type_t;
 
+typedef struct{
+  bool se_seed_status;
+  bool se_minisecret_status;
+  bool se_icarus_status;
+}se_session_cached_status;
+
+
 typedef enum {
   PROCESS_BEGIN = 0xFF,
   PROCESS_GENERATING = 0x01,
@@ -99,6 +106,7 @@ se_generate_state_t se_sessionBeginGenerate(const uint8_t *passphase,
                                             se_generate_session_t *session);
 se_generate_state_t se_sessionGenerating(se_generate_session_t *session);
 
+bool se_getSessionCachedState(se_session_cached_status* status);
 bool se_sessionClose(void);
 bool se_sessionClear(void);
 bool se_set_public_region(uint16_t offset, const void *val_dest, uint16_t len);
@@ -113,4 +121,6 @@ bool se_containsMnemonic(const char *mnemonic);
 bool se_hasWipeCode(void);
 bool se_changeWipeCode(const char* wipe_code);
 uint16_t se_lasterror(void);
+
+
 #endif

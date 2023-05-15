@@ -1443,4 +1443,19 @@ bool se_changeWipeCode(const char* wipe_code) {
 
 uint16_t se_lasterror(void) { return get_lasterror(); }
 
+bool se_getSessionCachedState(se_session_cached_status* status){
+  uint8_t state;
+  uint16_t recv_len = 0xff;
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x06, NULL,0,(uint8_t*)&state, &recv_len, MI2C_ENCRYPT,
+                             0x00)) {
+    return false;
+  }
+
+  status->se_seed_status = state & 0x01;
+  status->se_minisecret_status = state & 0x02;
+  status->se_icarus_status = state & 0x04;
+  return true;
+
+}
+
 #endif
