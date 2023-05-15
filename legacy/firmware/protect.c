@@ -45,6 +45,8 @@
 #define MAX_WRONG_PINS 15
 
 bool protectAbortedByCancel = false;
+// allow the app to connect to the device when in the tutorial page
+bool protectAbortedByInitializeOnboarding = false;
 bool protectAbortedByInitialize = false;
 bool protectAbortedByTimeout = false;
 extern bool exitBlindSignByInitialize;
@@ -449,7 +451,7 @@ bool protectChangePin(bool removal) {
     if (g_bIsBixinAPP) {
       need_new_pin = false;
       if (newpin == NULL) {
-        newpin = protectInputPin(_("Please enter new PIN"), DEFAULT_PIN_LEN,
+        newpin = protectInputPin(_("Enter New PIN"), DEFAULT_PIN_LEN,
                                  MAX_PIN_LEN, true);
       }
     }
@@ -458,7 +460,7 @@ bool protectChangePin(bool removal) {
   if (!removal) {
     if (!g_bIsBixinAPP || need_new_pin) {
       pin = requestPin(PinMatrixRequestType_PinMatrixRequestType_NewFirst,
-                       _("Please enter new PIN"), &newpin);
+                       _("Enter New PIN"), &newpin);
     } else {
       if (newpin == NULL) {
         fsm_sendFailure(FailureType_Failure_PinExpected, NULL);
@@ -479,7 +481,7 @@ bool protectChangePin(bool removal) {
 
     if (!g_bIsBixinAPP) {
       pin = requestPin(PinMatrixRequestType_PinMatrixRequestType_NewSecond,
-                       _("Please re-enter new PIN"), &newpin);
+                       _("Enter New PIN Again"), &newpin);
       if (pin == NULL) {
         memzero(old_pin, sizeof(old_pin));
         memzero(new_pin, sizeof(new_pin));
@@ -494,9 +496,10 @@ bool protectChangePin(bool removal) {
         return false;
       }
     } else {
-      layoutDialogSwipe(&bmp_icon_question, _("Cancel"), _("Confirm"), NULL,
-                        _("Please confirm PIN"), NULL, new_pin, NULL, NULL,
-                        NULL);
+      layoutDialogCenterAdapterV2(
+          NULL, &bmp_icon_question, &bmp_bottom_left_close,
+          &bmp_bottom_right_confirm, NULL, NULL, _("Please confirm PIN"),
+          new_pin, NULL, NULL, NULL);
       if (!protectButton(ButtonRequestType_ButtonRequest_ProtectCall, false)) {
         i2c_set_wait(false);
         fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);
@@ -696,7 +699,7 @@ bool protectSeedPin(bool force_pin, bool setpin, bool update_pin) {
     } else {
       if (force_pin) {
         pin = requestPin(PinMatrixRequestType_PinMatrixRequestType_NewFirst,
-                         _("Please enter new PIN"), &newpin);
+                         _("Enter New PIN"), &newpin);
         if (pin == PIN_CANCELED_BY_BUTTON) {
           return false;
         } else if (pin == NULL || pin[0] == '\0') {
@@ -771,6 +774,7 @@ uint8_t protectWaitKey(uint32_t time_out, uint8_t mode) {
   uint8_t key = KEY_NULL;
 
   protectAbortedByInitialize = false;
+  protectAbortedByInitializeOnboarding = false;
   usbTiny(1);
   timer_out_set(timer_out_oper, time_out);
   while (1) {
@@ -804,6 +808,7 @@ uint8_t protectWaitKey(uint32_t time_out, uint8_t mode) {
     }
   }
   usbTiny(0);
+  protectAbortedByInitializeOnboarding = protectAbortedByInitialize;
   if (protectAbortedByInitialize) {
     if (device_sleep_state) device_sleep_state = SLEEP_CANCEL_BY_USB;
     fsm_sendFailure(FailureType_Failure_ActionCancelled, NULL);

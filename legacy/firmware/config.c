@@ -202,14 +202,18 @@ static secbool sleepDelayMsCached = secfalse;
 static uint32_t autoLockDelayMs = autoLockDelayMsDefault;
 static uint32_t autoSleepDelayMs = sleepDelayMsDefault;
 
-static SafetyCheckLevel safetyCheckLevel = SafetyCheckLevel_Strict;
+static uint32_t deviceState = 0;
+
+static SafetyCheckLevel safetyCheckLevel = SafetyCheckLevel_PromptAlways;
 
 static const uint32_t CONFIG_VERSION = 11;
 
 static const uint8_t FALSE_BYTE = '\x00';
 static const uint8_t TRUE_BYTE = '\x01';
 
-inline static uint32_t pin_to_int(const char *pin) {
+static bool derive_cardano = 0;
+
+static uint32_t pin_to_int(const char *pin) {
   uint32_t val = 1;
   size_t i = 0;
   for (i = 0; i < MAX_PIN_LEN && pin[i] != '\0'; ++i) {
@@ -481,13 +485,15 @@ inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
   // [26...50]
   SESSION_GENERATE(TYPE_MINI_SECRET);
 
-  // generate `icarus main secret`
-  // [51...75]
-  // SESSION_GENERATE(TYPE_ICARUS_MAIN_SECRET);
+  if(derive_cardano){
+    // generate `icarus main secret`
+    // [51...75]
+    SESSION_GENERATE(TYPE_ICARUS_MAIN_SECRET);
 
-  // generate `icarus extended secret`
-  // [76...100]
-  // SESSION_GENERATE(TYPE_ICARUS_EXT_SECRET);
+    // generate `icarus extended secret`
+    // [76...100]
+    SESSION_GENERATE(TYPE_ICARUS_EXT_SECRET);
+  }
 
   return true;
 }
@@ -512,25 +518,27 @@ bool config_genSessionSeed(void) {
     usbTiny(oldTiny);
     return true;
   } else {  // passphrase is used - confirm on the display
-    layoutDialogSwipe(&bmp_icon_question, _("Cancel"), _("Confirm"), NULL,
-                      _("Access hidden wallet?"), NULL,
-                      _("Next screen will show"), _("the passphrase!"), NULL,
-                      NULL);
-    if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
-      memzero(passphrase, sizeof(passphrase));
-      fsm_sendFailure(FailureType_Failure_ActionCancelled,
-                      _("Passphrase dismissed"));
-      layoutHome();
-      return false;
-    }
-    layoutShowPassphrase(passphrase);
-    if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
-      memzero(passphrase, sizeof(passphrase));
-      fsm_sendFailure(FailureType_Failure_ActionCancelled,
-                      _("Passphrase dismissed"));
-      layoutHome();
-      return false;
-    }
+      layoutDialogCenterAdapterV2(
+          "Access Hidden Wallet", NULL, &bmp_bottom_left_close,
+          &bmp_bottom_right_confirm, NULL, NULL, NULL, NULL, NULL, NULL,
+          _("Next screen will show the\npassphrase!"));
+      if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
+        memzero(mnemonic, sizeof(mnemonic));
+        memzero(passphrase, sizeof(passphrase));
+        fsm_sendFailure(FailureType_Failure_ActionCancelled,
+                        _("Passphrase dismissed"));
+        layoutHome();
+        return false;
+      }
+      layoutShowPassphrase(passphrase);
+      if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
+        memzero(mnemonic, sizeof(mnemonic));
+        memzero(passphrase, sizeof(passphrase));
+        fsm_sendFailure(FailureType_Failure_ActionCancelled,
+                        _("Passphrase dismissed"));
+        layoutHome();
+        return false;
+      }
   }
 
   char oldTiny = usbTiny(1);
@@ -851,7 +859,7 @@ void config_wipe(void) {
   random_buffer((uint8_t *)config_uuid, sizeof(config_uuid));
   data2hex((const uint8_t *)config_uuid, sizeof(config_uuid), config_uuid_str);
   autoLockDelayMsCached = secfalse;
-  safetyCheckLevel = SafetyCheckLevel_Strict;
+  safetyCheckLevel = SafetyCheckLevel_PromptAlways;
   config_set_bytes(id_uuid, (uint8_t *)config_uuid, sizeof(config_uuid));
   config_set_uint32(id_version, CONFIG_VERSION);
   session_clear(false);
@@ -991,3 +999,16 @@ bool config_unlock(const char *pin) {
   }
   return ret;
 }
+
+bool config_getDeriveCardano(void) {
+
+  //TODO: se add cardano support
+  // if ((activeSessionCache->cardanoSecretCached != sectrue) &&
+  //     (activeSessionCache->seedCached == sectrue)) {
+  //   return false;  // only BIP-0039
+  // }
+
+  return false;
+}
+
+void config_setDeriveCardano(bool on) { derive_cardano = on; }
