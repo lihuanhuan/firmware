@@ -1445,9 +1445,9 @@ uint16_t se_lasterror(void) { return get_lasterror(); }
 
 bool se_getSessionCachedState(se_session_cached_status* status){
   uint8_t state;
-  uint16_t recv_len = 0xff;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x06, NULL,0,(uint8_t*)&state, &recv_len, MI2C_ENCRYPT,
-                             0x00)) {
+  uint16_t recv_len = 1;
+  uint8_t cmd[5] = {0x80, 0xE7, 0x06, 0x00, 0x00};
+  if (MI2C_OK != se_transmit_plain(cmd,5,&state,&recv_len)){
     return false;
   }
 
