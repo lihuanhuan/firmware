@@ -67,9 +67,9 @@ bool se_verify(void *message, uint16_t message_len, uint16_t max_len,
                uint16_t *signature_len);
 bool se_isInitialized(void);
 bool se_hasPin(void);
-bool se_setPin(uint32_t pin);
-bool se_verifyPin(uint32_t pin, uint8_t mode);
-bool se_changePin(uint32_t oldpin, uint32_t newpin);
+bool se_setPin(const char* pin);
+bool se_verifyPin(const char* pin, uint8_t mode);
+bool se_changePin(const char* oldpin, const char* newpin);
 uint32_t se_pinFailedCounter(void);
 bool se_getRetryTimes(uint8_t *pcnts);
 bool se_clearSecsta(void);
@@ -111,6 +111,6 @@ bool se_aes_128_decrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
                         uint16_t send_len, uint8_t *recv, uint16_t *recv_len);
 bool se_containsMnemonic(const char *mnemonic);
 bool se_hasWipeCode(void);
-bool se_changeWipeCode(uint32_t wipe_code);
+bool se_changeWipeCode(const char* wipe_code);
 uint16_t se_lasterror(void);
 #endif

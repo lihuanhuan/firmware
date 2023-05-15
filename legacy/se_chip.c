@@ -778,12 +778,12 @@ bool se_isInitialized(void) {
 
 bool se_hasPin(void) { return se_isInitialized(); }
 
-bool se_verifyPin(uint32_t pin, uint8_t mode) {
+bool se_verifyPin(const char* pin, uint8_t mode) {
   uint8_t retry = 0;
   uint16_t len = sizeof(retry);
 
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_VERIFYPIN & 0xFF),
-                             (uint8_t *)&pin, sizeof(pin), &retry, &len,
+                             (uint8_t *)pin, strlen(pin), &retry, &len,
                              MI2C_ENCRYPT, mode)) {
     return false;
   }
@@ -791,28 +791,28 @@ bool se_verifyPin(uint32_t pin, uint8_t mode) {
   return true;
 }
 
-bool se_setPin(uint32_t pin) {
+bool se_setPin(const char* pin) {
   uint16_t recv_len = 0xff;
 
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN & 0xFF), (uint8_t *)&pin,
-                             sizeof(pin), NULL, &recv_len, MI2C_ENCRYPT,
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN & 0xFF), (uint8_t *)pin,
+                             strlen(pin), NULL, &recv_len, MI2C_ENCRYPT,
                              SE_WRFLG_SETPIN)) {
     return false;
   }
   return true;
 }
 
-bool se_changePin(uint32_t oldpin, uint32_t newpin) {
-  uint8_t pin_buff[10];
+bool se_changePin(const char* oldpin, const char* newpin) {
+  uint8_t pin_buff[110] = {0};
   uint16_t recv_len = 0xff;
 
-  pin_buff[0] = 4;
-  memcpy(pin_buff + 1, (uint8_t *)&oldpin, sizeof(uint32_t));
-  pin_buff[5] = 4;
-  memcpy(pin_buff + 6, (uint8_t *)&newpin, sizeof(uint32_t));
+  pin_buff[0] = strlen(oldpin);
+  memcpy(pin_buff + 1, (uint8_t *)oldpin, strlen(oldpin));
+  pin_buff[strlen(oldpin)+1] = strlen(newpin);
+  memcpy(pin_buff + strlen(oldpin) + 1 + 1, (uint8_t *)newpin, strlen(newpin));
 
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN & 0xFF),
-                             (uint8_t *)&pin_buff, sizeof(pin_buff), NULL,
+                             (uint8_t *)pin_buff, strlen(oldpin) + strlen(newpin) + 1 + 1, NULL,
                              &recv_len, MI2C_ENCRYPT, SE_WRFLG_CHGPIN)) {
     return false;
   }
@@ -1429,11 +1429,11 @@ bool se_hasWipeCode(void) {
   if (resp[0] == 0x01) return true;
   return false;
 }
-bool se_changeWipeCode(uint32_t wipe_code) {
+bool se_changeWipeCode(const char* wipe_code) {
   uint16_t recv_len = 0xff;
 
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_WIPECODE, 0x00, (uint8_t *)&wipe_code,
-                             sizeof(wipe_code), NULL, &recv_len, MI2C_ENCRYPT,
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_WIPECODE, 0x00, (uint8_t *)wipe_code,
+                             strlen(wipe_code), NULL, &recv_len, MI2C_ENCRYPT,
                              SE_WRFLG_SETPIN)) {
     return false;
   }

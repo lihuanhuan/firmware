@@ -202,8 +202,6 @@ static secbool sleepDelayMsCached = secfalse;
 static uint32_t autoLockDelayMs = autoLockDelayMsDefault;
 static uint32_t autoSleepDelayMs = sleepDelayMsDefault;
 
-static uint32_t deviceState = 0;
-
 static SafetyCheckLevel safetyCheckLevel = SafetyCheckLevel_PromptAlways;
 
 static const uint32_t CONFIG_VERSION = 11;
@@ -213,22 +211,6 @@ static const uint8_t TRUE_BYTE = '\x01';
 
 static bool derive_cardano = 0;
 
-static uint32_t pin_to_int(const char *pin) {
-  uint32_t val = 1;
-  size_t i = 0;
-  for (i = 0; i < MAX_PIN_LEN && pin[i] != '\0'; ++i) {
-    if (pin[i] < '0' || pin[i] > '9') {
-      return 0;
-    }
-    val = 10 * val + pin[i] - '0';
-  }
-
-  if (pin[i] != '\0') {
-    return 0;
-  }
-
-  return val;
-}
 
 #define CHECK_CONFIG_OP(cond)     \
   do {                            \
@@ -523,7 +505,6 @@ bool config_genSessionSeed(void) {
           &bmp_bottom_right_confirm, NULL, NULL, NULL, NULL, NULL, NULL,
           _("Next screen will show the\npassphrase!"));
       if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
-        memzero(mnemonic, sizeof(mnemonic));
         memzero(passphrase, sizeof(passphrase));
         fsm_sendFailure(FailureType_Failure_ActionCancelled,
                         _("Passphrase dismissed"));
@@ -532,7 +513,6 @@ bool config_genSessionSeed(void) {
       }
       layoutShowPassphrase(passphrase);
       if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
-        memzero(mnemonic, sizeof(mnemonic));
         memzero(passphrase, sizeof(passphrase));
         fsm_sendFailure(FailureType_Failure_ActionCancelled,
                         _("Passphrase dismissed"));
@@ -625,20 +605,20 @@ bool config_setMnemonic(const char *mnemonic, bool import) {
   return true;
 }
 
-bool config_setPin(const char *pin) { return se_setPin(pin_to_int(pin)); }
+bool config_setPin(const char *pin) { return se_setPin(pin); }
 
 /* Unlock device/verify PIN.  The pin must be
  * a null-terminated string with at most 9 characters.
  */
 bool config_verifyPin(const char *pin) {
-  if (se_verifyPin((pin_to_int(pin)), SE_VERIFYPIN_OTHER)) {
+  if (se_verifyPin((pin), SE_VERIFYPIN_OTHER)) {
     return true;
   } else {
     return false;
   }
 }
 bool config_firstVerifyPin(const char *pin) {
-  if (se_verifyPin((pin_to_int(pin)), SE_VERIFYPIN_FIRST)) {
+  if (se_verifyPin((pin), SE_VERIFYPIN_FIRST)) {
     return true;
   } else {
     return false;
@@ -647,11 +627,7 @@ bool config_firstVerifyPin(const char *pin) {
 bool config_hasPin(void) { return se_hasPin(); }
 
 bool config_changePin(const char *old_pin, const char *new_pin) {
-  uint32_t new_pin_int = pin_to_int(new_pin);
-  if (new_pin_int == 0) {
-    return false;
-  }
-  if (se_changePin(pin_to_int(old_pin), new_pin_int)) {
+  if (se_changePin(old_pin, new_pin)) {
     return true;
   } else {
     return false;
@@ -982,7 +958,7 @@ bool config_changeWipeCode(const char *pin, const char *wipe_code) {
   char oldTiny = usbTiny(1);
   bool ret = config_unlock(pin);
   if (ret) {
-    ret = se_changeWipeCode(pin_to_int(wipe_code));
+    ret = se_changeWipeCode(wipe_code);
   }
   usbTiny(oldTiny);
   return ret;
