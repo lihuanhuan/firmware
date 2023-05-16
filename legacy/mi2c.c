@@ -10,10 +10,9 @@
 
 uint8_t g_ucMI2cRevBuf[MI2C_BUF_MAX_LEN];
 uint8_t g_ucMI2cSendBuf[MI2C_BUF_MAX_LEN];
-
 uint16_t g_usMI2cRevLen;
 uint16_t g_lasterror;  // TODO:will change in encrypt+MAC
-uint32_t i2c_retry_cnts = 0;
+uint16_t i2c_retry_cnts = 0;
 
 static uint8_t ucXorCheck(uint8_t ucInputXor, uint8_t *pucSrc, uint16_t usLen) {
   uint16_t i;
@@ -28,32 +27,28 @@ static uint8_t ucXorCheck(uint8_t ucInputXor, uint8_t *pucSrc, uint16_t usLen) {
 
 static bool bMI2CDRV_ReadBytes(uint32_t i2c, uint8_t *res,
                                uint16_t *pusOutLen) {
-  uint8_t ucLenBuf[2], ucSW[2], ucXor, ucXor1;
-  uint32_t i, usRevLen, usTimeout, usRealLen;
-
-  ucXor = 0;
-  usRealLen = 0;
-  usTimeout = 0;
-
-  ucLenBuf[0] = 0x00;
-  ucLenBuf[1] = 0x00;
-
-  ucSW[0] = 0x00;
-  ucSW[1] = 0x00;
+  uint8_t ucLenBuf[2], ucSW[2], ucXor = 0, ucXor1 = 0;
+  uint16_t i, usRevLen, usRealLen = 0, usTimeout = 0;
 
   i2c_retry_cnts = 0;
   while (1) {
     if (i2c_retry_cnts > MI2C_RETRYCNTS) {
       return false;
     }
-    while ((I2C_SR2(i2c) & I2C_SR2_BUSY))
-      ;
+
+    // send start
     i2c_send_start(i2c);
     i2c_enable_ack(i2c);
-    while (!(I2C_SR1(i2c) & I2C_SR1_SB))
-      ;
+    usTimeout = 0;
+    while (!(I2C_SR1(i2c) & I2C_SR1_SB)) {
+      usTimeout++;
+      if (usTimeout > MI2C_TIMEOUT) {  // setup timeout is 5ms once
+        break;
+      }
+    }
+    // send read address
     i2c_send_7bit_address(i2c, MI2C_ADDR, MI2C_READ);
-
+    usTimeout = 0;
     // Waiting for address is transferred.
     while (!(I2C_SR1(i2c) & I2C_SR1_ADDR)) {
       usTimeout++;
@@ -157,7 +152,9 @@ static bool bMI2CDRV_WriteBytes(uint32_t i2c, uint8_t *data,
     if (i2c_retry_cnts > MI2C_RETRYCNTS) {
       return false;
     }
+
     i2c_send_start(i2c);
+    usTimeout = 0;
     while (!(I2C_SR1(i2c) & I2C_SR1_SB)) {
       usTimeout++;
       if (usTimeout > MI2C_TIMEOUT) {
@@ -166,9 +163,7 @@ static bool bMI2CDRV_WriteBytes(uint32_t i2c, uint8_t *data,
     }
 
     i2c_send_7bit_address(i2c, MI2C_ADDR, MI2C_WRITE);
-
     usTimeout = 0;
-
     // Waiting for address is transferred.
     while (!(I2C_SR1(i2c) & I2C_SR1_ADDR)) {
       usTimeout++;

@@ -211,7 +211,6 @@ static const uint8_t TRUE_BYTE = '\x01';
 
 static bool derive_cardano = 0;
 
-
 #define CHECK_CONFIG_OP(cond)     \
   do {                            \
     if (!(cond)) return secfalse; \
@@ -338,9 +337,10 @@ void config_init(void) {
 
   memzero(HW_ENTROPY_DATA, sizeof(HW_ENTROPY_DATA));
 
-  if (secfalse == g_bHomeGetFlg) {
-    g_bHomeGetFlg = config_homeScreen();
-  }
+  // TODO: it would change storge logic in mcu flash
+  //  if (secfalse == g_bHomeGetFlg) {
+  //    g_bHomeGetFlg = config_homeScreen();
+  //  }
 
   config_getLanguage(config_language, sizeof(config_language));
 
@@ -467,14 +467,14 @@ inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
   // [26...50]
   SESSION_GENERATE(TYPE_MINI_SECRET);
 
-  if(derive_cardano){
+  if (derive_cardano) {
     // generate `icarus main secret`
     // [51...75]
     SESSION_GENERATE(TYPE_ICARUS_MAIN_SECRET);
 
     // generate `icarus extended secret`
     // [76...100]
-    //SESSION_GENERATE(TYPE_ICARUS_EXT_SECRET);
+    // SESSION_GENERATE(TYPE_ICARUS_EXT_SECRET);
   }
 
   return true;
@@ -500,25 +500,25 @@ bool config_genSessionSeed(void) {
     usbTiny(oldTiny);
     return true;
   } else {  // passphrase is used - confirm on the display
-      layoutDialogCenterAdapterV2(
-          "Access Hidden Wallet", NULL, &bmp_bottom_left_close,
-          &bmp_bottom_right_confirm, NULL, NULL, NULL, NULL, NULL, NULL,
-          _("Next screen will show the\npassphrase!"));
-      if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
-        memzero(passphrase, sizeof(passphrase));
-        fsm_sendFailure(FailureType_Failure_ActionCancelled,
-                        _("Passphrase dismissed"));
-        layoutHome();
-        return false;
-      }
-      layoutShowPassphrase(passphrase);
-      if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
-        memzero(passphrase, sizeof(passphrase));
-        fsm_sendFailure(FailureType_Failure_ActionCancelled,
-                        _("Passphrase dismissed"));
-        layoutHome();
-        return false;
-      }
+    layoutDialogCenterAdapterV2(
+        "Access Hidden Wallet", NULL, &bmp_bottom_left_close,
+        &bmp_bottom_right_confirm, NULL, NULL, NULL, NULL, NULL, NULL,
+        _("Next screen will show the\npassphrase!"));
+    if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
+      memzero(passphrase, sizeof(passphrase));
+      fsm_sendFailure(FailureType_Failure_ActionCancelled,
+                      _("Passphrase dismissed"));
+      layoutHome();
+      return false;
+    }
+    layoutShowPassphrase(passphrase);
+    if (!protectButton(ButtonRequestType_ButtonRequest_Other, false)) {
+      memzero(passphrase, sizeof(passphrase));
+      fsm_sendFailure(FailureType_Failure_ActionCancelled,
+                      _("Passphrase dismissed"));
+      layoutHome();
+      return false;
+    }
   }
 
   char oldTiny = usbTiny(1);
@@ -978,7 +978,7 @@ bool config_unlock(const char *pin) {
 
 bool config_getDeriveCardano(void) {
   se_session_cached_status status = {0};
-  if(se_getSessionCachedState(&status)){
+  if (se_getSessionCachedState(&status)) {
     return status.se_icarus_status;
   }
   return false;
