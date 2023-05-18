@@ -338,9 +338,9 @@ void config_init(void) {
   memzero(HW_ENTROPY_DATA, sizeof(HW_ENTROPY_DATA));
 
   // TODO: it would change storge logic in mcu flash
-  //  if (secfalse == g_bHomeGetFlg) {
-  //    g_bHomeGetFlg = config_homeScreen();
-  //  }
+  if (secfalse == g_bHomeGetFlg) {
+    g_bHomeGetFlg = config_homeScreen();
+  }
 
   config_getLanguage(config_language, sizeof(config_language));
 
@@ -812,16 +812,23 @@ uint32_t config_getSleepDelayMs(void) {
   if (!se_getPinValidtime(recv_buf)) {
     autoSleepDelayMs = sleepDelayMsDefault;
   }
+  if (recv_buf[0] == 0xff) recv_buf[0] = 0;
   autoSleepDelayMs = recv_buf[0] * 60 * 1000;
   sleepDelayMsCached = sectrue;
   return autoSleepDelayMs;
 }
 
 void config_setSleepDelayMs(uint32_t auto_sleep_ms) {
+  uint32_t act_sleep_ms;
   if (auto_sleep_ms != 0)
-    auto_sleep_ms = MAX(auto_sleep_ms, MIN_AUTOLOCK_DELAY_MS);
+    act_sleep_ms = MAX(auto_sleep_ms, MIN_AUTOLOCK_DELAY_MS);
   // TODO. use se pin valid time logic
-  if (se_setPinValidtime(auto_sleep_ms / (60 * 1000))) {
+  if (auto_sleep_ms == 0) {
+    act_sleep_ms = 255 * 60 * 100;
+  } else {
+    act_sleep_ms = auto_sleep_ms;
+  }
+  if (se_setPinValidtime(act_sleep_ms / (60 * 1000))) {
     autoSleepDelayMs = auto_sleep_ms;
     sleepDelayMsCached = sectrue;
   }
