@@ -1,10 +1,12 @@
 #include "kaspa.h"
+#include <stdint.h>
 #include "blake2b.h"
 #include "cash_addr.h"
 #include "curves.h"
 #include "fsm.h"
 #include "layout2.h"
 #include "memzero.h"
+#include "messages-common.pb.h"
 #include "secp256k1.h"
 #include "sha2.h"
 #include "transaction.h"
@@ -125,8 +127,14 @@ void kaspa_sign_sighash(HDNode *node, const uint8_t *raw_message,
     // signature_len);
   } else {
     // ecdsa sign
-    CALCULATE_SIGNING_HASH_ECDSA
-    tx_sign_ecdsa(&secp256k1, node->private_key, ecdsa_digest, signature,
-                  signature_len);
+    CALCULATE_SIGNING_HASH_ECDSA;
+    uint8_t sig[64];
+    int ret = hdnode_sign_digest(node, ecdsa_digest, sig, NULL, NULL);
+    if (ret != 0) {
+      fsm_sendFailure(FailureType_Failure_ProcessError, "Signing failed");
+      kaspa_signing_abort();
+      return;
+    }
+    *signature_len = ecdsa_sig_to_der(sig, signature);
   }
 }
