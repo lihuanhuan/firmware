@@ -3220,6 +3220,9 @@ static bool signing_sign_ecdsa(TxInputType *txinput, const uint8_t *hash) {
     return false;
   }
 
+  resp.serialized.signature.size =
+      ecdsa_sig_to_der(sig, resp.serialized.signature.bytes);
+
   uint8_t sighash = signing_hash_type(txinput) & 0xff;
   if (txinput->has_multisig) {
     // fill in the signature
