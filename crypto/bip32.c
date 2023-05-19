@@ -923,7 +923,7 @@ const curve_info *get_curve_by_name(const char *curve_name) {
     return &curve25519_info;
   }
   if (strcmp(curve_name, ED25519_LEDGER_NAME) == 0) {
-    return &curve25519_info;
+    return &ed25519_ledger_info;
   }
   return 0;
 }
@@ -1008,7 +1008,8 @@ int hdnode_private_ckd(HDNode *inout, uint32_t i) {
   // 如果决定u2f也用cos内部生成的密钥，则此函数扔需要在模拟器和硬件中分别实现
   // 分别使用se提供的功能进行实现
 #if USE_CARDANO
-  if (inout->curve == &ed25519_cardano_info) {
+  if (inout->curve == &ed25519_cardano_info ||
+      inout->curve == &ed25519_ledger_info) {
     return hdnode_private_ckd_cardano(inout, i);
   } else
 #endif

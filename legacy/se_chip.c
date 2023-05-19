@@ -530,12 +530,12 @@ bool se_derive_keys(HDNode *out, const char *curve, const uint32_t *address_n,
     return false;
   }
 
+  out->curve = get_curve_by_name(curve);
   switch (mode) {
     case DERIVE_NIST256P1:
     case DERIVE_SECP256K1:
       out->depth = resp[0];
       out->child_num = *(uint32_t *)(resp + 1);
-      out->curve = get_curve_by_name(curve);
       memcpy(out->chain_code, resp + 1 + 4, 32);
       HDNode parent = {0};
       parent.curve = get_curve_by_name(curve);
@@ -545,8 +545,8 @@ bool se_derive_keys(HDNode *out, const char *curve, const uint32_t *address_n,
       }
       memcpy(out->public_key, resp + 1 + 4 + 32 + 33, 33);
       break;
+    case DERIVE_ED25519_LEDGER:
     case DERIVE_ED25519_SLIP10:
-      out->curve = get_curve_by_name(curve);
       if (33 != resp_len) return false;
       if (fingerprint) fingerprint = NULL;
       memcpy(out->public_key, resp, resp_len);
@@ -778,7 +778,7 @@ bool se_isInitialized(void) {
 
 bool se_hasPin(void) { return se_isInitialized(); }
 
-bool se_verifyPin(const char* pin, uint8_t mode) {
+bool se_verifyPin(const char *pin, uint8_t mode) {
   uint8_t retry = 0;
   uint16_t len = sizeof(retry);
 
@@ -791,7 +791,7 @@ bool se_verifyPin(const char* pin, uint8_t mode) {
   return true;
 }
 
-bool se_setPin(const char* pin) {
+bool se_setPin(const char *pin) {
   uint16_t recv_len = 0xff;
 
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN & 0xFF), (uint8_t *)pin,
@@ -802,17 +802,18 @@ bool se_setPin(const char* pin) {
   return true;
 }
 
-bool se_changePin(const char* oldpin, const char* newpin) {
+bool se_changePin(const char *oldpin, const char *newpin) {
   uint8_t pin_buff[110] = {0};
   uint16_t recv_len = 0xff;
 
   pin_buff[0] = strlen(oldpin);
   memcpy(pin_buff + 1, (uint8_t *)oldpin, strlen(oldpin));
-  pin_buff[strlen(oldpin)+1] = strlen(newpin);
+  pin_buff[strlen(oldpin) + 1] = strlen(newpin);
   memcpy(pin_buff + strlen(oldpin) + 1 + 1, (uint8_t *)newpin, strlen(newpin));
 
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_PIN & 0xFF),
-                             (uint8_t *)pin_buff, strlen(oldpin) + strlen(newpin) + 1 + 1, NULL,
+                             (uint8_t *)pin_buff,
+                             strlen(oldpin) + strlen(newpin) + 1 + 1, NULL,
                              &recv_len, MI2C_ENCRYPT, SE_WRFLG_CHGPIN)) {
     return false;
   }
@@ -1429,7 +1430,7 @@ bool se_hasWipeCode(void) {
   if (resp[0] == 0x01) return true;
   return false;
 }
-bool se_changeWipeCode(const char* wipe_code) {
+bool se_changeWipeCode(const char *wipe_code) {
   uint16_t recv_len = 0xff;
 
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_WIPECODE, 0x00, (uint8_t *)wipe_code,
@@ -1443,11 +1444,11 @@ bool se_changeWipeCode(const char* wipe_code) {
 
 uint16_t se_lasterror(void) { return get_lasterror(); }
 
-bool se_getSessionCachedState(se_session_cached_status* status){
+bool se_getSessionCachedState(se_session_cached_status *status) {
   uint8_t state;
   uint16_t recv_len = 1;
   uint8_t cmd[5] = {0x80, 0xE7, 0x06, 0x00, 0x00};
-  if (MI2C_OK != se_transmit_plain(cmd,5,&state,&recv_len)){
+  if (MI2C_OK != se_transmit_plain(cmd, 5, &state, &recv_len)) {
     return false;
   }
 
@@ -1455,7 +1456,6 @@ bool se_getSessionCachedState(se_session_cached_status* status){
   status->se_minisecret_status = state & 0x02;
   status->se_icarus_status = state & 0x04;
   return true;
-
 }
 
 #endif
