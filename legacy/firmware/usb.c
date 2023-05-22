@@ -419,8 +419,8 @@ void usbInit(void) {
   if (trezor_comp_mode) {
     dev_descr.idProduct = 0x53c1;
   }
-  usbd_dev = usbd_init(&otgfs_usb_driver, &dev_descr, &config, usb_strings,
-                       sizeof(usb_strings) / sizeof(*usb_strings),
+  usbd_dev = usbd_init(&otgfs_usb_driver_onekey, &dev_descr, &config,
+                       usb_strings, sizeof(usb_strings) / sizeof(*usb_strings),
                        usbd_control_buffer, sizeof(usbd_control_buffer));
   usbd_register_set_config_callback(usbd_dev, set_config);
   usb21_setup(usbd_dev, &bos_descriptor);
