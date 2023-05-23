@@ -434,13 +434,13 @@ void config_setHomescreen(const uint8_t *data, uint32_t size) {
 }
 
 inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
-  // `seed`, `minisecret`, `icarus main secret`, `icarus extension main secret`
-#define TOTAL_PROCESSES 2
+// `seed` 'minisecret' or `icarus main secret`
+#define TOTAL_PROCESSES ((derive_cardano) ? (3) : (2))
 #define TOTAL_STEPS (SE_GENERATE_SEED_MAX_STEPS * TOTAL_PROCESSES)
 #define BASE_PER_PROCESS (1000 / TOTAL_PROCESSES)
 
   // one thousandth precision
-  static int percentPerStep = 1000 / TOTAL_STEPS;  // 2.5
+  int percentPerStep = 1000 / TOTAL_STEPS;
   int base = 0;
 
 #define SESSION_GENERATE(type)                                         \
@@ -450,7 +450,10 @@ inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
         se_sessionBeginGenerate(passphrase, len, type, &session);      \
     int step = 1;                                                      \
     while (state == STATE_GENERATING) {                                \
-      int permil = base + (step + step % 2) * percentPerStep;          \
+      int permil = base + step * percentPerStep;                       \
+      if (derive_cardano) {                                            \
+        permil = base + (step + (1 + step % 3) / 3) * percentPerStep;  \
+      }                                                                \
       layoutProgressAdapter(_("Generating session seed ..."), permil); \
       step++;                                                          \
       state = se_sessionGenerating(&session);                          \
@@ -460,21 +463,15 @@ inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
   } while (0)
 
   // generate seed
-  // [1...25]
+  // [1...33]
   SESSION_GENERATE(TYPE_SEED);
-
-  // generate mini secret
-  // [26...50]
+  // [33...66]
   SESSION_GENERATE(TYPE_MINI_SECRET);
 
   if (derive_cardano) {
     // generate `icarus main secret`
-    // [51...75]
+    // [67...100]
     SESSION_GENERATE(TYPE_ICARUS_MAIN_SECRET);
-
-    // generate `icarus extended secret`
-    // [76...100]
-    // SESSION_GENERATE(TYPE_ICARUS_EXT_SECRET);
   }
 
   return true;
@@ -484,6 +481,17 @@ inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
 // bool config_genSessionSeed(uint8_t mode) {
 bool config_genSessionSeed(void) {
   char passphrase[MAX_PASSPHRASE_LEN + 1] = {0};
+  se_session_cached_status status = {0};
+  if (!se_getSessionCachedState(&status)) {
+    fsm_sendFailure(FailureType_Failure_ProcessError, _("Session state error"));
+    return false;
+  }
+
+  if (derive_cardano) {
+    if (status.se_icarus_status) return true;
+  } else {
+    if (status.se_seed_status) return true;
+  }
 
   if (!protectPassphrase(passphrase)) {
     memzero(passphrase, sizeof(passphrase));
@@ -634,31 +642,31 @@ bool config_changePin(const char *old_pin, const char *new_pin) {
   }
 }
 
-uint8_t g_activeSession_id[32];
 uint8_t *session_startSession(const uint8_t *received_session_id) {
+  static uint8_t act_session_id[32];
+
   if (received_session_id == NULL) {
     // se create session
-    bool ret = se_sessionStart(g_activeSession_id);
+    bool ret = se_sessionStart(act_session_id);
     if (ret) {  // se open session
-      if (!se_sessionOpen(g_activeSession_id)) {
+      if (!se_sessionOpen(act_session_id)) {
         // session open failed
-        memzero(g_activeSession_id, sizeof(g_activeSession_id));
+        memzero(act_session_id, sizeof(act_session_id));
       }
     } else {
-      memzero(g_activeSession_id, sizeof(g_activeSession_id));
+      memzero(act_session_id, sizeof(act_session_id));
     }
   } else {
     // se open session
     bool ret = se_sessionOpen((uint8_t *)received_session_id);
     if (ret) {
-      memcpy(g_activeSession_id, received_session_id,
-             sizeof(g_activeSession_id));
+      memcpy(act_session_id, received_session_id, sizeof(act_session_id));
     } else {  // session open failed
-      memzero(g_activeSession_id, sizeof(g_activeSession_id));
+      memzero(act_session_id, sizeof(act_session_id));
     }
   }
 
-  return g_activeSession_id;
+  return act_session_id;
 }
 
 void session_endCurrentSession(void) {
@@ -683,7 +691,6 @@ bool session_isProtectUnlocked(void) {
 
   left_seconds = recv_buf[1] * 256 + recv_buf[2];
   if (left_seconds <= 60 && left_seconds > 0) {
-    // TODO. se apply delay
     if (!se_applyPinValidtime()) {
       return false;
     }
@@ -699,11 +706,7 @@ void session_clear(bool lock) {
   }
 }
 
-bool config_isInitialized(void) {
-  // bool initialized = false;
-  // initialized = se_isInitialized();
-  return se_isInitialized();
-}
+bool config_isInitialized(void) { return se_isInitialized(); }
 
 bool config_getImported(bool *imported) {
   return config_get_bool(id_imported, imported);

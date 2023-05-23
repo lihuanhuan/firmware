@@ -32,16 +32,13 @@ typedef enum {
   TYPE_SEED = 0x00,               /* BIP32 seed */
   TYPE_MINI_SECRET = 0x01,        /* polkadot mini secret */
   TYPE_ICARUS_MAIN_SECRET = 0x02, /* cardano icarus main secret */
-  TYPE_ICARUS_EXT_SECRET = 0x03,  /* cardano icarus extension main secret */
-  // CARDANO_LEDGER_SECRET, /* ledger cardano secret, does this need? */
 } se_generate_type_t;
 
-typedef struct{
+typedef struct {
   bool se_seed_status;
   bool se_minisecret_status;
   bool se_icarus_status;
-}se_session_cached_status;
-
+} se_session_cached_status;
 
 typedef enum {
   PROCESS_BEGIN = 0xFF,
@@ -74,9 +71,9 @@ bool se_verify(void *message, uint16_t message_len, uint16_t max_len,
                uint16_t *signature_len);
 bool se_isInitialized(void);
 bool se_hasPin(void);
-bool se_setPin(const char* pin);
-bool se_verifyPin(const char* pin, uint8_t mode);
-bool se_changePin(const char* oldpin, const char* newpin);
+bool se_setPin(const char *pin);
+bool se_verifyPin(const char *pin, uint8_t mode);
+bool se_changePin(const char *oldpin, const char *newpin);
 uint32_t se_pinFailedCounter(void);
 bool se_getRetryTimes(uint8_t *pcnts);
 bool se_clearSecsta(void);
@@ -106,7 +103,7 @@ se_generate_state_t se_sessionBeginGenerate(const uint8_t *passphase,
                                             se_generate_session_t *session);
 se_generate_state_t se_sessionGenerating(se_generate_session_t *session);
 
-bool se_getSessionCachedState(se_session_cached_status* status);
+bool se_getSessionCachedState(se_session_cached_status *status);
 bool se_sessionClose(void);
 bool se_sessionClear(void);
 bool se_set_public_region(uint16_t offset, const void *val_dest, uint16_t len);
@@ -119,8 +116,7 @@ bool se_aes_128_decrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
                         uint16_t send_len, uint8_t *recv, uint16_t *recv_len);
 bool se_containsMnemonic(const char *mnemonic);
 bool se_hasWipeCode(void);
-bool se_changeWipeCode(const char* wipe_code);
+bool se_changeWipeCode(const char *wipe_code);
 uint16_t se_lasterror(void);
-
 
 #endif

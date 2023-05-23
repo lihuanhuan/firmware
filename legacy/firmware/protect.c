@@ -1089,15 +1089,15 @@ bool protectPinCheck(bool retry) {
     layoutDialogCenterAdapter(
         &bmp_icon_warning, NULL, NULL,
         retry ? &bmp_bottom_right_retry : &bmp_bottom_right_confirm, NULL, NULL,
-        NULL, NULL, NULL, _("Incorrect PIN"), _("8 attempts left, try again."),
+        NULL, NULL, NULL, _("Incorrect PIN"), _("9 attempts left, try again."),
         NULL);
-  } else if (fails > 1 && fails < 9) {
+  } else if (fails > 1 && fails < 10) {
     if (ui_language == 0) {
-      uint2str(9 - fails, desc);
+      uint2str(10 - fails, desc);
       strcat(desc, " attempts left, try again.");
     } else {
       strcat(desc, _(" left "));
-      uint2str(9 - fails, desc + strlen(desc));
+      uint2str(10 - fails, desc + strlen(desc));
       strcat(desc, _(" times"));
       strcat(desc, _(" attempts left, try again."));
     }
@@ -1136,7 +1136,7 @@ bool protectPinCheck(bool retry) {
   if (fails >= 5) {
     memset(desc, 0, 64);
     strcat(desc, _("after "));
-    uint2str(9 - fails, desc + strlen(desc));
+    uint2str(10 - fails, desc + strlen(desc));
     if (ui_language == 0) {
       strcat(desc, _(" attempts wrong,"));
       layoutDialogCenterAdapter(
@@ -1145,7 +1145,7 @@ bool protectPinCheck(bool retry) {
     } else {
       memset(desc, 0, 64);
       strcat(desc, _("after "));
-      uint2str(9 - fails, desc + strlen(desc));
+      uint2str(10 - fails, desc + strlen(desc));
       strcat(desc, _(" attempts wrong, the device will be reset."));
       layoutDialogCenterAdapter(&bmp_icon_info, NULL, NULL,
                                 &bmp_bottom_right_arrow, NULL, NULL, NULL, NULL,

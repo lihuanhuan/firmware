@@ -33,6 +33,7 @@
 #include "layout2.h"
 #include "memzero.h"
 #include "protect.h"
+#include "secbool.h"
 #if !EMULATOR
 #include "mi2c.h"
 #endif
@@ -66,6 +67,8 @@ static uint32_t last_good_auth_check_cid = 0;
 
 // Circular Output buffer
 static uint32_t u2f_out_start = 0;
+static secbool check_preset_data_state = secfalse;
+
 uint32_t u2f_out_end = 0;
 uint8_t u2f_out_packets[U2F_OUT_PKT_BUFFER_LEN][HID_RPT_SIZE];
 
@@ -474,27 +477,23 @@ void gd_getPresetData(void) {
 }
 
 void gd_checkPresetData(void) {
-  uint8_t ucBuf[2];
-
   if (!se_sync_session_key()) {
-    debugLog(0, "", "u2f check preset data - failed");
+    check_preset_data_state = secfalse;
     send_u2f_error(U2F_SW_CONDITIONS_NOT_SATISFIED);
     return;
   }
-  ucBuf[0] = U2F_SW_NO_ERROR >> 8 & 0xFF;
-  ucBuf[1] = U2F_SW_NO_ERROR & 0xFF;
-  send_u2f_msg(ucBuf, 2);
+  check_preset_data_state = sectrue;
+  send_u2f_error(U2F_SW_NO_ERROR);
 }
 
 void gd32_protect(void) {
-  uint8_t ucBuf[2];
-
-  ucBuf[0] = U2F_SW_NO_ERROR >> 8 & 0xFF;
-  ucBuf[1] = U2F_SW_NO_ERROR & 0xFF;
-  // first return 9000
-  send_u2f_msg(ucBuf, 2);
+  if (sectrue != check_preset_data_state) {
+    send_u2f_error(U2F_SW_CONDITIONS_NOT_SATISFIED);
+    return;
+  }
   // memory protect later
   memory_protect();
+  send_u2f_error(U2F_SW_NO_ERROR);
 }
 
 void u2fhid_msg(const APDU *a, uint32_t len) {

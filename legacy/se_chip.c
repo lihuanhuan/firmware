@@ -47,7 +47,7 @@
 #define SE_U2FCOUNTER (9 | APP)       // uint32
 #define SE_MNEMONIC (2 | APP)         // string(241)
 #define SE_ENTROPY SE_MNEMONIC        // bytes(64)
-#define SE_PIN_RETRY_MAX 9            // se set pin retry max times
+#define SE_PIN_RETRY_MAX 10           // se set pin retry max times
 
 #define MI2C_CMD_WR_PIN (0xE1)
 #define MI2C_CMD_AES (0xE2)
@@ -194,6 +194,21 @@ bool se_sync_session_key(void) {
   }
 
   return true;
+}
+
+uint8_t *se_aes_mac(uint8_t *key, uint8_t *iv, uint8_t *inbuf, uint16_t inlen,
+                    uint8_t *outbuf) {
+  static uint8_t aes_mac[8];
+  aes_encrypt_ctx en_ctxe;
+
+  aes_encrypt_key128(key, &en_ctxe);
+  aes_cbc_encrypt(inbuf, outbuf, inlen, iv, &en_ctxe);
+
+  memzero(aes_mac, sizeof(aes_mac));
+  // last block first 8 byte as mac
+  memcpy(aes_mac, outbuf + inlen - 16, 8);
+
+  return aes_mac;
 }
 
 /*
