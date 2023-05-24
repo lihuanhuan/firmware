@@ -31,6 +31,7 @@
 #include "common.h"
 #include "config.h"
 
+#include "firmware/algo/parser_txdef.h"
 #include "font.h"
 #include "fsm.h"
 #include "gettext.h"
@@ -435,44 +436,35 @@ void config_setHomescreen(const uint8_t *data, uint32_t size) {
 
 inline static bool session_generate_steps(uint8_t *passphrase, uint16_t len) {
 // `seed` 'minisecret' or `icarus main secret`
-#define TOTAL_PROCESSES ((derive_cardano) ? (3) : (2))
-#define TOTAL_STEPS (SE_GENERATE_SEED_MAX_STEPS * TOTAL_PROCESSES)
-#define BASE_PER_PROCESS (1000 / TOTAL_PROCESSES)
+#define TOTAL_PROCESSES 1000
+#define SEED_PROCESS ((derive_cardano) ? (200) : (500))
+#define MINI_PROCESS SEED_PROCESS
+#define ICARUS_PROCESS (TOTAL_PROCESSES - SEED_PROCESS - MINI_PROCESS)
 
   // one thousandth precision
-  int percentPerStep = 1000 / TOTAL_STEPS;
   int base = 0;
 
-#define SESSION_GENERATE(type)                                         \
+#define SESSION_GENERATE_STEP(type, precent)                           \
   do {                                                                 \
+    if ((precent) == 0) return true;                                   \
     se_generate_session_t session = {0};                               \
     se_generate_state_t state =                                        \
         se_sessionBeginGenerate(passphrase, len, type, &session);      \
     int step = 1;                                                      \
     while (state == STATE_GENERATING) {                                \
-      int permil = base + step * percentPerStep;                       \
-      if (derive_cardano) {                                            \
-        permil = base + (step + (1 + step % 3) / 3) * percentPerStep;  \
-      }                                                                \
+      int permil = base + step * (precent / 100);                      \
       layoutProgressAdapter(_("Generating session seed ..."), permil); \
       step++;                                                          \
       state = se_sessionGenerating(&session);                          \
     }                                                                  \
     if (state != STATE_COMPLETE) return false;                         \
-    base += BASE_PER_PROCESS;                                          \
+    base += precent;                                                   \
   } while (0)
 
-  // generate seed
-  // [1...33]
-  SESSION_GENERATE(TYPE_SEED);
-  // [33...66]
-  SESSION_GENERATE(TYPE_MINI_SECRET);
-
-  if (derive_cardano) {
-    // generate `icarus main secret`
-    // [67...100]
-    SESSION_GENERATE(TYPE_ICARUS_MAIN_SECRET);
-  }
+  // generate `seed` 'minisecret' or `icarus main secret`
+  SESSION_GENERATE_STEP(TYPE_SEED, SEED_PROCESS);
+  SESSION_GENERATE_STEP(TYPE_MINI_SECRET, MINI_PROCESS);
+  SESSION_GENERATE_STEP(TYPE_ICARUS_MAIN_SECRET, ICARUS_PROCESS);
 
   return true;
 }

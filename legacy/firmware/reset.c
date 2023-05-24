@@ -534,40 +534,36 @@ write_mnemonic:
 
 bool generate_seed_steps(void) {
   // `seed`, `mini secret`,`icarus main secret`
-#define TOTAL_PROCESSES 3
-#define TOTAL_STEPS (SE_GENERATE_SEED_MAX_STEPS * TOTAL_PROCESSES)
-#define BASE_PER_PROCESS (1000 / TOTAL_PROCESSES)
+#define TOTAL_PROCESSES 1000
+#define SEED_PROCESS 200
+#define MINI_PROCESS SEED_PROCESS
+#define ICARUS_PROCESS (TOTAL_PROCESSES - SEED_PROCESS - MINI_PROCESS)
 
-  // one thousandth precision
-  static int percentPerStep = 1000 / TOTAL_STEPS;
   int base = 0;
 
-#define SESSION_GENERATE(type)                                          \
-  do {                                                                  \
-    se_generate_session_t session = {0};                                \
-    se_generate_state_t state = se_beginGenerate(type, &session);       \
-    int step = 1;                                                       \
-    while (state == STATE_GENERATING) {                                 \
-      int permil = base + (step + (1 + step % 3) / 3) * percentPerStep; \
-      layoutProgressAdapter(_("Generating session seed ..."), permil);  \
-      step++;                                                           \
-      state = se_generating(&session);                                  \
-    }                                                                   \
-    if (state != STATE_COMPLETE) return false;                          \
-    base += BASE_PER_PROCESS;                                           \
+#define SESSION_GENERATE_STEP(type, precent)                           \
+  do {                                                                 \
+    se_generate_session_t session = {0};                               \
+    se_generate_state_t state = se_beginGenerate(type, &session);      \
+    int step = 1;                                                      \
+    while (state == STATE_GENERATING) {                                \
+      int permil = base + step * (precent / 100);                      \
+      layoutProgressAdapter(_("Generating session seed ..."), permil); \
+      step++;                                                          \
+      state = se_generating(&session);                                 \
+    }                                                                  \
+    if (state != STATE_COMPLETE) return false;                         \
+    base += precent;                                                   \
   } while (0)
 
   // generate seed
-  // [1...33]
-  SESSION_GENERATE(TYPE_SEED);
+  SESSION_GENERATE_STEP(TYPE_SEED, SEED_PROCESS);
 
   // generate `mini secret`
-  // [34...66]
-  SESSION_GENERATE(TYPE_MINI_SECRET);
+  SESSION_GENERATE_STEP(TYPE_MINI_SECRET, MINI_PROCESS);
 
   // generate `icarus main secret`
-  // [67...100]
-  SESSION_GENERATE(TYPE_ICARUS_MAIN_SECRET);
+  SESSION_GENERATE_STEP(TYPE_ICARUS_MAIN_SECRET, ICARUS_PROCESS);
 
   return true;
 }
