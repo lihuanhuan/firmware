@@ -26,12 +26,12 @@
 
 void memory_protect(void) {
   /* enable security protection */
-  ob_unlock();
   fmc_unlock();
-  ob_start();
+  ob_unlock();
   // bootloader's sectors are protected
   ob_write_protection_enable(OB_WP_0 | OB_WP_1 | OB_WP_2 | OB_WP_3);
   ob_security_protection_config(FMC_HSPC);
+  ob_start();
   ob_lock();
   fmc_lock();
 }
@@ -41,9 +41,9 @@ void memory_write_lock(void) {
   /* disable security protection */
   fmc_unlock();
   ob_unlock();
-  ob_start();
   // bootloader's sectors  unlock
   ob_write_protection_enable(OB_WP_0 | OB_WP_1 | OB_WP_2 | OB_WP_3);
+  ob_start();
   ob_lock();
   fmc_lock();
 }
@@ -54,9 +54,9 @@ void memory_write_unlock(void) {
   /* disable security protection */
   fmc_unlock();
   ob_unlock();
-  ob_start();
   // bootloader's sectors  unlock
   ob_write_protection_disable(OB_WP_0 | OB_WP_1 | OB_WP_2 | OB_WP_3);
+  ob_start();
   ob_lock();
   fmc_lock();
 }
