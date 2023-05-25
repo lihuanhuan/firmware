@@ -130,6 +130,30 @@ void random_buffer_ST(uint8_t *buf, size_t len) {
   }
 }
 
+bool se_random_encrypted(uint8_t *rand, uint8_t len) {
+  uint8_t cmd[5 + 16 + 1] = {0x00, 0x85, 0x00, 0x00, 0x10};
+  uint8_t mcu_rand_buf[16], recv_buf[128], ref_buf[128];
+  uint16_t recv_len = 0xff;
+  aes_decrypt_ctx aes_dec_ctx;
+
+  if (len > 0x40) return false;
+  // mcu get random
+  random_buffer_ST(mcu_rand_buf, 0x10);
+  memcpy(cmd + 5, mcu_rand_buf, sizeof(mcu_rand_buf));
+  cmd[5 + 16] = len;
+  if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), recv_buf, &recv_len)) {
+    return false;
+  }
+
+  if ((recv_len % 16) != 0) return false;
+  aes_decrypt_key128(g_ucSessionKey, &aes_dec_ctx);
+  aes_ecb_decrypt(recv_buf, ref_buf, recv_len, &aes_dec_ctx);
+  if (memcmp(ref_buf, mcu_rand_buf, sizeof(mcu_rand_buf)) != 0) return false;
+
+  memcpy(rand, ref_buf, len);
+  return true;
+}
+
 static bool xor_cal(uint8_t *pucSrc1, uint8_t *pucSrc2, uint16_t usLen,
                     uint8_t *pucDest) {
   uint16_t i;
@@ -1039,8 +1063,7 @@ bool se_set_mnemonic(const void *mnemonic, uint16_t len) {
 }
 
 bool se_get_entropy(uint8_t entropy[32]) {
-  if (!randomBuf_SE(entropy, 0x10)) return false;
-  if (!randomBuf_SE(entropy + 0x10, 0x10)) return false;
+  if (!se_random_encrypted(entropy, 32)) return false;
   return true;
 }
 
