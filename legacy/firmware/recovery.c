@@ -222,10 +222,6 @@ static bool recovery_done(void) {
                           _("Failed to store mnemonic"));
         }
         layoutSwipe();
-        if (!protectVerifyPinFirst()) {
-          fsm_sendFailure(FailureType_Failure_ProcessError,
-                          _("Failed to store mnemonic"));
-        }
       } else {
         fsm_sendFailure(FailureType_Failure_ProcessError,
                         _("Failed to store mnemonic"));

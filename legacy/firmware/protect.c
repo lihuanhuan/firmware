@@ -378,23 +378,6 @@ secbool protectPinUiCallback(uint32_t wait, uint32_t progress,
   return secfalse;
 }
 
-bool protectVerifyPinFirst(void) {
-  const char *pin = "";
-
-  pin = protectInputPin(_("Please enter current PIN"), MIN_PIN_LEN, MAX_PIN_LEN,
-                        true);
-  if (!pin) {
-    fsm_sendFailure(FailureType_Failure_PinCancelled, NULL);
-    return false;
-  }
-
-  bool ret = config_firstVerifyPin(pin);
-  if (!ret) {
-    protectPinCheck(false);
-  }
-  return ret;
-}
-
 bool protectPin(bool use_cached) {
   const char *newpin = NULL;
   // TODO: add pin valid time apply
@@ -890,7 +873,6 @@ refresh_menu:
 }
 
 bool protectPinOnDevice(bool use_cached, bool cancel_allowed) {
-  if (!config_hasPin()) return false;
   if (use_cached && session_isUnlocked()) {
     return true;
   }
@@ -1016,12 +998,7 @@ retry:
       }
     }
   }
-  bool ret = false;
-  if (!is_change) {
-    ret = config_setPin(new_pin);
-  } else {
-    ret = config_changePin(old_pin, new_pin);
-  }
+  bool ret = config_changePin(old_pin, new_pin);
   memzero(old_pin, sizeof(old_pin));
   memzero(new_pin, sizeof(new_pin));
   if (ret == false) {

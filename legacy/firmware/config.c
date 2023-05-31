@@ -364,13 +364,12 @@ void config_lockDevice(void) { se_clearSecsta(); }
 
 extern bool generate_seed_steps(void);
 bool config_loadDevice_ex(const BixinLoadDevice *msg) {
-  uint8_t entropy_buf[32];
-  config_set_bool(id_mnemonics_imported, true);
-
   uint8_t entropy[33] = {0};
   // entropy from mnemonic
   int mnemonic_bits_len = mnemonic_to_bits(msg->mnemonics, entropy);
   int words = mnemonic_bits_len / 11;
+
+  config_set_bool(id_mnemonics_imported, true);
 
   if (!config_setMnemonic(msg->mnemonics, true)) return false;
   // add setup se pin
@@ -378,10 +377,9 @@ bool config_loadDevice_ex(const BixinLoadDevice *msg) {
   // add loops as follows 1. se set entropy  2. generate seed 3. first verify
   // pin
   // set entropy to SE
-  if (!se_set_entropy(entropy_buf, words / 3 * 4)) return false;
+  if (!se_set_entropy(entropy, words / 3 * 4)) return false;
   if (!generate_seed_steps()) return false;
   layoutSwipe();
-  if (!protectVerifyPinFirst()) return false;
 
   if (msg->has_language) {
     config_setLanguage(msg->language);
@@ -610,28 +608,15 @@ bool config_setPin(const char *pin) { return se_setPin(pin); }
 /* Unlock device/verify PIN.  The pin must be
  * a null-terminated string with at most 9 characters.
  */
-bool config_verifyPin(const char *pin) {
-  if (se_verifyPin((pin), SE_VERIFYPIN_OTHER)) {
-    return true;
-  } else {
-    return false;
-  }
-}
-bool config_firstVerifyPin(const char *pin) {
-  if (se_verifyPin((pin), SE_VERIFYPIN_FIRST)) {
-    return true;
-  } else {
-    return false;
-  }
-}
+bool config_verifyPin(const char *pin) { return se_verifyPin(pin); }
+
 bool config_hasPin(void) { return se_hasPin(); }
 
 bool config_changePin(const char *old_pin, const char *new_pin) {
-  if (se_changePin(old_pin, new_pin)) {
-    return true;
-  } else {
-    return false;
+  if (config_hasPin()) {
+    return se_changePin(old_pin, new_pin);
   }
+  return config_setPin(new_pin);
 }
 
 uint8_t *session_startSession(const uint8_t *received_session_id) {
@@ -667,8 +652,8 @@ void session_endCurrentSession(void) {
 }
 
 bool session_isUnlocked(void) {
-  if (!se_getSecsta()) {  // if no pin auth
-    return false;
+  if (se_hasPin()) {
+    return se_getSecsta();
   }
   return true;
 }
@@ -677,7 +662,9 @@ bool session_isProtectUnlocked(void) {
   uint8_t recv_buf[3] = {0x00};
   uint16_t left_seconds = 0;
 
-  if (!se_getPinValidtime(recv_buf)) {
+  if (!config_hasPin()) return true;  // if has not pin secure state is forever
+
+  if (!se_getPinValidtime(recv_buf)) {  // if has pin
     return false;
   }
 

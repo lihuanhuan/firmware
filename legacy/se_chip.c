@@ -815,15 +815,24 @@ bool se_isInitialized(void) {
   return false;
 }
 
-bool se_hasPin(void) { return se_isInitialized(); }
+bool se_hasPin(void) {
+  uint8_t cmd[5] = {0x80, 0xe1, 0x28, 00, 0x00};
+  uint8_t hasPin = 0xff;
+  uint16_t len = sizeof(hasPin);
 
-bool se_verifyPin(const char *pin, uint8_t mode) {
+  if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), &hasPin, &len)) {
+    return false;
+  }
+  return hasPin == 0x55;  // 0x55 exist ,0xff not
+}
+
+bool se_verifyPin(const char *pin) {
   uint8_t retry = 0;
   uint16_t len = sizeof(retry);
 
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (SE_VERIFYPIN & 0xFF),
                              (uint8_t *)pin, strlen(pin), &retry, &len,
-                             MI2C_ENCRYPT, mode)) {
+                             MI2C_ENCRYPT, SE_WRFLG_CHGPIN)) {
     return false;
   }
 
@@ -1043,10 +1052,8 @@ bool se_isFactoryMode(void) {
   if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), &mode, &len)) {
     return false;
   }
-  if (len == 1 && mode == 0xff) {
-    return true;
-  }
-  return false;
+
+  return mode == 0xff;
 }
 
 bool se_set_u2f_counter(uint32_t u2fcounter) {
@@ -1079,10 +1086,8 @@ bool se_isLifecyComSta(void) {
   if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), &mode, &len)) {
     return false;
   }
-  if (len == 1 && mode == 0x82) {
-    return true;
-  }
-  return false;
+
+  return mode == 0x82;
 }
 
 bool se_sessionStart(OUT uint8_t *session_id_bytes) {

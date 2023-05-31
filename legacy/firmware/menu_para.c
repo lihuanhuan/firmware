@@ -90,6 +90,4 @@ void menu_para_set_shutdown(int index) {
 void menu_para_set_sleep(int index) {
   uint32_t ms[5] = {60 * 1000, 2 * 60 * 1000, 5 * 60 * 1000, 10 * 60 * 1000, 0};
   config_setSleepDelayMs(ms[index]);
-  // TODO: add protectPinonDevice
-  protectPinOnDevice(false, false);
 }

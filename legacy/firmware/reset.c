@@ -172,11 +172,6 @@ void reset_entropy(const uint8_t *ext_entropy, uint32_t len) {
                     _("Failed to generate security seed"));
     return;
   }
-  if (!protectVerifyPinFirst()) {
-    fsm_sendFailure(FailureType_Failure_ProcessError,
-                    _("Failed to first verify pin"));
-    return;
-  }
   memzero(int_entropy, 32);
   mnemonic_clear();
   fsm_sendSuccess(_("Device successfully initialized"));
@@ -556,15 +551,13 @@ bool generate_seed_steps(void) {
     base += precent;                                                   \
   } while (0)
 
-  // generate seed
-  SESSION_GENERATE_STEP(TYPE_SEED, SEED_PROCESS);
-
-  // generate `mini secret`
-  SESSION_GENERATE_STEP(TYPE_MINI_SECRET, MINI_PROCESS);
-
+  // seed will be last because se switch lify cycle for init complete.
   // generate `icarus main secret`
   SESSION_GENERATE_STEP(TYPE_ICARUS_MAIN_SECRET, ICARUS_PROCESS);
-
+  // generate `mini secret`
+  SESSION_GENERATE_STEP(TYPE_MINI_SECRET, MINI_PROCESS);
+  // generate seed
+  SESSION_GENERATE_STEP(TYPE_SEED, SEED_PROCESS);
   return true;
 }
 
@@ -636,9 +629,7 @@ select_mnemonic_count:
   memzero(int_entropy, 32);
   mnemonic_clear();
   if (!generate_seed_steps()) return false;
-  // TODO. first verify pin process
   layoutSwipe();
-  if (!protectVerifyPinFirst()) return false;
   return true;
 }
 
