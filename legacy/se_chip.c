@@ -69,6 +69,7 @@
 #define EDDSA_INDEX_VERIFY (0x05)
 #define EDDSA_INDEX_CHILDKEY (0x06)
 #define EDDSA_INDEX_U2FKEY (0x07)
+#define EDDSA_INDEX_ECDH (0x08)
 
 #define DERIVE_NIST256P1 (0x00)
 #define DERIVE_SECP256K1 (0x01)
@@ -87,6 +88,10 @@
 // cardano icarus CIP03
 // TODO: change to SE required value. now is placeholder
 #define CURVE_ED25519_ICARUS (0x04)
+
+#define ECDH_NIST256P1 (0x00)
+#define ECDH_SECP256K1 (0x01)
+#define ECDH_CURVE25519 (0x08)
 
 #define EOS_ECDSA_SIGN (60)
 #define ETH_ECDSA_SIGN (194)
@@ -1313,6 +1318,38 @@ bool se_25519_sign(uint8_t curve, const uint8_t *msg, uint16_t msg_len,
 #define se_sr25519_sign(msg, msg_len, sig) \
   se_25519_sign(CURVE_SR25519, msg, msg_len, sig)
 
+bool se_ecdsa_ecdh(uint8_t curve, const uint8_t *publickey,
+                   uint8_t *sessionkey) {
+  uint8_t resp[128];
+  uint16_t resp_len;
+  if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, EDDSA_INDEX_ECDH,
+                             (uint8_t *)publickey, 64, resp, &resp_len,
+                             MI2C_PLAIN, curve)) {
+    return false;
+  }
+  memcpy(sessionkey, resp, resp_len);
+  return true;
+}
+#define se_secp256k1_ecdh(publickey, sessionkey) \
+  se_ecdsa_ecdh(ECDH_SECP256K1, publickey, sessionkey)
+#define se_nist256p1_ecdh(publickey, sessionkey) \
+  se_ecdsa_ecdh(ECDH_NIST256P1, publickey, sessionkey)
+
+bool se_25519_ecdh(uint8_t curve, const uint8_t *publickey,
+                   uint8_t *sessionkey) {
+  uint8_t resp[128];
+  uint16_t resp_len;
+  if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, EDDSA_INDEX_ECDH,
+                             (uint8_t *)publickey, 64, resp, &resp_len,
+                             MI2C_PLAIN, curve)) {
+    return false;
+  }
+  memcpy(sessionkey, resp, resp_len);
+  return true;
+}
+#define se_sr25519_ecdh(publickey, sessionkey) \
+  se_25519_ecdh(ECDH_CURVE25519, publickey, sessionkey)
+
 // TODO it will sign digest
 bool se_schnoor_sign_plain(const uint8_t *data, uint16_t data_len,
                            uint8_t *sig) {
@@ -1384,7 +1421,6 @@ bool se_aes_128_decrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
 }
 
 /// hdnode api
-
 int hdnode_private_ckd_cached(HDNode *inout, const uint32_t *address_n,
                               size_t address_n_count, uint32_t *fingerprint) {
   // just tell se derive keys, DO NOT cache anything
@@ -1431,6 +1467,28 @@ int hdnode_sign(const HDNode *node, const uint8_t *msg, uint32_t msg_len,
       if (!se_ed25519_sign(msg, msg_len, sig)) return -1;
       return 0;
     }
+  }
+  return -1;
+}
+
+int hdnode_get_shared_key(const HDNode *node, const uint8_t *peer_public_key,
+                          uint8_t *session_key, int *result_size) {
+  const char *curve = node->curve->curve_name;
+  if (strcmp(curve, NIST256P1_NAME)) {
+    *result_size = 65;
+    *session_key = 0x04;
+    if (!se_nist256p1_ecdh(peer_public_key, session_key + 1)) return -1;
+    return 0;
+  } else if (strcmp(curve, SECP256K1_NAME)) {
+    *result_size = 65;
+    *session_key = 0x04;
+    if (!se_secp256k1_ecdh(peer_public_key, session_key + 1)) return -1;
+    return 0;
+  } else if (strcmp(curve, SR25519_NAME)) {
+    *result_size = 33;
+    *session_key = 0x04;
+    if (!se_sr25519_ecdh(peer_public_key, session_key + 1)) return -1;
+    return 0;
   }
   return -1;
 }

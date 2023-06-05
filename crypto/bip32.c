@@ -761,7 +761,6 @@ int hdnode_bip340_sign_digest(const HDNode *node, const uint8_t *digest,
   memzero(output_private_key, sizeof(output_private_key));
   return ret;
 }
-#endif  // defined(EMULATOR) && EMULATOR
 
 int hdnode_get_shared_key(const HDNode *node, const uint8_t *peer_public_key,
                           uint8_t *session_key, int *result_size) {
@@ -787,7 +786,7 @@ int hdnode_get_shared_key(const HDNode *node, const uint8_t *peer_public_key,
     return 1;  // ECDH is not supported
   }
 }
-
+#endif  // defined(EMULATOR) && EMULATOR
 #if defined(EMULATOR) && EMULATOR
 #include "zkp_bip340.h"
 int hdnode_bip340_get_shared_key(const HDNode *node,
