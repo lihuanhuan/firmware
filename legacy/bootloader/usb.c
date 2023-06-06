@@ -94,10 +94,9 @@ static uint8_t update_mode = 0;
 static void flash_enter(void) { return; }
 static void flash_exit(void) { return; }
 
-inline static bool se_get_firVersion(uint8_t *resp) {
+static inline bool se_get_firVersion(uint8_t *resp) {
   uint8_t ucVerCmd[5] = {0x00, 0xf7, 0x00, 00, 0x02};
-  static uint8_t ver[2] = {0};
-  uint16_t ver_len = sizeof(ver);
+  uint16_t ver_len = 0xff;
 
   if (false == bMI2CDRV_SendData(ucVerCmd, sizeof(ucVerCmd))) {
     return false;
@@ -693,38 +692,37 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
                 ver_income =
                     (uint16_t)((const image_header *)COMBINED_FW_HEADER)
                         ->version;
-                se_isUpdate = secfalse;  // Do not update se firmware.
-                if (ver_current == ver_income) return;
-                // se need update
-                se_isUpdate = sectrue;
-                //  更新SE确保SE在Boot状态
-                if (false == bSE_GetState(apduBuf)) {
-                  show_unplug("Update SE", "aborted.");
-                  shutdown();
-                  return;
-                }
-                if (((apduBuf[0] != 0x00) && (apduBuf[0] != 0x33) &&
-                     (apduBuf[0] != 0x55))) {
-                  flash_state = STATE_END;
-                  show_unplug("Update SE", "aborted.");
-                  shutdown();
-                }
-                // SE处于APP状态，报错退出
-                if (0x55 == apduBuf[0]) {
-                  if (false == bSE_Back2Boot()) {
+                se_isUpdate = (ver_current != ver_income) ? sectrue : secfalse;
+                if (sectrue == se_isUpdate) {  // Do update se firmeware
+                  //  更新SE确保SE在Boot状态
+                  if (false == bSE_GetState(apduBuf)) {
                     show_unplug("Update SE", "aborted.");
                     shutdown();
                     return;
                   }
-                  // SE jump into boot mode ,it need delay 1000
-                  delay_ms(1000);
-                }
+                  if (((apduBuf[0] != 0x00) && (apduBuf[0] != 0x33) &&
+                       (apduBuf[0] != 0x55))) {
+                    flash_state = STATE_END;
+                    show_unplug("Update SE", "aborted.");
+                    shutdown();
+                  }
+                  // SE处于APP状态，报错退出
+                  if (0x55 == apduBuf[0]) {
+                    if (false == bSE_Back2Boot()) {
+                      show_unplug("Update SE", "aborted.");
+                      shutdown();
+                      return;
+                    }
+                    // SE jump into boot mode ,it need delay 1000
+                    delay_ms(1000);
+                  }
 
-                if (FALSE == bSE_Update(0x01)) {
-                  flash_state = STATE_END;
-                  show_unplug("Update SE", "aborted.");
-                  shutdown();
-                  return;
+                  if (FALSE == bSE_Update(0x01)) {
+                    flash_state = STATE_END;
+                    show_unplug("Update SE", "aborted.");
+                    shutdown();
+                    return;
+                  }
                 }
                 memzero(FW_CHUNK, FW_CHUNK_SIZE);
               }
@@ -733,13 +731,14 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
               flash_combine_pos += 4;
               if ((((flash_combine_pos - FLASH_FWHEADER_LEN) % 512) == 0x00) &&
                   (flash_combine_pos > FLASH_FWHEADER_LEN)) {
-                // TODO: se update new firmware loop...
-                if (secfalse == se_isUpdate) return;
-                if (false == bSE_Update(0x02)) {  // 80FC0002000200 固件数据
-                  flash_state = STATE_END;
-                  show_unplug("Update SE", "aborted.");
-                  shutdown();
-                  return;
+                // se update new firmware loop...
+                if (sectrue == se_isUpdate) {
+                  if (false == bSE_Update(0x02)) {  // 80FC0002000200 固件数据
+                    flash_state = STATE_END;
+                    show_unplug("Update SE", "aborted.");
+                    shutdown();
+                    return;
+                  }
                 }
               }
             }
@@ -772,51 +771,52 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
           return;
         }
         // se firmware updating last step
-        if (false == bSE_Update(3)) {  // 80FC000300 SE固件升级最后一步
-          flash_state = STATE_END;
-          show_unplug("Update SE", "aborted.");
-          send_msg_failure(dev, 4);  // Failure_ActionCancelled
-          shutdown();
-          return;
-        }
-        delay_ms(1000);                        // SE jump into app ,delay 1000
-        if (false == bSE_GetState(apduBuf)) {  // 80FC000000 获取SE状态
-          flash_state = STATE_END;
-          show_unplug("Update SE", "aborted.");
-          send_msg_failure(dev, 4);  // Failure_ActionCancelled
-          shutdown();
-          return;
-        }
-        if (apduBuf[0] != 0x33) {
-          flash_state = STATE_END;
-          show_unplug("Update SE", "aborted.");
-          send_msg_failure(dev, 4);  // Failure_ActionCancelled
-          shutdown();
-          return;
-        }
-
-        if (false == bSE_AcitveAPP()) {  // enable se app
-          flash_state = STATE_END;
-          show_unplug("Update SE", "aborted.");
-          send_msg_failure(dev, 4);  // Failure_ActionCancelled
-          shutdown();
-          return;
-        }
-        delay_ms(100);                         // after active se jump into app
-        if (false == bSE_GetState(apduBuf)) {  // get status after active
-          flash_state = STATE_END;
-          show_unplug("Update SE", "aborted.");
-          send_msg_failure(dev, 4);  // Failure_ActionCancelled
-          shutdown();
-          return;
-        }
-        if ((0x55 != apduBuf[0]) &&
-            (0x00 != apduBuf[0])) {  // 00：APP升级Boot成功；55:APP升级成功
-          flash_state = STATE_END;
-          show_unplug("Update SE", "aborted.");
-          send_msg_failure(dev, 4);  // Failure_ActionCancelled
-          shutdown();
-          return;
+        if (sectrue == se_isUpdate) {
+          if (false == bSE_Update(3)) {  // 80FC000300 SE固件升级最后一步
+            flash_state = STATE_END;
+            show_unplug("Update SE", "aborted.");
+            send_msg_failure(dev, 4);  // Failure_ActionCancelled
+            shutdown();
+            return;
+          }
+          delay_ms(1000);                        // SE jump into app ,delay 1000
+          if (false == bSE_GetState(apduBuf)) {  // 80FC000000 获取SE状态
+            flash_state = STATE_END;
+            show_unplug("Update SE", "aborted.");
+            send_msg_failure(dev, 4);  // Failure_ActionCancelled
+            shutdown();
+            return;
+          }
+          if (apduBuf[0] != 0x33) {
+            flash_state = STATE_END;
+            show_unplug("Update SE", "aborted.");
+            send_msg_failure(dev, 4);  // Failure_ActionCancelled
+            shutdown();
+            return;
+          }
+          if (false == bSE_AcitveAPP()) {  // enable se app
+            flash_state = STATE_END;
+            show_unplug("Update SE", "aborted.");
+            send_msg_failure(dev, 4);  // Failure_ActionCancelled
+            shutdown();
+            return;
+          }
+          delay_ms(100);  // after active se jump into app
+          if (false == bSE_GetState(apduBuf)) {  // get status after active
+            flash_state = STATE_END;
+            show_unplug("Update SE", "aborted.");
+            send_msg_failure(dev, 4);  // Failure_ActionCancelled
+            shutdown();
+            return;
+          }
+          if ((0x55 != apduBuf[0]) &&
+              (0x00 != apduBuf[0])) {  // 00：APP升级Boot成功；55:APP升级成功
+            flash_state = STATE_END;
+            show_unplug("Update SE", "aborted.");
+            send_msg_failure(dev, 4);  // Failure_ActionCancelled
+            shutdown();
+            return;
+          }
         }
       }
     }
