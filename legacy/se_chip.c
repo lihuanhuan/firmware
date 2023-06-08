@@ -155,7 +155,7 @@ bool se_random_encrypted(uint8_t *rand, uint8_t len) {
   aes_ecb_decrypt(recv_buf, ref_buf, recv_len, &aes_dec_ctx);
   if (memcmp(ref_buf, mcu_rand_buf, sizeof(mcu_rand_buf)) != 0) return false;
 
-  memcpy(rand, ref_buf, len);
+  memcpy(rand, ref_buf + 16, len);
   return true;
 }
 
