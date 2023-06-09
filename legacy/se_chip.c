@@ -79,7 +79,9 @@
 // cardano icarus CIP03
 // TODO: change to SE required value. now is placeholder
 #define DERIVE_ED25519_ICARUS (0x05)
-#define DERIVE_ED25519_LEDGER (0x06)
+#define DERIVE_BIP86 (0x06)
+#define DERIVE_BIP86_TWEAK (0x07)
+#define DERIVE_CURVE25519 (0x08)
 
 #define CURVE_NIST256P1 (0x40)
 #define CURVE_SECP256K1 (0x00)
@@ -522,20 +524,7 @@ bool se_get_result_plain(uint8_t *pRecv, uint16_t *pRecv_len) {
   return true;
 }
 
-inline static bool se_get_resp_by_ecdsa256(uint8_t mode,
-                                           const uint32_t *address,
-                                           uint8_t count, uint8_t *resp,
-                                           uint16_t *resp_len) {
-  if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, EDDSA_INDEX_CHILDKEY,
-                             (uint8_t *)address, count * 4, resp, resp_len,
-                             MI2C_PLAIN, mode)) {
-    return false;
-  }
-
-  return true;
-}
-
-inline static bool se_get_derive_mode_by_name(const char *curve,
+static inline bool se_get_derive_mode_by_name(const char *curve,
                                               uint8_t *mode) {
   if (0 == strcmp(curve, NIST256P1_NAME)) {
     *mode = DERIVE_NIST256P1;
@@ -547,11 +536,15 @@ inline static bool se_get_derive_mode_by_name(const char *curve,
     *mode = DERIVE_SR25519;
   } else if (0 == strcmp(curve, ED25519_CARDANO_NAME)) {
     *mode = DERIVE_ED25519_ICARUS;
-  } else if (0 == strcmp(curve, ED25519_LEDGER_NAME)) {
-    *mode = DERIVE_ED25519_LEDGER;
-    //
-    // } else if (0 == strcmp(curve, ED25519_KECCAK_NAME)) {
-    //   *mode = DERIVE_ED25519_DONNA;
+  }
+  // else if (0 == strcmp(curve, ED25519_LEDGER_NAME)) {
+  // *mode = DERIVE_BIP86;
+  //
+  // } else if (0 == strcmp(curve, ED25519_KECCAK_NAME)) {
+  //   *mode = DERIVE_ED25519_DONNA;
+  // }
+  else if (0 == strcmp(curve, CURVE25519_NAME)) {
+    *mode = DERIVE_CURVE25519;
   } else {
     return false;
   }
@@ -559,11 +552,10 @@ inline static bool se_get_derive_mode_by_name(const char *curve,
   return true;
 }
 
-// TODO se_get_hnode_public
 bool se_derive_keys(HDNode *out, const char *curve, const uint32_t *address_n,
                     size_t address_n_count, uint32_t *fingerprint) {
   uint8_t resp[256];
-  uint16_t resp_len;
+  uint16_t resp_len = 0xffff;
   uint8_t mode;
 
   if (!se_get_derive_mode_by_name(curve, &mode)) return false;
@@ -580,6 +572,7 @@ bool se_derive_keys(HDNode *out, const char *curve, const uint32_t *address_n,
     case DERIVE_SECP256K1:
       out->depth = resp[0];
       out->child_num = *(uint32_t *)(resp + 1);
+      LITTLE_REVERSE32(out->child_num, out->child_num);
       memcpy(out->chain_code, resp + 1 + 4, 32);
       HDNode parent = {0};
       parent.curve = get_curve_by_name(curve);
@@ -589,8 +582,9 @@ bool se_derive_keys(HDNode *out, const char *curve, const uint32_t *address_n,
       }
       memcpy(out->public_key, resp + 1 + 4 + 32 + 33, 33);
       break;
-    case DERIVE_ED25519_LEDGER:
     case DERIVE_ED25519_SLIP10:
+    case DERIVE_BIP86:
+    case DERIVE_CURVE25519:
       if (33 != resp_len) return false;
       if (fingerprint) fingerprint = NULL;
       memcpy(out->public_key, resp, resp_len);
@@ -604,7 +598,20 @@ bool se_derive_keys(HDNode *out, const char *curve, const uint32_t *address_n,
   return true;
 }
 
-inline static bool se_get_pubkey_by_25519(uint8_t mode, uint8_t *chain_code,
+bool se_derive_tweak_private_keys(void) {
+  uint8_t resp[256];
+  uint16_t resp_len = 0xffff;
+
+  if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, EDDSA_INDEX_CHILDKEY,
+                             (uint8_t *)NULL, 0, resp, &resp_len, MI2C_PLAIN,
+                             DERIVE_BIP86_TWEAK)) {
+    return false;
+  }
+
+  return true;
+}
+
+static inline bool se_get_pubkey_by_25519(uint8_t mode, uint8_t *chain_code,
                                           uint16_t chain_len, uint8_t *pubkey) {
   uint8_t resp[256];
   uint16_t resp_len;
@@ -1335,20 +1342,20 @@ bool se_ecdsa_ecdh(uint8_t curve, const uint8_t *publickey,
 #define se_nist256p1_ecdh(publickey, sessionkey) \
   se_ecdsa_ecdh(ECDH_NIST256P1, publickey, sessionkey)
 
-bool se_25519_ecdh(uint8_t curve, const uint8_t *publickey,
-                   uint8_t *sessionkey) {
+bool se_curve25519_ecdh(uint8_t curve, const uint8_t *publickey,
+                        uint8_t *sessionkey) {
   uint8_t resp[128];
   uint16_t resp_len;
   if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, EDDSA_INDEX_ECDH,
-                             (uint8_t *)publickey, 64, resp, &resp_len,
+                             (uint8_t *)publickey, 32, resp, &resp_len,
                              MI2C_PLAIN, curve)) {
     return false;
   }
   memcpy(sessionkey, resp, resp_len);
   return true;
 }
-#define se_sr25519_ecdh(publickey, sessionkey) \
-  se_25519_ecdh(ECDH_CURVE25519, publickey, sessionkey)
+#define se_curve25519_ecdh(publickey, sessionkey) \
+  se_curve25519_ecdh(ECDH_CURVE25519, publickey, sessionkey)
 
 // TODO it will sign digest
 bool se_schnoor_sign_plain(const uint8_t *data, uint16_t data_len,
@@ -1474,20 +1481,19 @@ int hdnode_sign(const HDNode *node, const uint8_t *msg, uint32_t msg_len,
 int hdnode_get_shared_key(const HDNode *node, const uint8_t *peer_public_key,
                           uint8_t *session_key, int *result_size) {
   const char *curve = node->curve->curve_name;
-  if (strcmp(curve, NIST256P1_NAME)) {
+  if (strcmp(curve, NIST256P1_NAME) == 0) {
     *result_size = 65;
     *session_key = 0x04;
-    if (!se_nist256p1_ecdh(peer_public_key, session_key + 1)) return -1;
+    if (!se_nist256p1_ecdh(peer_public_key + 1, session_key + 1)) return -1;
     return 0;
-  } else if (strcmp(curve, SECP256K1_NAME)) {
+  } else if (strcmp(curve, SECP256K1_NAME) == 0) {
     *result_size = 65;
     *session_key = 0x04;
-    if (!se_secp256k1_ecdh(peer_public_key, session_key + 1)) return -1;
+    if (!se_secp256k1_ecdh(peer_public_key + 1, session_key + 1)) return -1;
     return 0;
-  } else if (strcmp(curve, SR25519_NAME)) {
-    *result_size = 33;
-    *session_key = 0x04;
-    if (!se_sr25519_ecdh(peer_public_key, session_key + 1)) return -1;
+  } else if (strcmp(curve, CURVE25519_NAME) == 0) {
+    *result_size = 32;
+    if (!se_curve25519_ecdh(peer_public_key, session_key)) return -1;
     return 0;
   }
   return -1;
@@ -1496,6 +1502,7 @@ int hdnode_get_shared_key(const HDNode *node, const uint8_t *peer_public_key,
 int hdnode_bip340_sign_digest(const HDNode *node, const uint8_t *digest,
                               uint8_t sig[64]) {
   (void)node;
+  if (!se_derive_tweak_private_keys()) return false;
   return se_schnoor_sign_plain(digest, 32, sig) ? 0 : 1;
 }
 

@@ -323,7 +323,7 @@ void fsm_msgCosiSign(const CosiSign *msg) {
   resp->signature.size = 32;
   cosi_nonce_is_set = false;
 
-  //TODO:
+  // TODO:
   if (ed25519_cosi_sign(msg->data.bytes, msg->data.size, node->private_key,
                         cosi_nonce, msg->global_commitment.bytes,
                         msg->global_pubkey.bytes, resp->signature.bytes) == 0) {
