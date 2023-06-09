@@ -1342,8 +1342,8 @@ bool se_ecdsa_ecdh(uint8_t curve, const uint8_t *publickey,
 #define se_nist256p1_ecdh(publickey, sessionkey) \
   se_ecdsa_ecdh(ECDH_NIST256P1, publickey, sessionkey)
 
-bool se_curve25519_ecdh(uint8_t curve, const uint8_t *publickey,
-                        uint8_t *sessionkey) {
+bool se_25519_ecdh(uint8_t curve, const uint8_t *publickey,
+                   uint8_t *sessionkey) {
   uint8_t resp[128];
   uint16_t resp_len;
   if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, EDDSA_INDEX_ECDH,
@@ -1355,7 +1355,7 @@ bool se_curve25519_ecdh(uint8_t curve, const uint8_t *publickey,
   return true;
 }
 #define se_curve25519_ecdh(publickey, sessionkey) \
-  se_curve25519_ecdh(ECDH_CURVE25519, publickey, sessionkey)
+  se_25519_ecdh(ECDH_CURVE25519, publickey, sessionkey)
 
 // TODO it will sign digest
 bool se_schnoor_sign_plain(const uint8_t *data, uint16_t data_len,
@@ -1492,8 +1492,9 @@ int hdnode_get_shared_key(const HDNode *node, const uint8_t *peer_public_key,
     if (!se_secp256k1_ecdh(peer_public_key + 1, session_key + 1)) return -1;
     return 0;
   } else if (strcmp(curve, CURVE25519_NAME) == 0) {
-    *result_size = 32;
-    if (!se_curve25519_ecdh(peer_public_key, session_key)) return -1;
+    *session_key = 0x04;  // bip32.c
+    *result_size = 33;
+    if (!se_curve25519_ecdh(peer_public_key, session_key + 1)) return -1;
     return 0;
   }
   return -1;
