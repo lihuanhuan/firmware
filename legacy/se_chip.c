@@ -15,6 +15,8 @@
 #include "memzero.h"
 #include "hard_preset.h"
 #include "timer.h"
+#include "secp256k1.h"
+#include "nist256p1.h"
 #define LITTLE_REVERSE32(w, x)                                       \
   {                                                                  \
     uint32_t ref = (w);                                              \
@@ -1482,14 +1484,22 @@ int hdnode_get_shared_key(const HDNode *node, const uint8_t *peer_public_key,
                           uint8_t *session_key, int *result_size) {
   const char *curve = node->curve->curve_name;
   if (strcmp(curve, NIST256P1_NAME) == 0) {
+    uint8_t extend_key[65];
+    if (ecdsa_uncompress_pubkey(&nist256p1, peer_public_key, extend_key) != 0) {
+      return -1;
+    }
     *result_size = 65;
     *session_key = 0x04;
-    if (!se_nist256p1_ecdh(peer_public_key + 1, session_key + 1)) return -1;
+    if (!se_nist256p1_ecdh(extend_key + 1, session_key + 1)) return -1;
     return 0;
   } else if (strcmp(curve, SECP256K1_NAME) == 0) {
+    uint8_t extend_key[65];
+    if (ecdsa_uncompress_pubkey(&secp256k1, peer_public_key, extend_key) != 0) {
+      return -1;
+    }
     *result_size = 65;
     *session_key = 0x04;
-    if (!se_secp256k1_ecdh(peer_public_key + 1, session_key + 1)) return -1;
+    if (!se_secp256k1_ecdh(extend_key + 1, session_key + 1)) return -1;
     return 0;
   } else if (strcmp(curve, CURVE25519_NAME) == 0) {
     *session_key = 0x04;  // bip32.c
