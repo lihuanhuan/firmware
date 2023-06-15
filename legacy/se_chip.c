@@ -1520,11 +1520,10 @@ int hdnode_bip340_sign_digest(const HDNode *node, const uint8_t *digest,
 int hdnode_bip340_get_shared_key(const HDNode *node,
                                  const uint8_t *peer_public_key,
                                  uint8_t session_key[65]) {
-  (void)node;
-  (void)*peer_public_key;
-  (void)session_key;
-
-  return 0;
+  int result_size;
+  if (!se_derive_tweak_private_keys()) return false;
+  return hdnode_get_shared_key(node, peer_public_key, session_key,
+                               &result_size);
 }
 
 bool se_containsMnemonic(const char *mnemonic) {
