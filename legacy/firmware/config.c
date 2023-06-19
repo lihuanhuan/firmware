@@ -324,25 +324,11 @@ inline static secbool config_set_uint32(const struct CfgRecord id,
   return config_set(id, &value, sizeof(value));
 }
 
-inline static secbool config_homeScreen(void) {
-  memzero(g_ucHomeScreen, sizeof(g_ucHomeScreen));
-  uint16_t realSize = 0xff;
-  if (!config_get_bytes(id_homescreen, g_ucHomeScreen, &realSize)) {
-    return secfalse;
-  }
-  return sectrue;
-}
-
 void config_init(void) {
   char oldTiny = usbTiny(1);
 
   memzero(HW_ENTROPY_DATA, sizeof(HW_ENTROPY_DATA));
-
-  // TODO: it would change storge logic in mcu flash
-  if (secfalse == g_bHomeGetFlg) {
-    g_bHomeGetFlg = config_homeScreen();
-  }
-
+  config_getHomescreen(g_ucHomeScreen, HOMESCREEN_SIZE);
   config_getLanguage(config_language, sizeof(config_language));
 
 #if !EMULATOR
@@ -529,37 +515,6 @@ bool config_genSessionSeed(void) {
   return true;
 }
 
-bool config_getRootNode(HDNode *node, const char *curve) {
-  // TODO change logic, use SE sign
-  (void)node;
-  (void)curve;
-  return true;
-}
-
-// bool config_getCardanoRootNode(HDNode *node) {
-//   if (activeSessionCache == NULL) {
-//     fsm_sendFailure(FailureType_Failure_InvalidSession, "Invalid session");
-//     return false;
-//   }
-
-//   if (activeSessionCache->seedCached != sectrue) {
-//     const uint8_t *seed = config_getSeed();
-//     if (seed == NULL) {
-//       fsm_sendFailure(FailureType_Failure_InvalidSession, "Invalid Seed");
-//       return false;
-//     }
-//   }
-//   // activeSessionCache->cardano_icarus_secret
-//   int res = hdnode_from_secret_cardano(
-//       activeSessionCache->cardano_icarus_secret, node);
-//   if (res != 1) {
-//     fsm_sendFailure(FailureType_Failure_ProcessError,
-//                     _("Unexpected failure in constructing cardano node"));
-//     return false;
-//   }
-//   return true;
-// }
-
 bool config_getLabel(char *dest, uint16_t dest_size) {
   if (secfalse == config_get_string(id_label, dest, &dest_size)) {
     memcpy(dest, "OneKey Classic", 15 /*strlen("OneKey Classic") + 1*/);
@@ -586,9 +541,16 @@ bool config_getLanguage(char *dest, uint16_t dest_size) {
 }
 
 bool config_getHomescreen(uint8_t *dest, uint16_t dest_size) {
-  if (HOMESCREEN_SIZE != dest_size || secfalse == g_bHomeGetFlg) return false;
-
+  if (secfalse == g_bHomeGetFlg) {
+    memzero(g_ucHomeScreen, sizeof(g_ucHomeScreen));
+    uint16_t realSize = 0xff;
+    if (!config_get_bytes(id_homescreen, g_ucHomeScreen, &realSize)) {
+      return false;
+    }
+  }
+  if (dest_size != HOMESCREEN_SIZE) return false;
   memcpy(dest, g_ucHomeScreen, HOMESCREEN_SIZE);
+  g_bHomeGetFlg = sectrue;
   return true;
 }
 

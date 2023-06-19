@@ -60,7 +60,6 @@ bool se_ecdsa_get_pubkey(uint32_t *address, uint8_t count, uint8_t *pubkey);
 bool se_set_value(uint16_t key, const void *val_dest, uint16_t len);
 bool se_get_value(uint16_t key, void *val_dest, uint16_t max_len,
                   uint16_t *len);
-bool se_delete_key(uint16_t key);
 void se_reset_storage(void);
 bool se_get_sn(char **serial, uint16_t len);
 char *se_get_version(void);

@@ -229,21 +229,6 @@ bool se_sync_session_key(void) {
   return true;
 }
 
-uint8_t *se_aes_mac(uint8_t *key, uint8_t *iv, uint8_t *inbuf, uint16_t inlen,
-                    uint8_t *outbuf) {
-  static uint8_t aes_mac[8];
-  aes_encrypt_ctx en_ctxe;
-
-  aes_encrypt_key128(key, &en_ctxe);
-  aes_cbc_encrypt(inbuf, outbuf, inlen, iv, &en_ctxe);
-
-  memzero(aes_mac, sizeof(aes_mac));
-  // last block first 8 byte as mac
-  memcpy(aes_mac, outbuf + inlen - 16, 8);
-
-  return aes_mac;
-}
-
 /*
  *master i2c send
  */
@@ -516,16 +501,6 @@ uint32_t se_transmit_plain(uint8_t *pucSendData, uint16_t usSendLen,
   return MI2C_OK;
 }
 
-bool se_get_result_plain(uint8_t *pRecv, uint16_t *pRecv_len) {
-  uint16_t recv_len = 0xff;
-  if (false == bMI2CDRV_ReceiveData(pRecv, &recv_len)) {
-    *pRecv_len = recv_len;
-    return false;
-  }
-  *pRecv_len = 0xff;
-  return true;
-}
-
 static inline bool se_get_derive_mode_by_name(const char *curve,
                                               uint8_t *mode) {
   if (0 == strcmp(curve, NIST256P1_NAME)) {
@@ -584,14 +559,25 @@ bool se_derive_keys(HDNode *out, const char *curve, const uint32_t *address_n,
       }
       memcpy(out->public_key, resp + 1 + 4 + 32 + 33, 33);
       break;
+    case DERIVE_ED25519_DONNA:
+    case DERIVE_SR25519:
+      if (32 != resp_len) return false;
+      if (fingerprint) fingerprint = NULL;
+      memcpy(out->public_key, resp, resp_len);
+      break;
     case DERIVE_ED25519_SLIP10:
-    case DERIVE_BIP86:
+    case DERIVE_ED25519_ICARUS:
     case DERIVE_CURVE25519:
       if (33 != resp_len) return false;
       if (fingerprint) fingerprint = NULL;
       memcpy(out->public_key, resp, resp_len);
       // keep same `hdnode_fill_public_key` in bip32.c
       out->public_key[0] = 1;
+      break;
+    case DERIVE_BIP86:
+      if (33 != resp_len) return false;
+      if (fingerprint) fingerprint = NULL;
+      memcpy(out->public_key, resp, resp_len);
       break;
     default:
       return false;
@@ -611,76 +597,6 @@ bool se_derive_tweak_private_keys(void) {
   }
 
   return true;
-}
-
-static inline bool se_get_pubkey_by_25519(uint8_t mode, uint8_t *chain_code,
-                                          uint16_t chain_len, uint8_t *pubkey) {
-  uint8_t resp[256];
-  uint16_t resp_len;
-
-  if ((mode != DERIVE_ED25519_DONNA) && (mode != DERIVE_SR25519)) return false;
-  if ((chain_code[0] != 0) && (chain_code[0] != 1)) return false;
-  if (0 != chain_len % 33) return false;
-
-  if (MI2C_OK != se_transmit(MI2C_CMD_ECC_EDDSA, EDDSA_INDEX_CHILDKEY,
-                             chain_code, chain_len, resp, &resp_len, MI2C_PLAIN,
-                             mode)) {
-    return false;
-  }
-  memcpy(pubkey, resp, 32);
-  return true;
-}
-
-// TODO it will add function in bip32.c
-bool se_get_hnode_public_by_polkadot_path(HDNode *out, const char *curve,
-                                          const char (*address_n)[130],
-                                          size_t address_n_count) {
-  uint8_t mode = DERIVE_SR25519;
-
-  if (NULL == out || NULL == curve) {
-    return false;
-  }
-
-  if (0 == strcmp(curve, SR25519_NAME)) {
-    mode = DERIVE_SR25519;
-  } else if (0 == strcmp(curve, ED25519_NAME)) {
-    mode = DERIVE_ED25519_DONNA;
-  } else {
-    return false;
-  }
-
-  out->curve = get_curve_by_name(curve);
-  if (NULL == out->curve) {
-    return false;
-  }
-
-  if (!address_n
-      // no way how to compute parent fingerprint
-      || 0 == address_n_count) {
-    return false;
-  }
-
-  uint8_t chaincode_list[330];
-  memset(chaincode_list, 0x00, sizeof(chaincode_list) / sizeof(uint8_t));
-  size_t chaincode_list_len = 0;
-  // bool bSuccess = true;
-  // for (size_t k = 0; k < address_n_count; ++k) {
-  //   // for (size_t k = 1; k < address_n_count; ++k) {
-  //   HDNode cc = *out;
-  //   if (0 == hdnode_chaincode_ckd_by_polkadot_path(&cc, address_n[k])) {
-  //     bSuccess = false;
-  //     break;
-  //   }
-  //   memcpy(&chaincode_list[k * (sizeof(cc.public_key) / sizeof(uint8_t))],
-  //          cc.public_key, sizeof(cc.public_key) / sizeof(uint8_t));
-  //   chaincode_list_len += sizeof(cc.public_key) / sizeof(uint8_t);
-  // }
-  // if (!bSuccess) {
-  //   return bSuccess;
-  // }
-
-  return se_get_pubkey_by_25519(mode, chaincode_list, chaincode_list_len,
-                                &out->public_key[1]);
 }
 
 bool se_set_value(uint16_t key, const void *val_dest, uint16_t len) {
@@ -711,14 +627,6 @@ bool se_get_value(uint16_t key, void *val_dest, uint16_t max_len,
     return false;
   }
   *len = *len > max_len ? max_len : *len;
-  return true;
-}
-
-bool se_delete_key(uint16_t key) {
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_PIN, (key & 0xFF), NULL, 0, NULL, 0,
-                             MI2C_PLAIN, DELETE_SESTORE_DATA)) {
-    return false;
-  }
   return true;
 }
 
@@ -982,57 +890,6 @@ bool se_applyPinValidtime(void) {
   return true;
 }
 
-// first used it will return false and retry counter
-// last will return true
-// note : first used mode = SE_GENSEDMNISEC_FIRST
-//        other mode =SE_GENSEDMNISEC_OTHER
-// bool se_setSeed(uint8_t *preCnts, uint8_t mode) {
-bool se_setSeed(uint8_t mode) {
-  uint8_t cmd[5] = {0x80, 0xe1, 0x12, 0x00, 0x00};
-  uint8_t cur_cnts = 0xff;
-  uint16_t recv_len = 0;
-
-  // TODO
-  if (SE_GENSEDMNISEC_FIRST != mode && SE_GENSEDMNISEC_OTHER != mode)
-    return false;
-  if (SE_GENSEDMNISEC_FIRST == mode) {
-    if (MI2C_OK != se_transmit_ex(MI2C_CMD_WR_PIN, 0x12, NULL, 0, &cur_cnts,
-                                  &recv_len, MI2C_ENCRYPT, SE_WRFLG_GENSEED,
-                                  mode)) {
-      return false;
-    }
-  } else {
-    if (false == se_transmit_plain(cmd, sizeof(cmd), &cur_cnts, &recv_len)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-// bool se_setMinisec(uint8_t *preCnts, uint8_t mode) {
-bool se_setMinisec(uint8_t mode) {
-  uint8_t cmd[5] = {0x80, 0xe1, 0x12, 0x01, 0x00};
-  uint8_t recv_buf[4];
-  uint16_t recv_len = 0;
-  // TODO
-  if (SE_GENSEDMNISEC_FIRST != mode && SE_GENSEDMNISEC_OTHER != mode)
-    return false;
-  if (SE_GENSEDMNISEC_FIRST == mode) {
-    if (MI2C_OK != se_transmit_ex(MI2C_CMD_WR_PIN, 0x12, NULL, 0, recv_buf,
-                                  &recv_len, MI2C_ENCRYPT,
-                                  SE_WRFLG_GENMINISECRET, mode)) {
-      return false;
-    }
-  } else {
-    if (false == se_transmit_plain(cmd, sizeof(cmd), recv_buf, &recv_len)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 se_generate_state_t se_beginGenerate(se_generate_type_t type,
                                      se_generate_session_t *session) {
   uint8_t cur_cnts = 0xff;
@@ -1123,41 +980,6 @@ bool se_sessionOpen(IN uint8_t *session_id_bytes) {
                              NULL, &recv_len, MI2C_ENCRYPT, GET_SESTORE_DATA)) {
     return false;
   }
-  return true;
-}
-
-// TODO. type is seed or minisecret
-bool se_sessionGens(uint8_t *pass_phase, uint16_t len, uint8_t type,
-                    uint8_t mode) {
-  uint8_t cmd[5] = {0x80, 0xe7, 0x02, 0x00, 0x00};
-  uint8_t cur_cnts = 0xff;
-  uint8_t cur_wrflag = 0xff;  // seed and minisecret is different
-  cur_wrflag =
-      (type == SE_WRFLG_GENSEED) ? SE_WRFLG_GENSEED : SE_WRFLG_GENMINISECRET;
-  uint16_t recv_len = 0;
-
-  // TODO
-  if (SE_GENSEDMNISEC_FIRST != mode && SE_GENSEDMNISEC_OTHER != mode)
-    return false;
-  if (SE_GENSEDMNISEC_FIRST == mode) {
-    if (pass_phase == NULL) {  // TODO. it would use default seed and
-                               // minisecret.
-      return MI2C_OK == se_transmit_ex(MI2C_CMD_WR_SESSION, 0x02, NULL, 0,
-                                       &cur_cnts, &recv_len, MI2C_ENCRYPT,
-                                       cur_wrflag, mode);
-    }
-    if (MI2C_OK != se_transmit_ex(MI2C_CMD_WR_SESSION, 0x02, pass_phase, len,
-                                  &cur_cnts, &recv_len, MI2C_ENCRYPT,
-                                  cur_wrflag, mode)) {
-      return false;
-    }
-  } else {
-    if (type == SE_WRFLG_GENMINISECRET) cmd[3] = 0x01;
-    if (false == se_transmit_plain(cmd, sizeof(cmd), &cur_cnts, &recv_len)) {
-      return false;
-    }
-  }
-
   return true;
 }
 

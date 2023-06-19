@@ -59,16 +59,10 @@ void config_lockDevice(void);
 void config_loadDevice(const LoadDevice *msg);
 bool config_loadDevice_ex(const BixinLoadDevice *msg);
 
-const uint8_t *config_getSeed(void);
 
 bool config_setCoinJoinAuthorization(const AuthorizeCoinJoin *authorization);
 MessageType config_getAuthorizationType(void);
 const AuthorizeCoinJoin *config_getCoinJoinAuthorization(void);
-
-bool config_getU2FRoot(HDNode *node);
-// TODO
-bool config_getRootNode(HDNode *node, const char *curve);
-// bool config_getCardanoRootNode(HDNode *node);
 
 bool config_getLabel(char *dest, uint16_t dest_size);
 void config_setLabel(const char *label);
@@ -87,14 +81,6 @@ uint8_t *session_startSession(const uint8_t *received_session_id);
 bool config_genSessionSeed(void);
 bool config_setMnemonic(const char *mnemonic, bool import);
 bool config_containsMnemonic(const char *mnemonic);
-bool config_hasMnemonic(void);
-
-bool config_genSeed(void);
-bool config_setSeedsBytes(const uint8_t *seeds, uint8_t len);
-
-// bool config_SeedsEncExportBytes(BixinOutMessageSE_outmessage_t *get_msg);
-// bool config_stBackUpEntoryToSe(uint8_t *seed, uint8_t seed_len);
-// bool config_stRestoreEntoryFromSe(uint8_t *seed, uint8_t *seed_len);
 
 bool config_setPin(const char *pin);
 bool config_verifyPin(const char *pin);
