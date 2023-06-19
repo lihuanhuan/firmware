@@ -1576,4 +1576,24 @@ bool se_getSessionCachedState(se_session_cached_status *status) {
   return true;
 }
 
+bool se_setCoinJoinAuthorization(const uint8_t *authorization, uint16_t len){
+  uint16_t recv_len = 0xff;
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x05,
+                             (uint8_t *)authorization, len, NULL, &recv_len,
+                             MI2C_ENCRYPT, 0x00)) {
+    return false;
+  }
+  return true;
+}
+
+bool se_getCoinJoinAuthorization(uint8_t *authorization, uint16_t *len){
+  uint16_t recv_len = 0xff;
+  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x05, NULL, 0, authorization,
+                             &recv_len, MI2C_ENCRYPT, 0x01)) {
+    return false;
+  }
+  *len = recv_len;
+  return true;
+}
+
 #endif

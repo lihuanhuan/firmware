@@ -933,13 +933,25 @@ bool config_getTrezorCompMode(bool *trezor_comp_mode) {
   return sectrue == config_get_bool(id_trezorCompMode, trezor_comp_mode);
 }
 
-const AuthorizeCoinJoin *config_getCoinJoinAuthorization(void) { return NULL; }
+static AuthorizeCoinJoin auth = {0};
+const AuthorizeCoinJoin *config_getCoinJoinAuthorization(void) {
+  uint8_t resp[128] = {0};
+  uint16_t len = 128;
+  bool rv = se_getCoinJoinAuthorization(resp, &len);
+  if (rv && len == sizeof(AuthorizeCoinJoin)) {
+    memcpy(&auth, resp, sizeof(AuthorizeCoinJoin));
+    return &auth;
+  }
+  return NULL;
+}
 bool config_setCoinJoinAuthorization(const AuthorizeCoinJoin *authorization) {
-  (void)authorization;
-  return true;
+  return se_setCoinJoinAuthorization((const uint8_t *)authorization,
+                                     sizeof(AuthorizeCoinJoin));
 }
 
-MessageType config_getAuthorizationType(void) { return 0; }
+MessageType config_getAuthorizationType(void) {
+  return MessageType_MessageType_AuthorizeCoinJoin;
+}
 
 bool config_hasWipeCode(void) { return se_hasWipeCode(); }
 

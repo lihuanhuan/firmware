@@ -188,8 +188,8 @@ OBJS += ../vendor/trezor-crypto/sha512.o
 
 OBJS += ../vendor/QR-Code-generator/c/qrcodegen.o
 
-OBJS += ../vendor/trezor-storage/storage.o
-OBJS += ../vendor/trezor-storage/norcow.o
+#OBJS += ../vendor/trezor-storage/storage.o
+#OBJS += ../vendor/trezor-storage/norcow.o
 
 OBJS += ../vendor/nanopb/pb_common.o
 OBJS += ../vendor/nanopb/pb_decode.o

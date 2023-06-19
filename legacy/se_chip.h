@@ -117,4 +117,7 @@ bool se_hasWipeCode(void);
 bool se_changeWipeCode(const char *wipe_code);
 uint16_t se_lasterror(void);
 
+bool se_setCoinJoinAuthorization(const uint8_t *authorization,uint16_t len);
+bool se_getCoinJoinAuthorization(uint8_t* authorization,uint16_t* len);
+
 #endif
