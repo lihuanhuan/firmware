@@ -1576,7 +1576,7 @@ bool se_getSessionCachedState(se_session_cached_status *status) {
   return true;
 }
 
-bool se_setCoinJoinAuthorization(const uint8_t *authorization, uint16_t len){
+bool se_setCoinJoinAuthorization(const uint8_t *authorization, uint16_t len) {
   uint16_t recv_len = 0xff;
   if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x05,
                              (uint8_t *)authorization, len, NULL, &recv_len,
@@ -1586,13 +1586,25 @@ bool se_setCoinJoinAuthorization(const uint8_t *authorization, uint16_t len){
   return true;
 }
 
-bool se_getCoinJoinAuthorization(uint8_t *authorization, uint16_t *len){
-  uint16_t recv_len = 0xff;
-  if (MI2C_OK != se_transmit(MI2C_CMD_WR_SESSION, 0x05, NULL, 0, authorization,
-                             &recv_len, MI2C_ENCRYPT, 0x01)) {
+bool se_getCoinJoinAuthorization(uint8_t *authorization, uint16_t *len) {
+  uint8_t cmd[5 + 16] = {0x80, 0xe7, 0x05, 0x01, 0x10};
+  uint8_t recv_buf[0x100], ref_buf[0x100], rand_buf[0x10];
+  uint16_t recv_len = 0xff;  // 32 bytes session id
+  aes_decrypt_ctx aes_dec_ctx;
+
+  // TODO. get se random 16 bytes
+  random_buffer_ST(rand_buf, 0x10);
+  memcpy(cmd + 5, rand_buf, sizeof(rand_buf));
+  if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), recv_buf, &recv_len)) {
     return false;
   }
-  *len = recv_len;
+
+  aes_decrypt_key128(g_ucSessionKey, &aes_dec_ctx);
+  aes_ecb_decrypt(recv_buf, ref_buf, recv_len, &aes_dec_ctx);
+  if (memcmp(ref_buf, rand_buf, sizeof(rand_buf)) != 0) return false;
+  memcpy(authorization, ref_buf + sizeof(rand_buf),
+         recv_len - sizeof(rand_buf));
+  *len = recv_len - sizeof(rand_buf);
   return true;
 }
 
