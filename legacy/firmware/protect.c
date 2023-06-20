@@ -380,7 +380,6 @@ secbool protectPinUiCallback(uint32_t wait, uint32_t progress,
 
 bool protectPin(bool use_cached) {
   const char *newpin = NULL;
-  // TODO: add pin valid time apply
   if (use_cached && session_isUnlocked() && session_isProtectUnlocked()) {
     return true;
   }
@@ -873,12 +872,12 @@ refresh_menu:
 }
 
 bool protectPinOnDevice(bool use_cached, bool cancel_allowed) {
+  //   static bool input_pin = false;  // void recursive
   if (use_cached && session_isUnlocked()) {
     return true;
   }
-
+  //   if (input_pin) return true;
   const char *pin = "";
-  (void)cancel_allowed;
 input:
   if (config_hasPin()) {
     // input_pin = true;
@@ -998,6 +997,7 @@ retry:
       }
     }
   }
+
   bool ret = config_changePin(old_pin, new_pin);
   memzero(old_pin, sizeof(old_pin));
   memzero(new_pin, sizeof(new_pin));

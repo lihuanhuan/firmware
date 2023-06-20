@@ -84,7 +84,8 @@ bool get_features(Features *resp) {
   resp->has_busy = true;
   resp->busy = (system_millis_busy_deadline > timer_ms());
   if (session_isUnlocked()) {
-    resp->has_wipe_code_protection = false;
+    resp->has_wipe_code_protection = true;
+    resp->wipe_code_protection = config_hasWipeCode();
     resp->has_auto_lock_delay_ms = true;
     resp->auto_lock_delay_ms = config_getAutoLockDelayMs();
   }
@@ -282,7 +283,6 @@ void fsm_msgChangePin(const ChangePin *msg) {
   layoutHome();
 }
 
-// TODO what's wipe code, doing what?
 void fsm_msgChangeWipeCode(const ChangeWipeCode *msg) {
   CHECK_INITIALIZED
   if (g_bIsBixinAPP) {
@@ -293,8 +293,7 @@ void fsm_msgChangeWipeCode(const ChangeWipeCode *msg) {
   bool has_wipe_code = config_hasWipeCode();
 
   if (removal) {
-    // Note that if storage is locked, then config_hasWipeCode() returns
-    // false.
+    // Note that if storage is locked, then config_hasWipeCode() returns false.
     if (has_wipe_code || !session_isUnlocked()) {
       layoutDialogSwipe(&bmp_icon_question, _("Cancel"), _("Confirm"), NULL,
                         NULL, _("Do you really want to"),
@@ -373,9 +372,9 @@ void fsm_msgWipeDevice(const WipeDevice *msg) {
       _("The device is reset, restart now."), NULL, NULL, NULL, NULL);
   protectWaitKey(0, 0);
 
-  // the following does not work on Mac anyway :-/ Linux/Windows are fine, so
-  // it is not needed usbReconnect(); // force re-enumeration because of the
-  // serial number change
+  // the following does not work on Mac anyway :-/ Linux/Windows are fine, so it
+  // is not needed usbReconnect(); // force re-enumeration because of the serial
+  // number change
   i2c_set_wait(false);
   fsm_sendSuccess(_("Device wiped"));
   layoutHome();

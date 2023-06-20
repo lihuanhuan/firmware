@@ -73,8 +73,8 @@ void tron_message_sign(TronSignMessage *msg, const HDNode *node,
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return;
   }
-  //TODO: tron do not need add 27
-  resp->signature.bytes[64] = v;
+
+  resp->signature.bytes[64] = 27 + v;
   resp->signature.size = 65;
   msg_write(MessageType_MessageType_TronMessageSignature, resp);
 }
@@ -522,10 +522,10 @@ bool tron_sign_tx(TronSignTx *msg, const char *owner_address,
 
     // detect TRC-20 like token
     if (msg->contract.trigger_smart_contract.data.size == 68 &&
-        memcmp(msg->contract.trigger_smart_contract.data.bytes,
-               "\xa9\x05\x9c\xbb\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-               "\x00",
-               16) == 0) {
+        memcmp(
+            msg->contract.trigger_smart_contract.data.bytes,
+            "\xa9\x05\x9c\xbb\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            16) == 0) {
       token = get_tron_token_by_address(
           msg->contract.trigger_smart_contract.contract_address);
       if (tron_eth_2_trx_address(
@@ -635,7 +635,9 @@ bool tron_sign_tx(TronSignTx *msg, const char *owner_address,
     fsm_sendFailure(FailureType_Failure_ProcessError, _("Signing failed"));
     return false;
   }
-  resp->signature.bytes[64] = v;
+
+  // fill response
+  resp->signature.bytes[64] = 27 + v;
   resp->signature.size = 65;
   resp->has_serialized_tx = 1;
   resp->serialized_tx.size = index;

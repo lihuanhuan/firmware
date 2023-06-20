@@ -1,4 +1,3 @@
 #define VERSION_MAJOR 2
 #define VERSION_MINOR 0
 #define VERSION_PATCH 0
-#define BOOT_VERSION_HEX 0x1900

@@ -2048,7 +2048,7 @@ void layoutHomeInfo(void) {
       refreshUsbConnectTips();
 #endif
       if (key == KEY_UP || key == KEY_DOWN || key == KEY_CONFIRM) {
-        if (protectPinOnDevice(true, true) || !config_isInitialized()) {
+        if (protectPinOnDevice(true, true)) {
           menu_run(KEY_NULL, 0);
         } else {
           layoutHome();
@@ -3622,6 +3622,7 @@ refresh_menu:
 
   switch (index) {
     case 0:
+
       oledDrawStringAdapter(0, y, _("MODEL:"), FONT_STANDARD);
       y += font->pixel + 1;
       oledDrawStringAdapter(0, y, "OneKey Classic", FONT_STANDARD);
@@ -3630,9 +3631,10 @@ refresh_menu:
       oledDrawStringAdapter(0, y, _("BLUETOOTH NAME:"), FONT_STANDARD);
       y += font->pixel + 1;
       oledDrawStringAdapter(0, y, ble_get_name(), FONT_STANDARD);
-      break;
 
+      break;
     case 1:
+
       oledDrawStringAdapter(0, y, _("FIRMWARE VERSION:"), FONT_STANDARD);
       y += font->pixel + 1;
       oledDrawStringAdapter(0, y, ONEKEY_VERSION, FONT_STANDARD);
@@ -3661,7 +3663,7 @@ refresh_menu:
     case 3:
       oledDrawStringAdapter(0, y, _("SERIAL NUMBER:"), FONT_STANDARD);
       y += font->pixel + 1;
-      // TODO
+
       se_get_sn(&se_sn, 0x0a);
       oledDrawStringAdapter(0, y, se_sn, FONT_STANDARD);
 
@@ -3671,7 +3673,6 @@ refresh_menu:
       oledDrawStringAdapter(0, y, BUILD_ID + strlen(BUILD_ID) - 7,
                             FONT_STANDARD);
       break;
-
     case 4:
       oledDrawStringAdapter(0, y, _("DEVICE ID:"), FONT_STANDARD);
       y += font->pixel + 1;

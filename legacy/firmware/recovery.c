@@ -999,6 +999,7 @@ check_word:
   }
 
   recovery_done();
+
   recovery_byself = false;
   return true;
 }

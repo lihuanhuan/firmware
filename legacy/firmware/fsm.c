@@ -279,10 +279,6 @@ HDNode *fsm_getDerivedNode(const char *curve, const uint32_t *address_n,
     layoutHome();
     return 0;
   }
-  if (!address_n || address_n_count == 0) {
-    return &node;
-  }
-
   return &node;
 }
 

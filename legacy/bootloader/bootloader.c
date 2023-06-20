@@ -111,7 +111,6 @@ static void __attribute__((noreturn)) load_app(int signed_firmware) {
 
 static void bootloader_loop(void) { usbLoop(); }
 
-// TODO main loop
 int main(void) {
   // grab "stay in bootloader" flag as soon as possible
   register uint32_t r11 __asm__("r11");
@@ -141,6 +140,7 @@ int main(void) {
     __stack_chk_guard = random32();  // this supports compiler provided
                                      // unpredictable stack protection checks
 #ifndef APPVER
+    memory_protect();
     oledInit();
     sys_poweron();
     buttonsIrqInit();
@@ -167,6 +167,7 @@ int main(void) {
       if (SIG_OK != check_firmware_hashes(hdr)) {
         show_halt("Broken firmware", "detected.");
       }
+      mpu_config_off();
       load_app(signed_firmware);
     }
 #endif

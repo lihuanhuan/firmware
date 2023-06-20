@@ -24,7 +24,6 @@
 #include <stdint.h>
 #include "secbool.h"
 
-extern const uint32_t FIRMWARE_MAGIC_OLD;  // TRZR
 extern const uint32_t FIRMWARE_MAGIC_NEW;  // TRZF
 extern const uint32_t FIRMWARE_MAGIC_BLE;  // 5283
 extern const uint32_t FIRMWARE_MAGIC_SE;

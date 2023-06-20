@@ -4089,7 +4089,6 @@ void signing_txack(TransactionType *tx) {
           signing_hash_bip143(&info, &tx->inputs[0], hash);
         }
         if (!signing_sign_ecdsa(&tx->inputs[0], hash)) return;
-        // since this took a longer time, update progress
         signatures++;
         // since this took a longer time, update progress
         report_progress(true);

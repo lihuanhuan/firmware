@@ -91,16 +91,18 @@ static int known_bootloader(int r, const uint8_t *hash) {
     memcpy(bootloader_version, "1.9.0", strlen("1.9.0"));
     return 1;  // 1.9.0
   }
-  // TODO. new bootloader hash value
+
+  // BEGIN AUTO-GENERATED QA BOOTLOADER ENTRIES (bl_check_qa.txt)
   if (0 ==
       memcmp(hash,
-             "\x9a\x10\xb7\x23\xbf\x47\xb0\x80\x03\x93\xf8\xfe\x03\x94\xc8\x5b"
-             "\x5e\x79\x6c\xc0\x36\xa1\x5b\xfe\x1f\xb1\x4e\xcb\xa4\x1f\xf3\x02",
+             "\x8c\xce\xa2\x13\xba\x7b\x8e\x06\x62\x95\xd4\xac\x44\x6f\x71\x4f"
+             "\xe5\x62\x93\x03\x06\xef\xd1\xe5\x2d\xad\x98\x38\x79\x6d\x57\xe2",
              32)) {
     memcpy(bootloader_version, "2.0.0", strlen("2.0.0"));
-    return 1;  // 2.0.0
+    return 1;  // 2.0.0 shipped with fw 3.0.0
   }
-  // bootloader hash is not sure for github server packaged firmware.
+  // END AUTO-GENERATED QA BOOTLOADER ENTRIES (bl_check_qa.txt)
+
   return 0;
 }
 #endif

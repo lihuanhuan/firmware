@@ -28,7 +28,7 @@
 #include "layout.h"
 #include "mi2c.h"
 #include "oled.h"
-#include "rand.h"
+#include "rng.h"
 #include "si2c.h"
 #include "sys.h"
 #include "usart.h"
