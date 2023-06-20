@@ -122,9 +122,14 @@ void kaspa_sign_sighash(HDNode *node, const uint8_t *raw_message,
 
   CALCULATE_SIGNING_HASH(raw_message, raw_message_len);
   if (strcmp(schema, "schnorr") == 0) {
-    // schnorr sign
-    // tx_sign_bip340(node->private_key, schnorr_digest, signature,
-    // signature_len);
+    uint8_t sig[64];
+    int ret = hdnode_bip340_sign_digest(node, schnorr_digest, sig);
+    if (ret != 0) {
+      fsm_sendFailure(FailureType_Failure_ProcessError, "Signing failed");
+      kaspa_signing_abort();
+      return;
+    }
+    *signature_len = 64;
   } else {
     // ecdsa sign
     CALCULATE_SIGNING_HASH_ECDSA;

@@ -47,6 +47,7 @@
 #include "oled.h"
 #include "protect.h"
 #include "util.h"
+#include "curves.h"
 
 static bool stellar_signing = false;
 static StellarTransaction stellar_activeTx;
@@ -1640,27 +1641,11 @@ uint16_t stellar_crc16(uint8_t *bytes, uint32_t length) {
  */
 const HDNode *stellar_deriveNode(const uint32_t *address_n,
                                  size_t address_n_count) {
-  (void)address_n;
-  (void)address_n_count;
-      // static CONFIDENTIAL HDNode node;
-      // const char *curve = "ed25519";
-
-      // // Device not initialized, passphrase request cancelled, or unsupported
-      // curve if (!config_getRootNode(&node, curve)) {
-      //   return 0;
-      // }
-      // // Failed to derive private key
-      // if (hdnode_private_ckd_cached(&node, address_n, address_n_count, NULL)
-      // == 0) {
-      //   return 0;
-      // }
-
-      // if (hdnode_fill_public_key(&node) != 0) {
-      //   return 0;
-      // }
-
-      // return &node;
-      return NULL;
+  // slip10
+  extern HDNode *fsm_getDerivedNode(
+      const char *curve, const uint32_t *address_n, size_t address_n_count,
+      uint32_t *fingerprint);
+  return fsm_getDerivedNode(ED25519_NAME, address_n, address_n_count, NULL);
 }
 
 void stellar_hashupdate_uint32(uint32_t value) {
