@@ -557,76 +557,114 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       // read payload length
       const uint8_t *p = p_buf + 10;
       if (flash_pos) {
-        flash_pos = 0;
-      }
-      if (readprotobufint(&p, &flash_len) != sectrue) {  // integer too large
-        send_msg_failure(dev, 9);                        // Failure_ProcessError
-        flash_state = STATE_END;
-        show_halt("Firmware is", "too big.");
-        return;
-      }
-      // check firmware magic
-      if ((memcmp(p, &FIRMWARE_MAGIC_NEW, 4) != 0) &&
-          (memcmp(p, &FIRMWARE_MAGIC_BLE, 4) != 0)) {
-        send_msg_failure(dev, 9);  // Failure_ProcessError
-        flash_state = STATE_END;
-        show_halt("Wrong firmware", "header.");
-        return;
-      }
-      if (memcmp(p, &FIRMWARE_MAGIC_NEW, 4) == 0) {
-        update_mode = UPDATE_ST;
-      } else {
-        update_mode = UPDATE_BLE;
-      }
-
-      if (flash_len <= FLASH_FWHEADER_LEN) {  // firmware is too small
-        send_msg_failure(dev, 9);             // Failure_ProcessError
-        flash_state = STATE_END;
-        show_halt("Firmware is", "too small.");
-        return;
-      }
-      if (UPDATE_ST == update_mode) {
-        if (flash_len >
-            FLASH_FWHEADER_LEN + FLASH_APP_LEN) {  // firmware is too big
-          send_msg_failure(dev, 9);                // Failure_ProcessError
+        uint32_t tmp_len;
+        if (readprotobufint(&p, &tmp_len) != sectrue) {  // integer too large
+          send_msg_failure(dev, 9);                      // Failure_ProcessError
           flash_state = STATE_END;
-          show_halt("Firmware is", "too big");
+          show_halt("Firmware is", "too big.");
           return;
         }
-      } else if (UPDATE_BLE == update_mode) {
-        if (flash_len >
-            FLASH_FWHEADER_LEN + FLASH_BLE_MAX_LEN) {  // firmware is too big
-          send_msg_failure(dev, 9);                    // Failure_ProcessError
+        w = 0;
+        wi = 0;
+        while (p < p_buf + 64 && flash_pos < flash_len) {
+          // assign byte to first byte of uint32_t w
+          w = (w >> 8) | (((uint32_t)*p) << 24);
+          wi++;
+          if (wi == 4) {
+            if (flash_pos < FLASH_FWHEADER_LEN) {
+              FW_HEADER[flash_pos / 4] = w;
+            } else {
+              FW_CHUNK[(flash_pos % FW_CHUNK_SIZE) / 4] = w;
+              flash_enter();
+              if (UPDATE_ST == update_mode) {
+                flash_write_word_item(FLASH_FWHEADER_START + flash_pos, w);
+              } else if (UPDATE_BLE == update_mode) {
+                flash_write_word_item(FLASH_BLE_ADDR_START + flash_pos, w);
+              } else if (UPDATE_SE == update_mode) {
+                // do nothing
+              }
+              flash_exit();
+            }
+            flash_pos += 4;
+            wi = 0;
+            // finished the whole chunk
+            if (flash_pos % FW_CHUNK_SIZE == 0) {
+              check_and_write_chunk();
+            }
+          }
+          p++;
+        }
+        flash_state = STATE_FLASHING;
+        return;
+      } else {
+        if (readprotobufint(&p, &flash_len) != sectrue) {  // integer too large
+          send_msg_failure(dev, 9);  // Failure_ProcessError
+          flash_state = STATE_END;
+          show_halt("Firmware is", "too big.");
+          return;
+        }
+        // check firmware magic
+        if ((memcmp(p, &FIRMWARE_MAGIC_NEW, 4) != 0) &&
+            (memcmp(p, &FIRMWARE_MAGIC_BLE, 4) != 0)) {
+          send_msg_failure(dev, 9);  // Failure_ProcessError
+          flash_state = STATE_END;
+          show_halt("Wrong firmware", "header.");
+          return;
+        }
+        if (memcmp(p, &FIRMWARE_MAGIC_NEW, 4) == 0) {
+          update_mode = UPDATE_ST;
+        } else {
+          update_mode = UPDATE_BLE;
+        }
+
+        if (flash_len <= FLASH_FWHEADER_LEN) {  // firmware is too small
+          send_msg_failure(dev, 9);             // Failure_ProcessError
           flash_state = STATE_END;
           show_halt("Firmware is", "too small.");
           return;
         }
-      } else if (UPDATE_SE == update_mode) {
-        // do nothing
-      }
-
-      memzero(FW_HEADER, sizeof(FW_HEADER));
-      memzero(FW_CHUNK, sizeof(FW_CHUNK));
-      flash_state = STATE_FLASHING;
-      flash_pos = 0;
-      chunk_idx = 0;
-      w = 0;
-      wi = 0;
-      while (p < p_buf + 64) {
-        // assign byte to first byte of uint32_t w
-        w = (w >> 8) | (((uint32_t)*p) << 24);
-        wi++;
-        if (wi == 4) {
-          FW_HEADER[flash_pos / 4] = w;
-          flash_pos += 4;
-          wi = 0;
+        if (UPDATE_ST == update_mode) {
+          if (flash_len >
+              FLASH_FWHEADER_LEN + FLASH_APP_LEN) {  // firmware is too big
+            send_msg_failure(dev, 9);                // Failure_ProcessError
+            flash_state = STATE_END;
+            show_halt("Firmware is", "too big");
+            return;
+          }
+        } else if (UPDATE_BLE == update_mode) {
+          if (flash_len >
+              FLASH_FWHEADER_LEN + FLASH_BLE_MAX_LEN) {  // firmware is too big
+            send_msg_failure(dev, 9);                    // Failure_ProcessError
+            flash_state = STATE_END;
+            show_halt("Firmware is", "too small.");
+            return;
+          }
+        } else if (UPDATE_SE == update_mode) {
+          // do nothing
         }
-        p++;
+
+        memzero(FW_HEADER, sizeof(FW_HEADER));
+        memzero(FW_CHUNK, sizeof(FW_CHUNK));
+        flash_state = STATE_FLASHING;
+        flash_pos = 0;
+        chunk_idx = 0;
+        w = 0;
+        wi = 0;
+        while (p < p_buf + 64) {
+          // assign byte to first byte of uint32_t w
+          w = (w >> 8) | (((uint32_t)*p) << 24);
+          wi++;
+          if (wi == 4) {
+            FW_HEADER[flash_pos / 4] = w;
+            flash_pos += 4;
+            wi = 0;
+          }
+          p++;
+        }
       }
       return;
-    } else {
-      send_msg_failure(dev, 1);  // Failure_UnexpectedMessage
     }
+    send_msg_failure(dev, 1);  // Failure_UnexpectedMessage
     return;
   }
   if (flash_state == STATE_INTERRPUPT) {  // adjust struct
