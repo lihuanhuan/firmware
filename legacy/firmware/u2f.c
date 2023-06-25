@@ -302,7 +302,7 @@ void u2fhid_read_start(const U2FHID_FRAME *f) {
       cid = 0;
       reader = 0;
       usbTiny(0);
-      // TODO:factory setup clear se firmware failed
+      // FTFixed: 生产阶段会影响清se的cos，不影响后续使用
       // layoutHome();
       return;
     }

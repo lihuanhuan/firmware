@@ -140,7 +140,8 @@ int main(void) {
     __stack_chk_guard = random32();  // this supports compiler provided
                                      // unpredictable stack protection checks
 #ifndef APPVER
-    // memory_protect(); // factory stage would use lock instruction.
+    // FTFixed:生产阶段最后一步已经做过此操作，不需要再做
+    // memory_protect();
     oledInit();
     sys_poweron();
     buttonsIrqInit();

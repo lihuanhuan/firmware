@@ -355,6 +355,7 @@ static int version_compare(const uint32_t vera, const uint32_t verb) {
 
 static int should_keep_storage(int old_was_signed,
                                uint32_t fix_version_current) {
+	//FTFixed: Storage移动到se中，无须此函数						   
   (void)old_was_signed;
   (void)fix_version_current;
   return SIG_OK;
@@ -667,7 +668,7 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
     send_msg_failure(dev, 1);  // Failure_UnexpectedMessage
     return;
   }
-  if (flash_state == STATE_INTERRPUPT) {  // adjust struct
+  if (flash_state == STATE_INTERRPUPT) {
     if (msg_id == 0x0000) {
       send_msg_failure(dev, 9);  // Failure_ProcessError
       flash_state = STATE_FLASHSTART;
@@ -718,7 +719,6 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
               COMBINED_FW_HEADER[flash_combine_pos / 4] = w;
               flash_combine_pos += 4;
               if (flash_combine_pos == FLASH_FWHEADER_LEN) {
-                // TODO: se check version and return boot loop...
                 uint8_t se_version[2];
                 uint16_t ver_current, ver_income;
                 if (!se_get_firVersion(se_version)) {
@@ -882,16 +882,6 @@ static void rx_callback(usbd_device *dev, uint8_t ep) {
       }
       layoutProgress("Programing...", 1000);
 
-      // TODO: check firmware hash
-      // 1) old firmware was unsigned or not present
-      // 2) signatures are not OK
-      // 3) hashes are not OK
-      // (void)old_was_signed;
-      // if (SIG_OK != check_firmware_hashes(hdr)) {
-      //   send_msg_failure(dev, 9);  // Failure_ProcessError
-      //   show_halt("Error installing", "firmware.");
-      //   return;
-      // }
       if (SIG_OK != should_keep_storage(old_was_signed, fix_version_current)) {
       }
 

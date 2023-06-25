@@ -399,17 +399,18 @@ void fsm_msgGetEntropy(const GetEntropy *msg) {
   }
 #endif
   RESP_INIT(Entropy);
-  uint32_t len = msg->size;
+  int len = msg->size;
   if (len > 1024) {
     len = 1024;
   }
   resp->entropy.size = len;
 #if EMULATOR
   random_buffer(resp->entropy.bytes, len);
-#else  // TODO: use se get entropy
-  if (len > 32) len = 32;
-  resp->entropy.size = len;
-  se_get_entropy(resp->entropy.bytes);
+#else
+  while (len > 0) {
+    se_get_entropy(resp->entropy.bytes + resp->entropy.size - len);
+    len -= 32;
+  }
 #endif
   msg_write(MessageType_MessageType_Entropy, resp);
   layoutHome();

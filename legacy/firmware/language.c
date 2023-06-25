@@ -411,9 +411,8 @@ const char *languages[][2] = {
     // reset.c
     {"Generating a standard\nwallet with a new set of\nrecovery phrase.",
      "即将创建由一组新助记词生\n成的标准钱包."},
-    // reset.c &&
+    // FTFixed: 增加生成种子进度条文本
     {"Generating seed ...", "生成种子..."},
-    // se_chip.c
     {"Generating session seed ...", "生成会话种子..."},
     // cosmos.c
     {"Granter", "授予人"},

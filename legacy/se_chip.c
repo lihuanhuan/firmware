@@ -78,8 +78,6 @@
 #define DERIVE_ED25519_DONNA (0x02)
 #define DERIVE_SR25519 (0x03)
 #define DERIVE_ED25519_SLIP10 (0x04)
-// cardano icarus CIP03
-// TODO: change to SE required value. now is placeholder
 #define DERIVE_ED25519_ICARUS (0x05)
 #define DERIVE_BIP86 (0x06)
 #define DERIVE_BIP86_TWEAK (0x07)
@@ -89,8 +87,6 @@
 #define CURVE_SECP256K1 (0x00)
 #define CURVE_ED25519 (0x02)
 #define CURVE_SR25519 (0x03)
-// cardano icarus CIP03
-// TODO: change to SE required value. now is placeholder
 #define CURVE_ED25519_ICARUS (0x04)
 
 #define ECDH_NIST256P1 (0x00)
@@ -796,19 +792,17 @@ bool se_getRetryTimes(uint8_t *pcnts) {
   uint16_t recv_len = 0xff;  // 32 bytes session id
   aes_decrypt_ctx aes_dec_ctx;
 
-  // TODO. get se random 16 bytes
   random_buffer_ST(rand_buf, 0x10);
   memcpy(cmd + 5, rand_buf, sizeof(rand_buf));
   if (MI2C_OK != se_transmit_plain(cmd, sizeof(cmd), recv_buf, &recv_len)) {
     return false;
   }
-  // TODO. parse returned data
+
   if (recv_len != 0x20) return false;
   aes_decrypt_key128(g_ucSessionKey, &aes_dec_ctx);
   aes_ecb_decrypt(recv_buf, ref_buf, recv_len, &aes_dec_ctx);
   if (memcmp(ref_buf, rand_buf, sizeof(rand_buf)) != 0) return false;
 
-  // TODO: retry cnts
   if (ref_buf[0x10] > SE_PIN_RETRY_MAX) return false;
   *pcnts = ref_buf[0x10];
   return true;
@@ -1030,7 +1024,6 @@ bool se_sessionClear(void) {
   return true;
 }
 
-// TODO: lc is three bytes
 bool se_set_public_region(const uint16_t offset, const void *val_dest,
                           uint16_t len) {
   uint8_t cmd[7] = {0x00, 0xE6, 0x00, 0x00, 0x00, 0x04, 0x00};
@@ -1050,7 +1043,7 @@ bool se_set_public_region(const uint16_t offset, const void *val_dest,
   }
   return true;
 }
-// TODO: le is three bytes
+
 bool se_get_public_region(uint16_t offset, void *val_dest, uint16_t len) {
   uint8_t cmd[7] = {0x00, 0xE5, 0x00, 0x00, 0x00, 0x00, 0x10};
   uint16_t recv_len = len;

@@ -238,11 +238,9 @@ enum {
 
 void msg_process(char type, uint16_t msg_id, const pb_msgdesc_t *fields,
                  uint8_t *msg_raw, uint32_t msg_size) {
-  // reload messages section
+  //FTFixed:如果使用芯片自动分配的Ram，会发生异常
   static uint8_t msg_decoded[MSG_IN_DECODED_SIZE]
       __attribute__((section(".secMessageSection")));
-  // uint8_t msg_decoded[MSG_IN_DECODED_SIZE];
-
   memzero(msg_decoded, sizeof(msg_decoded));
   pb_istream_t stream = pb_istream_from_buffer(msg_raw, msg_size);
   bool status = pb_decode(&stream, fields, msg_decoded);

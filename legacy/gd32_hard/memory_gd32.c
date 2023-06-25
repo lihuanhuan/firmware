@@ -36,7 +36,6 @@ void memory_protect(void) {
   fmc_lock();
 }
 
-// TODO: for test update bootloader lock boot sectors.
 void memory_write_lock(void) {
   /* disable security protection */
   fmc_unlock();
@@ -49,7 +48,6 @@ void memory_write_lock(void) {
 }
 
 // Read protection is unaffected and always stays locked to the desired value.
-// TODO: for test update bootloader unlock boot sectors.
 void memory_write_unlock(void) {
   /* disable security protection */
   fmc_unlock();
