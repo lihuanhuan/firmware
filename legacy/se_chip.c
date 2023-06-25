@@ -1254,10 +1254,9 @@ bool se_aes_128_decrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
 /// hdnode api
 int hdnode_private_ckd_cached(HDNode *inout, const uint32_t *address_n,
                               size_t address_n_count, uint32_t *fingerprint) {
-  // just tell se derive keys, DO NOT cache anything
-  se_derive_keys(inout, inout->curve->curve_name, address_n, address_n_count,
-                 fingerprint);
-  return 1;
+  // this function `1` is success, `0` is faild
+  return se_derive_keys(inout, inout->curve->curve_name, address_n, address_n_count,
+                 fingerprint) ? 1 : 0;
 }
 
 int hdnode_sign_digest(const HDNode *node, const uint8_t *digest, uint8_t *sig,
@@ -1335,7 +1334,7 @@ int hdnode_get_shared_key(const HDNode *node, const uint8_t *peer_public_key,
 int hdnode_bip340_sign_digest(const HDNode *node, const uint8_t *digest,
                               uint8_t sig[64]) {
   (void)node;
-  if (!se_derive_tweak_private_keys()) return false;
+  if (!se_derive_tweak_private_keys()) return 1;
   return se_schnoor_sign_plain(digest, 32, sig) ? 0 : 1;
 }
 
@@ -1343,7 +1342,7 @@ int hdnode_bip340_get_shared_key(const HDNode *node,
                                  const uint8_t *peer_public_key,
                                  uint8_t session_key[65]) {
   int result_size;
-  if (!se_derive_tweak_private_keys()) return false;
+  if (!se_derive_tweak_private_keys()) return 1;
   return hdnode_get_shared_key(node, peer_public_key, session_key,
                                &result_size);
 }
