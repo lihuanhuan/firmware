@@ -1410,7 +1410,7 @@ bool se_setCoinJoinAuthorization(const uint8_t *authorization, uint16_t len) {
 bool se_getCoinJoinAuthorization(uint8_t *authorization, uint16_t *len) {
   uint8_t cmd[5 + 16] = {0x80, 0xe7, 0x05, 0x01, 0x10};
   uint8_t recv_buf[0x100], ref_buf[0x100], rand_buf[0x10];
-  uint16_t recv_len = 0xff;  // 32 bytes session id
+  uint16_t recv_len = 0xff;
   aes_decrypt_ctx aes_dec_ctx;
 
   // TODO. get se random 16 bytes
@@ -1423,9 +1423,27 @@ bool se_getCoinJoinAuthorization(uint8_t *authorization, uint16_t *len) {
   aes_decrypt_key128(g_ucSessionKey, &aes_dec_ctx);
   aes_ecb_decrypt(recv_buf, ref_buf, recv_len, &aes_dec_ctx);
   if (memcmp(ref_buf, rand_buf, sizeof(rand_buf)) != 0) return false;
-  memcpy(authorization, ref_buf + sizeof(rand_buf),
-         recv_len - sizeof(rand_buf));
-  *len = recv_len - sizeof(rand_buf);
+
+  // delete pad
+  uint8_t i = 0, padLen = 0;
+  for (i = 1; i < 0x11; i++) {
+    if (ref_buf[recv_len - i] == 0x80) {
+      for (padLen = 1; padLen < i; padLen++) {
+        if (ref_buf[recv_len - padLen] != 0x00) {
+          i = 0x11;
+          break;
+        }
+      }
+      break;
+    }
+  }
+  if (i != 0x11) {
+    recv_len = recv_len - i;
+  }
+  recv_len -= sizeof(rand_buf);
+
+  memcpy(authorization, ref_buf + sizeof(rand_buf), recv_len);
+  *len = recv_len;
   return true;
 }
 
