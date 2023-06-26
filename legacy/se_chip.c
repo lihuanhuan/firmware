@@ -82,6 +82,7 @@
 #define DERIVE_BIP86 (0x06)
 #define DERIVE_BIP86_TWEAK (0x07)
 #define DERIVE_CURVE25519 (0x08)
+#define DERIVE_POLKADOT (0x09)
 
 #define CURVE_NIST256P1 (0x40)
 #define CURVE_SECP256K1 (0x00)
@@ -509,11 +510,10 @@ static inline bool se_get_derive_mode_by_name(const char *curve,
     *mode = DERIVE_SR25519;
   } else if (0 == strcmp(curve, ED25519_CARDANO_NAME)) {
     *mode = DERIVE_ED25519_ICARUS;
+  } else if (0 == strcmp(curve, ED25519_LEDGER_NAME)) {
+    *mode = DERIVE_POLKADOT;
   }
-  // else if (0 == strcmp(curve, ED25519_LEDGER_NAME)) {
-  // *mode = DERIVE_BIP86;
-  //
-  // } else if (0 == strcmp(curve, ED25519_KECCAK_NAME)) {
+  // else if (0 == strcmp(curve, ED25519_KECCAK_NAME)) {
   //   *mode = DERIVE_ED25519_DONNA;
   // }
   else if (0 == strcmp(curve, CURVE25519_NAME)) {
@@ -564,6 +564,7 @@ bool se_derive_keys(HDNode *out, const char *curve, const uint32_t *address_n,
     case DERIVE_ED25519_SLIP10:
     case DERIVE_ED25519_ICARUS:
     case DERIVE_CURVE25519:
+    case DERIVE_POLKADOT:
       if (33 != resp_len) return false;
       if (fingerprint) fingerprint = NULL;
       memcpy(out->public_key, resp, resp_len);
@@ -1248,8 +1249,10 @@ bool se_aes_128_decrypt(uint8_t mode, uint8_t *key, uint8_t *iv, uint8_t *send,
 int hdnode_private_ckd_cached(HDNode *inout, const uint32_t *address_n,
                               size_t address_n_count, uint32_t *fingerprint) {
   // this function `1` is success, `0` is faild
-  return se_derive_keys(inout, inout->curve->curve_name, address_n, address_n_count,
-                 fingerprint) ? 1 : 0;
+  return se_derive_keys(inout, inout->curve->curve_name, address_n,
+                        address_n_count, fingerprint)
+             ? 1
+             : 0;
 }
 
 int hdnode_sign_digest(const HDNode *node, const uint8_t *digest, uint8_t *sig,
