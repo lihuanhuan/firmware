@@ -450,7 +450,6 @@ void fsm_msgLoadDevice(const LoadDevice *msg) {
 #endif
 
 void fsm_msgResetDevice(const ResetDevice *msg) {
-  // TODO: Does not need verify pin.
   // CHECK_PIN
   CHECK_NOT_INITIALIZED
 
