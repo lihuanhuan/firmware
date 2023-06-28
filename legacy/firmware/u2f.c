@@ -379,12 +379,20 @@ uint8_t *u2f_out_data(void) {
   u2f_out_start = (u2f_out_start + 1) % U2F_OUT_PKT_BUFFER_LEN;
   return u2f_out_packets[t];
 }
+
+void layoutKeyCheckInfo(void) {
+  oledClear_ex();
+  oledDrawStringCenter(60, 32, "Press any key... ", FONT_STANDARD);
+  oledRefresh();
+}
+
 void vButton_Lcd_Test(void) {
   uint8_t ucStatus;
   uint32_t uiTimeout;
 
   oledClear_ex();
   oledRefresh();
+  layoutKeyCheckInfo();
   ucStatus = 0;
   uiTimeout = 0;
   while (1) {
@@ -496,6 +504,14 @@ void gd32_protect(void) {
   send_u2f_error(U2F_SW_NO_ERROR);
 }
 
+void gd32_checkEleConnection(void) {
+  if (!se_isFactoryMode()) {  // se need at factory stage
+    send_u2f_error(U2F_SW_CONDITIONS_NOT_SATISFIED);
+    return;
+  }
+  vButton_Lcd_Test();
+}
+
 void u2fhid_msg(const APDU *a, uint32_t len) {
   if (a->cla != 0 && a->cla != 0x80) {
     send_u2f_error(U2F_SW_CLA_NOT_SUPPORTED);
@@ -531,7 +547,9 @@ void u2fhid_msg(const APDU *a, uint32_t len) {
                        // and sram
       gd32_protect();
       break;
-
+    case CHECK_ELECONNECT:  // smt factory check device connection
+      gd32_checkEleConnection();
+      break;
     default:
 #if !EMULATOR
       // MI2CDRV_Transmit

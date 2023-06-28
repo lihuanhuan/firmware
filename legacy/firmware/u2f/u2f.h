@@ -59,8 +59,9 @@ typedef struct __attribute__((packed)) {
 
 //button and oled test
 #define Buttton_Lcd_Test        0x30
-#define GET_ST_VERSION          0x31
 
+//se version
+#define GET_ST_VERSION          0x31
 
 //write presets default data
 #define SET_PRESETDATA          0x32
@@ -73,6 +74,10 @@ typedef struct __attribute__((packed)) {
 
 //read presets default data
 #define GET_PRESETDATA          0x35
+
+//smt factory inspect 
+#define CHECK_ELECONNECT          0x36
+
 
 // U2F_CMD_REGISTER command defines
 #define U2F_REGISTER_ID         0x05    // Version 2 registration identifier
